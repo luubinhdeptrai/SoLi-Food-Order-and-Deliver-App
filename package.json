@@ -4,6 +4,8 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:api": "turbo run dev --filter=api",
+    "dev:mobile": "turbo run dev --filter=mobile",
     "lint": "turbo run lint"
   },
   "devDependencies": {
