@@ -9,10 +9,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
   app.setGlobalPrefix('api');
   const config = new DocumentBuilder()
-    .setTitle('Todo API')
-    .setDescription('The Todo app API description')
+    .setTitle('API')
+    .setDescription('API description')
     .setVersion('1.0')
-    .addTag('todo')
     .addBearerAuth()
     .build();
 
