@@ -4,9 +4,11 @@ import { auth } from './lib/auth';
 import { AppModule } from './app.module';
 import { apiReference } from '@scalar/nestjs-api-reference';
 import type { Request, Response } from 'express';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
+  app.useGlobalPipes(new ValidationPipe());
   app.setGlobalPrefix('api');
   const config = new DocumentBuilder()
     .setTitle('API')
