@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchFeaturedMenu } from "../api/menu";
-import { useCartStore } from "../store/cartStore";
+import { fetchFeaturedMenu } from "../../features/menu/api/menu";
+import { useCartStore } from "../../features/cart/stores/cartStore";
 
 export function HomePage() {
   const addItem = useCartStore((state) => state.addItem);

@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { useCartStore } from "../store/cartStore";
+import { useCartStore } from "../../features/cart/stores/cartStore";
 
 export function RootLayout() {
   const itemCount = useCartStore((state) => state.itemCount);

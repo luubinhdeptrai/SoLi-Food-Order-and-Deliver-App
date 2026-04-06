@@ -1,4 +1,4 @@
-import { useCartStore } from "../store/cartStore";
+import { useCartStore } from "../../features/cart/stores/cartStore";
 
 export function CartPage() {
   const itemCount = useCartStore((state) => state.itemCount);
