@@ -62,10 +62,11 @@ export function RegisterScreen() {
               <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
                 {/* Email */}
                 <div className="space-y-2">
-                  <label className="font-label font-semibold text-xs text-on-surface-variant uppercase tracking-wider ml-1">
+                  <label htmlFor="emailInput" className="font-label font-semibold text-xs text-on-surface-variant uppercase tracking-wider ml-1">
                     Email Address
                   </label>
                   <Input
+                    id="emailInput"
                     type="email"
                     placeholder="chef@restaurant.com"
                     className="w-full h-14 px-4 bg-surface-container-high border-0 rounded-lg focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:bg-surface-container-lowest transition-all placeholder:text-stone-400"
@@ -74,10 +75,11 @@ export function RegisterScreen() {
 
                 {/* Phone */}
                 <div className="space-y-2">
-                  <label className="font-label font-semibold text-xs text-on-surface-variant uppercase tracking-wider ml-1">
+                  <label htmlFor="phoneInput" className="font-label font-semibold text-xs text-on-surface-variant uppercase tracking-wider ml-1">
                     Phone Number
                   </label>
                   <Input
+                    id="phoneInput"
                     type="tel"
                     placeholder="+1 (555) 000-0000"
                     className="w-full h-14 px-4 bg-surface-container-high border-0 rounded-lg focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:bg-surface-container-lowest transition-all placeholder:text-stone-400"
@@ -86,11 +88,12 @@ export function RegisterScreen() {
 
                 {/* Password */}
                 <div className="space-y-2">
-                  <label className="font-label font-semibold text-xs text-on-surface-variant uppercase tracking-wider ml-1">
+                  <label htmlFor="passwordInput" className="font-label font-semibold text-xs text-on-surface-variant uppercase tracking-wider ml-1">
                     Password
                   </label>
                   <div className="relative">
                     <Input
+                      id="passwordInput"
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       className="w-full h-14 px-4 pr-12 bg-surface-container-high border-0 rounded-lg focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:bg-surface-container-lowest transition-all placeholder:text-stone-400"
