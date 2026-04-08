@@ -21,6 +21,8 @@
   --color-primary-700: var(--primary-700);
   --color-primary-800: var(--primary-800);
   --color-primary-container: #2e7d32;
+  --color-primary-fixed: #a3f69c;
+  --color-on-primary-fixed: #002204;
 
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -42,7 +44,6 @@
 
   --color-on-surface: var(--on-surface);
   --color-on-surface-variant: var(--on-surface-variant);
-  --color-on-primary-fixed: var(--on-primary-fixed);
   --color-on-primary-fixed-variant: var(--on-primary-fixed-variant);
   --color-outline-variant: var(--outline-variant);
 
@@ -61,6 +62,11 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+
+  /* Error */
+  --color-error: var(--error);
+  --color-error-container: var(--error-container);
+  --color-on-error: var(--on-error);
 
   /* Border Radius */
   --radius-lg: var(--radius);
@@ -102,6 +108,18 @@
 @utility ghost-border {
   /* Ghost border — high-contrast accessibility fallback */
   border: 1px solid oklch(0.85 0.02 150 / 15%); /* outline_variant at 15% */
+}
+
+@utility active-icon {
+  font-variation-settings: "FILL" 1;
+}
+
+@utility scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;    /* Firefox */
+  &::-webkit-scrollbar {
+    display: none;        /* Chrome, Safari, etc */
+  }
 }
 
 @utility material-symbols-outlined {
@@ -171,6 +189,10 @@
     /* Error — #ba1a1a */
     --destructive: oklch(0.45 0.2 27);
     --destructive-foreground: oklch(1 0 0);
+    --error: oklch(0.45 0.2 27);
+    --error-container: oklch(0.9 0.05 27);
+    --on-error: oklch(1 0 0);
+
 
     /* Surface Hierarchy Tokens */
     --surface-container-lowest: #ffffff;
@@ -245,6 +267,9 @@
 
     --destructive: oklch(0.65 0.2 27);
     --destructive-foreground: oklch(1 0 0);
+    --error: oklch(0.65 0.2 27);
+    --error-container: oklch(0.25 0.05 27);
+    --on-error: oklch(1 0 0);
 
     --border: oklch(1 0 0 / 12%);
     --input: oklch(1 0 0 / 18%);
