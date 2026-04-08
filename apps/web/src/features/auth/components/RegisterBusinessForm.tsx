@@ -8,12 +8,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -38,7 +33,7 @@ export function RegisterBusinessForm() {
       <div className="space-y-6">
         {/* Restaurant Identification */}
         <Card className="bg-surface-container-lowest border border-outline-variant/20 shadow-sm rounded-2xl ring-0">
-          <CardHeader className="border-b border-outline-variant/10 pb-4">
+          <CardHeader className="border-b border-outline-variant/10 ">
             <CardTitle className="flex items-center gap-3">
               <div className="p-2 bg-surface-container rounded-lg">
                 <Store className="w-6 h-6 text-on-surface-variant" />

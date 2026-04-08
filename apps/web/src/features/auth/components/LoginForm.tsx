@@ -50,20 +50,26 @@ export function LoginForm() {
       </div>
 
       <div className="flex items-center justify-between py-2">
-        <Label htmlFor="rememberDevice" className="flex items-center gap-2 cursor-pointer">
+        <Label
+          htmlFor="rememberDevice"
+          className="flex items-center gap-2 cursor-pointer"
+        >
           <Checkbox id="rememberDevice" />
           <span className="text-sm font-medium text-on-surface-variant">
             Remember device
           </span>
         </Label>
-        <a href="#" className="text-sm font-bold text-primary hover:text-primary-container transition-colors">
+        <a
+          href="#"
+          className="text-sm font-bold text-primary hover:text-primary-container transition-colors"
+        >
           Forgot Access?
         </a>
       </div>
 
       <Button
         type="button"
-        className="w-full py-3 h-auto bg-gradient-to-r from-primary to-primary-container text-on-primary font-headline font-bold text-base rounded-full shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-[0.98] transition-all cursor-pointer"
+        className="w-full py-3 h-auto bg-primary-600 font-headline font-bold text-base rounded-full shadow-lg shadow-primary/20 hover:-translate-y-[1px] hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer text-white"
       >
         Authorize Access
       </Button>

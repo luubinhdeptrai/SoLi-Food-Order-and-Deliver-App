@@ -11,7 +11,7 @@ export function RegisterForm() {
 
   const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
-    navigate("/auth/register/location", { state: { step1Completed: true } });
+    navigate("/auth/register/business", { state: { step1Completed: true } });
   };
 
   return (

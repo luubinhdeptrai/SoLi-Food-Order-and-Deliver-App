@@ -10,7 +10,7 @@ export const router = createBrowserRouter([
     element: <RegisterPage />,
   },
   {
-    path: "/auth/register/location",
+    path: "/auth/register/business",
     element: <RegisterLocationPage />,
   },
   {
