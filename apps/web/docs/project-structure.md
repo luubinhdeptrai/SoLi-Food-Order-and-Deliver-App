@@ -12,7 +12,7 @@ src/
 │   ├── app.tsx           # app entry component that wires providers and the router
 │   ├── provider.tsx      # global providers such as React Query
 │   ├── router.tsx        # route definitions for the application
-│   └── routes/           # route-level page components
+│   └── pages/           # route-level page components
 │       ├── RootLayout.tsx
 │       ├── HomePage.tsx
 │       ├── MenuPage.tsx
@@ -44,7 +44,7 @@ The `app/` folder is responsible for application composition, not business logic
 - `app/app.tsx` composes global providers and the router.
 - `app/provider.tsx` owns app-wide providers such as `QueryClientProvider`.
 - `app/router.tsx` defines route registration with React Router.
-- `app/routes/` contains route-level page components such as `HomePage`, `CartPage`, and `RootLayout`.
+- `app/pages/` contains route-level page components such as `HomePage`, `CartPage`, and `RootLayout`.
 
 Route files should stay thin. They should mainly assemble layouts and feature components for that screen. They should not contain feature-specific business logic when that logic belongs in a feature folder.
 
@@ -128,12 +128,12 @@ Shared code should stay generic. If something belongs to one business domain, mo
 
 ## Page Organization
 
-Pages live in `src/app/routes/`.
+Pages live in `src/app/pages/`.
 
 A page should usually be a thin composition layer that combines feature components, shared UI, and layout. For example:
 
 ```text
-src/app/routes/
+src/app/pages/
 ├── HomePage.tsx
 ├── MenuPage.tsx
 ├── CartPage.tsx
@@ -181,7 +181,7 @@ src/app/routes/
 If a page has several route-specific pieces, create a folder for that route:
 
 ```text
-src/app/routes/cart/
+src/app/pages/cart/
 ├── CartPage.tsx
 ├── CartHeader.tsx
 ├── CartSidebar.tsx
@@ -272,8 +272,8 @@ This keeps the architecture predictable and easier to maintain as the app grows.
 ### Recommended naming examples
 
 ```text
-src/app/routes/HomePage.tsx
-src/app/routes/CartPage.tsx
+src/app/pages/HomePage.tsx
+src/app/pages/CartPage.tsx
 src/features/cart/components/CartList.tsx
 src/features/menu/api/menu.ts
 src/features/auth/components/LoginForm.tsx
@@ -289,7 +289,7 @@ When adding new code, ask these questions:
 2. Is this tied to a specific business domain? Put it in `features/<feature>/`.
 3. Is this part of route composition or app setup? Put it in `app/`.
 
-If the answer is “this screen shows some feature UI,” put the page in `app/routes/` and keep the actual logic in the relevant feature folder.
+If the answer is “this screen shows some feature UI,” put the page in `app/pages/` and keep the actual logic in the relevant feature folder.
 
 ---
 
@@ -303,7 +303,7 @@ src/
 │   ├── app.tsx
 │   ├── provider.tsx
 │   ├── router.tsx
-│   └── routes/
+│   └── pages/
 │       ├── RootLayout.tsx
 │       ├── HomePage.tsx
 │       ├── MenuPage.tsx

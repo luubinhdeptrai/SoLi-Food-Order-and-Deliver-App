@@ -1,20 +1,19 @@
 import { createBrowserRouter } from "react-router-dom";
-import { RegisterPage } from "./routes/auth/RegisterPage";
-import { CartPage } from "./routes/CartPage";
-import { HomePage } from "./routes/HomePage";
-import { RootLayout } from "./routes/RootLayout";
+import { RegisterPage } from "./pages/auth/RegisterPage";
+import { RegisterLocationPage } from "./pages/auth/RegisterLocationPage";
+import { RegisterPendingPage } from "./pages/auth/RegisterPendingPage";
 
 export const router = createBrowserRouter([
   {
-    path: "/",
-    element: <RootLayout />,
-    children: [
-      { index: true, element: <HomePage /> },
-      { path: "cart", element: <CartPage /> },
-    ],
-  },
-  {
     path: "/auth/register",
     element: <RegisterPage />,
+  },
+  {
+    path: "/auth/register/location",
+    element: <RegisterLocationPage />,
+  },
+  {
+    path: "/auth/register/pending",
+    element: <RegisterPendingPage />,
   },
 ]);
