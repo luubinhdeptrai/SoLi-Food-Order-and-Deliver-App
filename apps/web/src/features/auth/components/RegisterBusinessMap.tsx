@@ -1,6 +1,13 @@
-import { MapPin, LocateFixed, Utensils, Plus, Minus, Lightbulb } from "lucide-react";
+import {
+  MapPin,
+  LocateFixed,
+  Utensils,
+  Plus,
+  Minus,
+  Lightbulb,
+} from "lucide-react";
 
-export function RegisterLocationMap() {
+export function RegisterBusinessMap() {
   return (
     <div className="xl:col-span-5 xl:sticky xl:top-12">
       <div className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-md">
@@ -15,12 +22,12 @@ export function RegisterLocationMap() {
         </div>
 
         <div className="relative aspect-[4/5] bg-slate-200">
-          <img 
-            alt="Location Map" 
-            className="w-full h-full object-cover" 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMZf1C7mmgAEqw4LiAPdP-ymZRcDA-7Vv7g3ArSHzGK5cryqh2vQPQr4iB66mMLblbenazyDAcg09cnnQWI8zfXde7Q3hACEURVnAF4rkxDdDaOqBJfDEkqBeVn4JjRxolJy3ne1KiithP0c2Eon6wT-akrYOtG9pk9BRX2KQ082UMxtdyHWPxGR_nhRFxX_AYYybHkXARRFwJn2_bzkqJQugohe2bPshw47NZD02dqRn1id8iJgr9gj8GqYp_W0MQPmTF5wMDh98" 
+          <img
+            alt="Location Map"
+            className="w-full h-full object-cover"
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBMZf1C7mmgAEqw4LiAPdP-ymZRcDA-7Vv7g3ArSHzGK5cryqh2vQPQr4iB66mMLblbenazyDAcg09cnnQWI8zfXde7Q3hACEURVnAF4rkxDdDaOqBJfDEkqBeVn4JjRxolJy3ne1KiithP0c2Eon6wT-akrYOtG9pk9BRX2KQ082UMxtdyHWPxGR_nhRFxX_AYYybHkXARRFwJn2_bzkqJQugohe2bPshw47NZD02dqRn1id8iJgr9gj8GqYp_W0MQPmTF5wMDh98"
           />
-          
+
           {/* Map Marker */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="relative">
@@ -48,7 +55,9 @@ export function RegisterLocationMap() {
               <Lightbulb className="w-4 h-4 text-primary" />
             </div>
             <p className="text-sm text-slate-700 leading-relaxed">
-              <span className="font-bold">Pro Tip:</span> Drag the pin to your restaurant's main delivery entrance. This helps couriers find you faster and reduces delivery times.
+              <span className="font-bold">Pro Tip:</span> Drag the pin to your
+              restaurant's main delivery entrance. This helps couriers find you
+              faster and reduces delivery times.
             </p>
           </div>
         </div>

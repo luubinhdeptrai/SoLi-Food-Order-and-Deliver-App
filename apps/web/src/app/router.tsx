@@ -1,6 +1,6 @@
 import { createBrowserRouter } from "react-router-dom";
 import { RegisterPage } from "./pages/auth/RegisterPage";
-import { RegisterLocationPage } from "./pages/auth/RegisterLocationPage";
+import { RegisterLocationPage } from "./pages/auth/RegisterBusinessPage";
 import { RegisterPendingPage } from "./pages/auth/RegisterPendingPage";
 
 export const router = createBrowserRouter([
