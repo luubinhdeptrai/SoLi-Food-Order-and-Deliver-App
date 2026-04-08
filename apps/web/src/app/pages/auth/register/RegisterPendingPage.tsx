@@ -1,9 +1,9 @@
-import { RegisterPendingHeader } from "../../../features/auth/components/RegisterPendingHeader";
-import { RegisterPendingStatus } from "../../../features/auth/components/RegisterPendingStatus";
-import { RegisterPendingAlerts } from "../../../features/auth/components/RegisterPendingAlerts";
-import { RegisterPendingSteps } from "../../../features/auth/components/RegisterPendingSteps";
-import { RegisterPendingContact } from "../../../features/auth/components/RegisterPendingContact";
-import { RegisterPendingMobileNav } from "../../../features/auth/components/RegisterPendingMobileNav";
+import { RegisterPendingHeader } from "@/features/auth/components/RegisterPendingHeader";
+import { RegisterPendingStatus } from "@/features/auth/components/RegisterPendingStatus";
+import { RegisterPendingAlerts } from "@/features/auth/components/RegisterPendingAlerts";
+import { RegisterPendingSteps } from "@/features/auth/components/RegisterPendingSteps";
+import { RegisterPendingContact } from "@/features/auth/components/RegisterPendingContact";
+import { RegisterPendingMobileNav } from "@/features/auth/components/RegisterPendingMobileNav";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 

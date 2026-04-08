@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Eye, EyeOff, ArrowRight } from "lucide-react";
-import { Input } from "../../../components/ui/input";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
 export function RegisterForm() {
@@ -26,12 +28,12 @@ export function RegisterForm() {
       <form className="space-y-6" onSubmit={handleSubmit}>
         {/* Email */}
         <div className="space-y-2">
-          <label
+          <Label
             htmlFor="emailInput"
             className="font-label font-semibold text-xs text-on-surface-variant uppercase tracking-wider ml-1"
           >
             Email Address
-          </label>
+          </Label>
           <Input
             id="emailInput"
             type="email"
@@ -43,12 +45,12 @@ export function RegisterForm() {
 
         {/* Phone */}
         <div className="space-y-2">
-          <label
+          <Label
             htmlFor="phoneInput"
             className="font-label font-semibold text-xs text-on-surface-variant uppercase tracking-wider ml-1"
           >
             Phone Number
-          </label>
+          </Label>
           <Input
             id="phoneInput"
             type="tel"
@@ -60,12 +62,12 @@ export function RegisterForm() {
 
         {/* Password */}
         <div className="space-y-2">
-          <label
+          <Label
             htmlFor="passwordInput"
             className="font-label font-semibold text-xs text-on-surface-variant uppercase tracking-wider ml-1"
           >
             Password
-          </label>
+          </Label>
           <div className="relative">
             <Input
               id="passwordInput"
@@ -74,30 +76,32 @@ export function RegisterForm() {
               className="w-full h-14 px-4 pr-12 bg-surface-container-high border-0 rounded-lg focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:bg-surface-container-lowest transition-all placeholder:text-stone-400"
               required
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon"
               aria-label={showPassword ? "Hide password" : "Show password"}
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-primary transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-primary hover:bg-transparent transition-colors"
             >
               {showPassword ? (
                 <EyeOff className="w-5 h-5" />
               ) : (
                 <Eye className="w-5 h-5" />
               )}
-            </button>
+            </Button>
           </div>
         </div>
 
         {/* Submit CTA */}
         <div className="pt-4">
-          <button
+          <Button
             type="submit"
             className="editorial-gradient w-full h-14 rounded-full text-white font-headline font-bold text-lg shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             Create Account
             <ArrowRight className="w-5 h-5" />
-          </button>
+          </Button>
         </div>
       </form>
 
@@ -116,9 +120,10 @@ export function RegisterForm() {
       {/* OAuth Buttons */}
       <div className="grid grid-cols-2 gap-4">
         {/* Google */}
-        <button
+        <Button
           type="button"
-          className="h-14 flex items-center justify-center gap-3 border border-outline-variant/30 rounded-full hover:bg-stone-50 active:scale-95 transition-all cursor-pointer"
+          variant="outline"
+          className="h-14 flex items-center justify-center gap-3 border border-outline-variant/30 rounded-full hover:bg-stone-50 active:scale-95 transition-all"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
@@ -139,18 +144,19 @@ export function RegisterForm() {
             />
           </svg>
           <span className="font-semibold text-sm">Google</span>
-        </button>
+        </Button>
 
         {/* Apple */}
-        <button
+        <Button
           type="button"
-          className="h-14 flex items-center justify-center gap-3 border border-outline-variant/30 rounded-full hover:bg-stone-50 active:scale-95 transition-all cursor-pointer"
+          variant="outline"
+          className="h-14 flex items-center justify-center gap-3 border border-outline-variant/30 rounded-full hover:bg-stone-50 active:scale-95 transition-all"
         >
           <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
             <path d="M17.05 20.28c-.96.95-2.18 1.78-3.66 1.78-1.5 0-2.35-.91-3.74-.91-1.38 0-2.26.89-3.72.89-1.46 0-2.68-.82-3.64-1.76C.32 17.34-1.19 13.78.78 10.46c.96-1.67 2.64-2.65 4.43-2.7 1.46-.04 2.84.93 3.74.93.9 0 2.59-1.16 4.36-.98.74.03 2.82.3 4.16 2.27-3.63 2.17-3.04 7.82.58 9.3zm-3.1-17.1c-.87 1.04-2.27 1.84-3.64 1.73-.19-1.38.5-2.82 1.3-3.72.9-1.03 2.37-1.81 3.6-1.86.16 1.42-.41 2.83-1.26 3.85z" />
           </svg>
           <span className="font-semibold text-sm">Apple</span>
-        </button>
+        </Button>
       </div>
 
       {/* Sign-in link */}

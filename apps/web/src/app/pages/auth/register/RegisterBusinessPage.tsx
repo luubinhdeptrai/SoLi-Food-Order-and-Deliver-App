@@ -1,6 +1,6 @@
-import { RegisterBusinessForm } from "../../../features/auth/components/RegisterBusinessForm";
-import { RegisterBusinessMap } from "../../../features/auth/components/RegisterBusinessMap";
-import { RegisterBusinessFooter } from "../../../features/auth/components/RegisterBusinessFooter";
+import { RegisterBusinessForm } from "@/features/auth/components/RegisterBusinessForm";
+import { RegisterBusinessMap } from "@/features/auth/components/RegisterBusinessMap";
+import { RegisterBusinessFooter } from "@/features/auth/components/RegisterBusinessFooter";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 

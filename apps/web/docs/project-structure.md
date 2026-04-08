@@ -130,7 +130,51 @@ Shared code should stay generic. If something belongs to one business domain, mo
 
 Pages live in `src/app/pages/`.
 
-A page should usually be a thin composition layer that combines feature components, shared UI, and layout. For example:
+A page should usually be a composition layer that constructs the page layout by combining specific feature components, shared UI elements, and layout primitives directly. 
+
+### Avoid "Screen" Wrapper Components
+
+**Anti-pattern (Not Recommended):**
+Do not build all components into a single monolithic `Screen` component (e.g., `<LoginScreen />`) and then just render that inside a route page file.
+
+```tsx
+// src/app/pages/auth/login/LoginPage.tsx
+import { LoginScreen } from "@/features/auth/components/LoginScreen";
+
+export function LoginPage() {
+  return (
+    <main className="pb-20 px-6 max-w-7xl flex flex-col items-center justify-center min-h-screen">
+      <LoginScreen />
+    </main>
+  );
+}
+```
+
+**Recommended Pattern:**
+Pages should be built directly from components in `features/[feature]/components/`. Assemble the UI block-by-block in the page file.
+
+```tsx
+// src/app/pages/auth/login/LoginPage.tsx
+import { LoginForm } from "@/features/auth/components/LoginForm";
+import { LoginAlternativeMethods } from "@/features/auth/components/LoginAlternativeMethods";
+import { LoginFooter } from "@/features/auth/components/LoginFooter";
+
+export function LoginPage() {
+  return (
+    <main className="pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center justify-center min-h-screen">
+      <div className="w-full max-w-xl">
+        <div className="space-y-8">
+          <LoginForm />
+          <LoginAlternativeMethods />
+        </div>
+        <LoginFooter />
+      </div>
+    </main>
+  );
+}
+```
+
+### Folder Structure Example
 
 ```text
 src/app/pages/
