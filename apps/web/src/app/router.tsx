@@ -4,6 +4,7 @@ import { RegisterLocationPage } from "@/app/pages/auth/register/RegisterBusiness
 import { RegisterPendingPage } from "@/app/pages/auth/register/RegisterPendingPage";
 import { LoginPage } from "@/app/pages/auth/login/LoginPage";
 import { MenuManagementPage } from "@/app/pages/menu/MenuManagementPage";
+import { MainLayout } from "@/app/layouts/MainLayout";
 
 export const router = createBrowserRouter([
   {
@@ -23,7 +24,13 @@ export const router = createBrowserRouter([
     element: <LoginPage />,
   },
   {
-    path: "/menu",
-    element: <MenuManagementPage />,
+    path: "/",
+    element: <MainLayout />,
+    children: [
+      {
+        path: "menu",
+        element: <MenuManagementPage />,
+      },
+    ],
   },
 ]);
