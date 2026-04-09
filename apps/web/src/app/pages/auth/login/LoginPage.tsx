@@ -1,6 +1,6 @@
-import { LoginForm } from "@/features/auth/components/LoginForm";
-import { LoginAlternativeMethods } from "@/features/auth/components/LoginAlternativeMethods";
-import { LoginFooter } from "@/features/auth/components/LoginFooter";
+import { LoginForm } from "@/features/auth/components/login/LoginForm";
+import { LoginAlternativeMethods } from "@/features/auth/components/login/LoginAlternativeMethods";
+import { LoginFooter } from "@/features/auth/components/login/LoginFooter";
 import {
   Card,
   CardContent,

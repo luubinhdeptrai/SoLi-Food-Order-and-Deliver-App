@@ -3,15 +3,9 @@ import { MenuItemCard } from "@/features/menu/components/MenuItemCard";
 import { MenuSidebar } from "@/features/menu/components/MenuSidebar";
 import { AddMenuItemDialog } from "@/features/menu/components/AddMenuItemDialog";
 import { mockMenuItems, mockMenuOverview } from "@/features/menu/api/menu";
-import { Storefront } from "lucide-react"; // Fallback icon instead of material symbol
 
 // Filter tabs dummy data
-const filterTabs = [
-  "Farm Fresh",
-  "Artisan Bakery",
-  "Dairy & Cheese",
-  "Pantry",
-];
+const filterTabs = ["Farm Fresh", "Artisan Bakery", "Dairy & Cheese", "Pantry"];
 
 export function MenuManagementPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -100,10 +94,10 @@ export function MenuManagementPage() {
 
           {/* Right Rail Stats & Quick Actions */}
           <div className="lg:col-span-4">
-           <MenuSidebar
+            <MenuSidebar
               overview={mockMenuOverview}
               onAddItem={() => setDialogOpen(true)}
-           />
+            />
           </div>
         </div>
       </main>
