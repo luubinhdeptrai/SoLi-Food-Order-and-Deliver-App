@@ -11,21 +11,22 @@ export function AddMenuItemCard({ onClick }: AddMenuItemCardProps) {
       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full -mr-16 -mt-16 blur-3xl" />
 
       <div className="space-y-2 z-10">
-        <h3 className="text-primary-fixed text-2xl font-bold font-headline">
+        <h3 className="text-white text-2xl font-bold font-headline">
           New Arrival?
         </h3>
-        <p className="text-primary-fixed/80 text-sm font-medium leading-relaxed max-w-[200px]">
+        <p className="text-white/90 font-medium leading-relaxed">
           Expand your digital garden. Add a new menu item in seconds.
         </p>
       </div>
 
-      <button
+      <Button
         onClick={onClick}
-        className="z-10 mt-2 bg-primary-fixed hover:bg-primary-200 text-primary px-4 py-4 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95 shadow-sm"
+        size="lg"
+        className="z-10 mt-2 bg-primary-200 hover:bg-primary-300 text-primary px-4 py-4 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95 shadow-sm"
       >
         <PlusCircle className="h-5 w-5" />
         <span>Add Menu Item</span>
-      </button>
+      </Button>
     </div>
   );
 }
