@@ -54,13 +54,6 @@ We achieve this through **Organic Composition**. Instead of rigid rows, we use i
 
 ## 2. Colors & Surface Philosophy
 
-### The "No-Line" Rule
-
-To maintain a premium, modern aesthetic, **1px solid borders are prohibited** for sectioning. Structural boundaries must be defined through background color shifts.
-
-- **Method:** Place a `surface_container_lowest` card on a `surface_container_low` background to create a soft, natural distinction.
-- **Intent:** This eliminates visual "noise" and allows the product photography to breathe.
-
 ### Surface Hierarchy & Nesting
 
 Treat the UI as a series of stacked, high-quality paper sheets.
