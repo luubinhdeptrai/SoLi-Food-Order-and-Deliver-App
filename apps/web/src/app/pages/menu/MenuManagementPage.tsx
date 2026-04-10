@@ -1,7 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MenuItemCard } from "@/features/menu/components/MenuItemCard";
 import { MenuSidebar } from "@/features/menu/components/MenuSidebar";
-import { AddMenuItemDialog } from "@/features/menu/components/AddMenuItemDialog";
 import { mockMenuItems, mockMenuOverview } from "@/features/menu/api/menu";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,8 +10,12 @@ import { Card, CardContent } from "@/components/ui/card";
 const filterTabs = ["Farm Fresh", "Artisan Bakery", "Dairy & Cheese", "Pantry"];
 
 export function MenuManagementPage() {
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const navigate = useNavigate();
   const [storeOnline, setStoreOnline] = useState(true);
+
+  const handleAddItem = () => {
+    navigate("/menu/create");
+  };
 
   return (
     <>
@@ -83,7 +87,7 @@ export function MenuManagementPage() {
 
               <Button
                 type="button"
-                onClick={() => setDialogOpen(true)}
+                onClick={handleAddItem}
                 variant="ghost"
                 className="h-auto flex-shrink-0 p-3 bg-surface-container-lowest text-primary rounded-full hover:bg-surface-container transition-colors"
               >
@@ -108,20 +112,11 @@ export function MenuManagementPage() {
           <div className="lg:col-span-4 space-y-6">
             <MenuSidebar
               overview={mockMenuOverview}
-              onAddItem={() => setDialogOpen(true)}
+              onAddItem={handleAddItem}
             />
           </div>
         </div>
       </main>
-
-      {/* Add item dialog */}
-      <AddMenuItemDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSubmit={(data) => {
-          console.log("New menu item submitted:", data);
-        }}
-      />
     </>
   );
 }

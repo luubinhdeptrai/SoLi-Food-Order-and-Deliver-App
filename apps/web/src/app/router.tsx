@@ -4,6 +4,7 @@ import { RegisterLocationPage } from "@/app/pages/auth/register/RegisterBusiness
 import { RegisterPendingPage } from "@/app/pages/auth/register/RegisterPendingPage";
 import { LoginPage } from "@/app/pages/auth/login/LoginPage";
 import { MenuManagementPage } from "@/app/pages/menu/MenuManagementPage";
+import CreateMenuItemPage from "@/app/pages/menu/CreateMenuItemPage";
 import { MainLayout } from "@/components/layout/MainLayout";
 
 export const router = createBrowserRouter([
@@ -32,10 +33,22 @@ export const router = createBrowserRouter([
     children: [
       {
         path: "menu",
-        element: <MenuManagementPage />,
         handle: {
           breadcrumb: "Menu",
         },
+        children: [
+          {
+            index: true,
+            element: <MenuManagementPage />,
+          },
+          {
+            path: "create",
+            element: <CreateMenuItemPage />,
+            handle: {
+              breadcrumb: "Create Item",
+            },
+          },
+        ],
       },
     ],
   },
