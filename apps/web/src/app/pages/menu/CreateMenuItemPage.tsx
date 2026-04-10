@@ -23,7 +23,7 @@ export default function CreateMenuItemPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto py-8 px-4">
+    <div className="w-full py-2 px-1">
       <CreateMenuItemHeader onCancel={handleCancel} onSave={handleSave} />
 
       <div className="grid grid-cols-12 gap-8">
