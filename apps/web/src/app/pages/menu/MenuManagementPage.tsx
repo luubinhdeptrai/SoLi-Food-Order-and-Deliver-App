@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MenuItemCard } from "@/features/menu/components/MenuItemCard";
 import { MenuSidebar } from "@/features/menu/components/MenuSidebar";
+import { AddMenuItemCard } from "@/features/menu/components/AddMenuItemCard";
 import { AddMenuItemDialog } from "@/features/menu/components/AddMenuItemDialog";
 import { mockMenuItems, mockMenuOverview } from "@/features/menu/api/menu";
 
@@ -93,11 +94,9 @@ export function MenuManagementPage() {
           </div>
 
           {/* Right Rail Stats & Quick Actions */}
-          <div className="lg:col-span-4">
-            <MenuSidebar
-              overview={mockMenuOverview}
-              onAddItem={() => setDialogOpen(true)}
-            />
+          <div className="lg:col-span-4 space-y-6">
+            <AddMenuItemCard onClick={() => setDialogOpen(true)} />
+            <MenuSidebar overview={mockMenuOverview} />
           </div>
         </div>
       </main>

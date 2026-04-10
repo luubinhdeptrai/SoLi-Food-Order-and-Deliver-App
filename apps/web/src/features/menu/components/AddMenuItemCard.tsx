@@ -1,53 +1,31 @@
-import { Plus, Sprout } from "lucide-react";
-
+import { PlusCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 interface AddMenuItemCardProps {
   onClick: () => void;
 }
 
 export function AddMenuItemCard({ onClick }: AddMenuItemCardProps) {
   return (
-    <button
-      id="add-menu-item-card"
-      onClick={onClick}
-      className="group relative rounded-2xl border-2 border-dashed transition-all duration-300 hover:border-primary hover:bg-primary/5 flex flex-col items-center justify-center gap-3 min-h-[280px] w-full cursor-pointer"
-      style={{ borderColor: "var(--outline-variant)" }}
-    >
-      {/* Icon */}
-      <div
-        className="flex h-14 w-14 items-center justify-center rounded-full transition-all duration-300 group-hover:scale-110"
-        style={{ background: "var(--surface-container)" }}
-      >
-        <Sprout
-          className="h-7 w-7 transition-colors duration-300"
-          style={{ color: "var(--on-surface-variant)" }}
-        />
-      </div>
+    <div className="bg-primary-container p-6 rounded-3xl relative overflow-hidden flex flex-col gap-4 min-h-[180px] justify-center">
+      {/* Decorative leaf/shape in background if needed, but keeping it simple first */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full -mr-16 -mt-16 blur-3xl" />
 
-      {/* Text */}
-      <div className="text-center px-4">
-        <p
-          className="font-semibold font-headline text-sm transition-colors duration-300 group-hover:text-primary"
-          style={{ color: "var(--on-surface)" }}
-        >
+      <div className="space-y-2 z-10">
+        <h3 className="text-primary-fixed text-2xl font-bold font-headline">
           New Arrival?
-        </p>
-        <p
-          className="text-xs mt-1 leading-relaxed"
-          style={{ color: "var(--on-surface-variant)" }}
-        >
+        </h3>
+        <p className="text-primary-fixed/80 text-sm font-medium leading-relaxed max-w-[200px]">
           Expand your digital garden. Add a new menu item in seconds.
         </p>
       </div>
 
-      {/* Add icon */}
-      <div
-        className="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300 group-hover:scale-110"
-        style={{
-          background: "linear-gradient(135deg, #0d631b 0%, #2e7d32 100%)",
-        }}
+      <button
+        onClick={onClick}
+        className="z-10 mt-2 bg-primary-fixed hover:bg-primary-200 text-primary px-4 py-4 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all active:scale-95 shadow-sm"
       >
-        <Plus className="h-4 w-4 text-white" />
-      </div>
-    </button>
+        <PlusCircle className="h-5 w-5" />
+        <span>Add Menu Item</span>
+      </button>
+    </div>
   );
 }

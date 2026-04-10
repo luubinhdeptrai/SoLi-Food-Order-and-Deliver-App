@@ -1,12 +1,10 @@
 import { MenuOverview } from "@/features/menu/types";
-import { PlusCircle, Leaf } from "lucide-react";
 
 interface MenuSidebarProps {
   overview: MenuOverview;
-  onAddItem: () => void;
 }
 
-export function MenuSidebar({ overview, onAddItem }: MenuSidebarProps) {
+export function MenuSidebar({ overview }: MenuSidebarProps) {
   // Mock data for categories in HTML
   const categories = [
     { name: "Artisan Bakery", icon: "bakery_dining", color: "orange" },
@@ -16,27 +14,6 @@ export function MenuSidebar({ overview, onAddItem }: MenuSidebarProps) {
 
   return (
     <div className="space-y-6">
-      {/* New Item Form / CTA */}
-      <div className="bg-primary-container rounded-3xl p-6 text-on-primary-container relative overflow-hidden group">
-        <div className="relative z-10">
-          <h4 className="font-headline text-xl font-extrabold mb-2">
-            New Arrival?
-          </h4>
-          <p className="text-sm mb-6 opacity-90">
-            Expand your digital garden. Add a new menu item in seconds.
-          </p>
-          <button
-            onClick={onAddItem}
-            className="w-full bg-on-primary-container text-primary-container py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all"
-          >
-            <PlusCircle className="w-5 h-5" /> Add Menu Item
-          </button>
-        </div>
-        <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500 text-[120px]">
-          <Leaf className="w-full h-full" />
-        </div>
-      </div>
-
       {/* Menu Stats Card */}
       <div className="bg-surface-container-lowest rounded-3xl p-6 border border-outline-variant/10">
         <h4 className="font-headline text-lg font-bold mb-4">Menu Overview</h4>

@@ -81,10 +81,18 @@ export function AppSidebar() {
                 <SidebarMenuButton
                   asChild
                   isActive={isActive}
-                  className={isActive ? "bg-primary-200 text-primary hover:bg-primary-200 hover:text-primary" : "text-on-surface-variant"}
+                  className={
+                    isActive
+                      ? "bg-primary-200 text-primary hover:bg-primary-200 hover:text-primary"
+                      : "text-on-surface-variant"
+                  }
                 >
                   <Link to={item.url} className="flex items-center gap-3 py-6">
-                    <item.icon className={isActive ? "text-primary" : "text-on-surface-variant"} />
+                    <item.icon
+                      className={
+                        isActive ? "text-primary" : "text-on-surface-variant"
+                      }
+                    />
                     <span className="font-medium">{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
@@ -95,14 +103,6 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 gap-4">
-        <div className="px-2">
-          <Button
-            className="w-full bg-primary hover:bg-primary-600 text-primary-foreground rounded-2xl py-6 font-bold editorial-gradient"
-          >
-            New Order
-          </Button>
-        </div>
-        
         <SidebarMenu className="gap-1">
           {footerNavItems.map((item) => (
             <SidebarMenuItem key={item.title}>
@@ -111,8 +111,12 @@ export function AppSidebar() {
                 className="text-on-surface-variant hover:bg-surface-container"
               >
                 <Link to={item.url} className="flex items-center gap-3">
-                  <item.icon className={item.className || "text-on-surface-variant"} />
-                  <span className={item.className || "font-medium"}>{item.title}</span>
+                  <item.icon
+                    className={item.className || "text-on-surface-variant"}
+                  />
+                  <span className={item.className || "font-medium"}>
+                    {item.title}
+                  </span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
