@@ -26,10 +26,16 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: <MainLayout />,
+    handle: {
+      breadcrumb: "Home",
+    },
     children: [
       {
         path: "menu",
         element: <MenuManagementPage />,
+        handle: {
+          breadcrumb: "Menu",
+        },
       },
     ],
   },

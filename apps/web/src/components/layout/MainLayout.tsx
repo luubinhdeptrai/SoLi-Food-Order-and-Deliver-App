@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useMatches } from "react-router-dom";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import {
   SidebarProvider,
@@ -15,39 +15,27 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
-const breadcrumbLabelMap: Record<string, string> = {
-  dashboard: "Dashboard",
-  orders: "Orders",
-  menu: "Menu",
-  help: "Help",
-  logout: "Logout",
+type BreadcrumbHandle = {
+  breadcrumb?: string;
 };
 
-function getBreadcrumbLabel(segment: string) {
-  return (
-    breadcrumbLabelMap[segment] ??
-    segment
-      .split("-")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join(" ")
-  );
-}
-
 export function MainLayout() {
-  const { pathname } = useLocation();
-  const segments = pathname.split("/").filter(Boolean);
-  const isHome = segments.length === 0;
+  const breadcrumbs = useMatches()
+    .map((match) => {
+      const handle = match.handle as BreadcrumbHandle | undefined;
 
-  const breadcrumbs = segments.map((segment, index) => {
-    const href = `/${segments.slice(0, index + 1).join("/")}`;
-    const isCurrentPage = index === segments.length - 1;
+      if (!handle?.breadcrumb) {
+        return null;
+      }
 
-    return {
-      href,
-      isCurrentPage,
-      label: getBreadcrumbLabel(segment),
-    };
-  });
+      return {
+        href: match.pathname,
+        label: handle.breadcrumb,
+      };
+    })
+    .filter((breadcrumb): breadcrumb is { href: string; label: string } =>
+      Boolean(breadcrumb),
+    );
 
   return (
     <SidebarProvider>
@@ -58,20 +46,14 @@ export function MainLayout() {
           <div className="w-full flex-1 overflow-hidden">
             <Breadcrumb>
               <BreadcrumbList>
-                <BreadcrumbItem>
-                  {isHome ? (
-                    <BreadcrumbPage>Home</BreadcrumbPage>
-                  ) : (
-                    <BreadcrumbLink asChild>
-                      <Link to="/">Home</Link>
-                    </BreadcrumbLink>
-                  )}
-                </BreadcrumbItem>
                 {breadcrumbs.map((breadcrumb) => (
                   <Fragment key={breadcrumb.href}>
-                    <BreadcrumbSeparator />
+                    {breadcrumb.href !== breadcrumbs[0]?.href && (
+                      <BreadcrumbSeparator />
+                    )}
                     <BreadcrumbItem>
-                      {breadcrumb.isCurrentPage ? (
+                      {breadcrumb.href ===
+                      breadcrumbs[breadcrumbs.length - 1]?.href ? (
                         <BreadcrumbPage>{breadcrumb.label}</BreadcrumbPage>
                       ) : (
                         <BreadcrumbLink asChild>
