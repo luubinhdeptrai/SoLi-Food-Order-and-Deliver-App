@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { DrizzleService } from './drizzle.service';
 
 @Module({
   providers: [
@@ -17,7 +18,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
         });
       },
     },
+    DrizzleService,
   ],
-  exports: ['DB_CONNECTION'],
+  exports: ['DB_CONNECTION', DrizzleService],
 })
 export class DatabaseModule {}
