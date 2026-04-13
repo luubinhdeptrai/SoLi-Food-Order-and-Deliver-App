@@ -1,0 +1,14 @@
+import { Module } from '@nestjs/common';
+import { MenuController } from './menu.controller';
+import { MenuService } from './menu.service';
+import { MenuRepository } from './menu.repository';
+import { DatabaseModule } from '@/drizzle/drizzle.module';
+import { RestaurantModule } from '@/module/restaurant';
+
+@Module({
+  imports: [DatabaseModule, RestaurantModule],
+  controllers: [MenuController],
+  providers: [MenuService, MenuRepository],
+  exports: [MenuService],
+})
+export class MenuModule {}
