@@ -5,15 +5,14 @@ import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './drizzle/drizzle.module';
 import { AuthModule } from '@thallesp/nestjs-better-auth';
 import { auth } from './lib/auth';
-import { RestaurantModule } from './module/restaurant';
-import { MenuModule } from './module/menu';
+import { RestaurantCatalogModule } from './module/restaurant-catalog/restaurant-catalog.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
-    RestaurantModule,
-    MenuModule,
+    RestaurantCatalogModule,
+
     AuthModule.forRoot({
       auth,
       bodyParser: {

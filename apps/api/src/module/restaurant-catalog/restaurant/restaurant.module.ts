@@ -5,7 +5,7 @@ import { RestaurantRepository } from './restaurant.repository';
 import { DatabaseModule } from '@/drizzle/drizzle.module';
 
 @Module({
-  imports:     [DatabaseModule],
+  imports: [DatabaseModule],
   controllers: [RestaurantController],
   providers: [RestaurantService, RestaurantRepository],
   exports: [RestaurantService],

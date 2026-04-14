@@ -1,12 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
-import { DrizzleService } from '@/drizzle/drizzle.service';
-import { menuItems, type MenuItem } from '@/drizzle/schemas/menu.schema';
-import type { CreateMenuItemDto, MenuItemCategory, UpdateMenuItemDto } from './dto/menu.dto';
+import {
+  menuItems,
+  type MenuItem,
+} from '@/module/restaurant-catalog/menu/menu.schema';
+import type {
+  CreateMenuItemDto,
+  MenuItemCategory,
+  UpdateMenuItemDto,
+} from './dto/menu.dto';
+import { DB_CONNECTION } from '@/drizzle/drizzle.constants';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '../../../drizzle/schema';
 
 @Injectable()
 export class MenuRepository {
-  constructor(private readonly db: DrizzleService) {}
+  constructor(
+    @Inject(DB_CONNECTION) readonly db: NodePgDatabase<typeof schema>,
+  ) {}
 
   async findByRestaurant(
     restaurantId: string,
@@ -16,7 +27,8 @@ export class MenuRepository {
     if (category) {
       conditions.push(eq(menuItems.category, category));
     }
-    return this.db.db
+
+    return await this.db
       .select()
       .from(menuItems)
       .where(and(...conditions))
@@ -24,7 +36,7 @@ export class MenuRepository {
   }
 
   async findById(id: string): Promise<MenuItem | null> {
-    const result = await this.db.db
+    const result = await this.db
       .select()
       .from(menuItems)
       .where(eq(menuItems.id, id))
@@ -33,15 +45,12 @@ export class MenuRepository {
   }
 
   async create(dto: CreateMenuItemDto): Promise<MenuItem> {
-    const [row] = await this.db.db
-      .insert(menuItems)
-      .values(dto)
-      .returning();
+    const [row] = await this.db.insert(menuItems).values(dto).returning();
     return row;
   }
 
   async update(id: string, dto: UpdateMenuItemDto): Promise<MenuItem> {
-    const [row] = await this.db.db
+    const [row] = await this.db
       .update(menuItems)
       .set({ ...dto, updatedAt: new Date() })
       .where(eq(menuItems.id, id))
@@ -50,6 +59,6 @@ export class MenuRepository {
   }
 
   async remove(id: string): Promise<void> {
-    await this.db.db.delete(menuItems).where(eq(menuItems.id, id));
+    await this.db.delete(menuItems).where(eq(menuItems.id, id));
   }
 }

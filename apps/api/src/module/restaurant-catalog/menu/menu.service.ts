@@ -4,10 +4,14 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { MenuRepository } from './menu.repository';
-import type { CreateMenuItemDto, MenuItemCategory, UpdateMenuItemDto } from './dto/menu.dto';
+import type {
+  CreateMenuItemDto,
+  MenuItemCategory,
+  UpdateMenuItemDto,
+} from './dto/menu.dto';
 import { MENU_ITEM_CATEGORIES } from './dto/menu.dto';
-import type { MenuItem } from '@/drizzle/schemas/menu.schema';
-import { RestaurantService } from '@/module/restaurant';
+import type { MenuItem } from '@/module/restaurant-catalog/menu/menu.schema';
+import { RestaurantService } from '@/module/restaurant-catalog/restaurant/restaurant.service';
 
 @Injectable()
 export class MenuService {
@@ -60,7 +64,8 @@ export class MenuService {
     isAdmin: boolean,
   ): Promise<MenuItem> {
     const item = await this.assertOwnership(id, requesterId, isAdmin);
-    const nextStatus = item.status === 'out_of_stock' ? 'available' : 'out_of_stock';
+    const nextStatus =
+      item.status === 'out_of_stock' ? 'available' : 'out_of_stock';
     return this.repo.update(id, { status: nextStatus });
   }
 
@@ -84,7 +89,9 @@ export class MenuService {
   ): Promise<MenuItem> {
     const item = await this.findOne(itemId);
     if (!isAdmin) {
-      const restaurant = await this.restaurantService.findOne(item.restaurantId);
+      const restaurant = await this.restaurantService.findOne(
+        item.restaurantId,
+      );
       if (restaurant.ownerId !== requesterId) {
         throw new ForbiddenException('You do not own this restaurant');
       }

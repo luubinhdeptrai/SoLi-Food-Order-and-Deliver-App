@@ -38,10 +38,7 @@ export class RestaurantController {
 
   @Post()
   @Roles('admin', 'restaurant')
-  create(
-    @CurrentUser() user: JwtPayload,
-    @Body() dto: CreateRestaurantDto,
-  ) {
+  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateRestaurantDto) {
     return this.service.create(user.sub, dto);
   }
 
@@ -52,7 +49,12 @@ export class RestaurantController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: UpdateRestaurantDto,
   ) {
-    return this.service.update(id, user.sub, user.roles?.includes('admin') ?? false, dto);
+    return this.service.update(
+      id,
+      user.sub,
+      user.roles?.includes('admin') ?? false,
+      dto,
+    );
   }
 
   @Delete(':id')
@@ -62,4 +64,3 @@ export class RestaurantController {
     return this.service.remove(id);
   }
 }
-
