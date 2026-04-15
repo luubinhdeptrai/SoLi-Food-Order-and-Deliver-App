@@ -13,7 +13,11 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { MenuService } from './menu.service';
-import { CreateMenuItemDto, QueryMenuItemDto, UpdateMenuItemDto } from './dto/menu.dto';
+import {
+  CreateMenuItemDto,
+  QueryMenuItemDto,
+  UpdateMenuItemDto,
+} from './dto/menu.dto';
 import { JwtAuthGuard } from '@/module/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '@/module/auth/guards/roles.guard';
 import { Roles } from '@/module/auth/decorators/roles.decorator';
@@ -46,7 +50,11 @@ export class MenuController {
   @Post()
   @Roles('admin', 'restaurant')
   create(@CurrentUser() user: JwtPayload, @Body() dto: CreateMenuItemDto) {
-    return this.service.create(user.sub, user.roles?.includes('admin') ?? false, dto);
+    return this.service.create(
+      user.sub,
+      user.roles?.includes('admin') ?? false,
+      dto,
+    );
   }
 
   @Patch(':id')
@@ -56,7 +64,12 @@ export class MenuController {
     @CurrentUser() user: JwtPayload,
     @Body() dto: UpdateMenuItemDto,
   ) {
-    return this.service.update(id, user.sub, user.roles?.includes('admin') ?? false, dto);
+    return this.service.update(
+      id,
+      user.sub,
+      user.roles?.includes('admin') ?? false,
+      dto,
+    );
   }
 
   @Patch(':id/sold-out')
@@ -65,13 +78,24 @@ export class MenuController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: JwtPayload,
   ) {
-    return this.service.toggleSoldOut(id, user.sub, user.roles?.includes('admin') ?? false);
+    return this.service.toggleSoldOut(
+      id,
+      user.sub,
+      user.roles?.includes('admin') ?? false,
+    );
   }
 
   @Delete(':id')
   @Roles('admin', 'restaurant')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPayload) {
-    return this.service.remove(id, user.sub, user.roles?.includes('admin') ?? false);
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.service.remove(
+      id,
+      user.sub,
+      user.roles?.includes('admin') ?? false,
+    );
   }
 }

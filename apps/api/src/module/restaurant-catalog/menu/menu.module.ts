@@ -3,7 +3,7 @@ import { MenuController } from './menu.controller';
 import { MenuService } from './menu.service';
 import { MenuRepository } from './menu.repository';
 import { DatabaseModule } from '@/drizzle/drizzle.module';
-import { RestaurantModule } from '@/module/restaurant';
+import { RestaurantModule } from '@/module/restaurant-catalog/restaurant/restaurant.module';
 
 @Module({
   imports: [DatabaseModule, RestaurantModule],

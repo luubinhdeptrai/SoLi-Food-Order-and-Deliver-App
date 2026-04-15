@@ -20,6 +20,7 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "baseUrl": "./",
+    "outDir": "./dist",
     "paths": {
       "@/*": ["./src/*"]
     },

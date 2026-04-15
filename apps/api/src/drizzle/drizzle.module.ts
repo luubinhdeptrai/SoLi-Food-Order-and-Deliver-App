@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { DB_CONNECTION } from './drizzle.constants';
 
 @Module({
   providers: [
     {
-      provide: 'DB_CONNECTION',
+      provide: DB_CONNECTION,
       useFactory: () => {
         const databaseUrl = process.env.DATABASE_URL;
         if (!databaseUrl) {
@@ -18,6 +19,6 @@ import { drizzle } from 'drizzle-orm/node-postgres';
       },
     },
   ],
-  exports: ['DB_CONNECTION'],
+  exports: [DB_CONNECTION],
 })
 export class DatabaseModule {}
