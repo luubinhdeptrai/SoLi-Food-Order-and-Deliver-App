@@ -7,6 +7,7 @@ import {
   doublePrecision,
   timestamp,
 } from 'drizzle-orm/pg-core';
+import { restaurants } from '../restaurant/restaurant.schema';
 
 export const menuItemCategoryEnum = pgEnum('menu_item_category', [
   'salads',
@@ -25,7 +26,9 @@ export const menuItemStatusEnum = pgEnum('menu_item_status', [
 
 export const menuItems = pgTable('menu_items', {
   id: uuid('id').defaultRandom().primaryKey(),
-  restaurantId: uuid('restaurant_id').notNull(),
+  restaurantId: uuid('restaurant_id')
+    .notNull()
+    .references(() => restaurants.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   description: text('description'),
   price: doublePrecision('price').notNull(),
