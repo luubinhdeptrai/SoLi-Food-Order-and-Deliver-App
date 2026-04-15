@@ -1,15 +1,21 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MenuItemCard } from "@/features/menu/components/MenuItemCard";
 import { MenuSidebar } from "@/features/menu/components/MenuSidebar";
-import { AddMenuItemDialog } from "@/features/menu/components/AddMenuItemDialog";
 import { mockMenuItems, mockMenuOverview } from "@/features/menu/api/menu";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 // Filter tabs dummy data
 const filterTabs = ["Farm Fresh", "Artisan Bakery", "Dairy & Cheese", "Pantry"];
 
 export function MenuManagementPage() {
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const navigate = useNavigate();
   const [storeOnline, setStoreOnline] = useState(true);
+
+  const handleAddItem = () => {
+    navigate("/menu/create");
+  };
 
   return (
     <>
@@ -26,27 +32,29 @@ export function MenuManagementPage() {
           </div>
 
           {/* Quick Status Control Card */}
-          <div className="bg-surface-container-lowest p-4 rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-outline-variant/10 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-2xl bg-green-100 flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined text-3xl font-variation-settings-['FILL'_1]">
-                storefront
-              </span>
-            </div>
-            <div className="pr-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-outline">
-                Store Visibility
-              </p>
-              <p className="text-sm font-bold text-primary">
-                {storeOnline ? "Currently Accepting Orders" : "Store Offline"}
-              </p>
-            </div>
-            <button
-              onClick={() => setStoreOnline(!storeOnline)}
-              className="bg-primary px-6 py-2.5 rounded-full text-on-primary font-bold text-sm shadow-md hover:opacity-90 transition-opacity"
-            >
-              {storeOnline ? "Go Offline" : "Go Online"}
-            </button>
-          </div>
+          <Card className="bg-surface-container-lowest rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-outline-variant/10 ring-0 py-0 gap-0">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-green-100 flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined text-3xl font-variation-settings-['FILL'_1]">
+                  storefront
+                </span>
+              </div>
+              <div className="pr-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-outline">
+                  Store Visibility
+                </p>
+                <p className="text-sm font-bold text-primary">
+                  {storeOnline ? "Currently Accepting Orders" : "Store Offline"}
+                </p>
+              </div>
+              <Button
+                onClick={() => setStoreOnline(!storeOnline)}
+                className="bg-primary px-6 py-2.5 rounded-full text-white font-bold text-sm shadow-md hover:opacity-90 transition-opacity"
+              >
+                {storeOnline ? "Go Offline" : "Go Online"}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Dashboard Bento Grid */}
@@ -55,28 +63,36 @@ export function MenuManagementPage() {
           <div className="lg:col-span-8 space-y-6">
             {/* Categories Horizontal Scroll */}
             <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-              <button className="flex-shrink-0 px-6 py-3 bg-primary-fixed text-on-primary-fixed rounded-full font-bold flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-auto flex-shrink-0 px-6 py-3 bg-primary-fixed text-on-primary-fixed rounded-full font-bold flex items-center gap-2 hover:bg-primary-fixed"
+              >
                 <span className="material-symbols-outlined text-sm font-variation-settings-['FILL'_1]">
                   grid_view
                 </span>{" "}
                 All Items
-              </button>
+              </Button>
 
               {filterTabs.map((tab) => (
-                <button
+                <Button
+                  type="button"
                   key={tab}
-                  className="flex-shrink-0 px-6 py-3 bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container rounded-full font-semibold transition-colors"
+                  variant="ghost"
+                  className="h-auto flex-shrink-0 px-6 py-3 bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container rounded-full font-semibold transition-colors"
                 >
                   {tab}
-                </button>
+                </Button>
               ))}
 
-              <button
-                onClick={() => setDialogOpen(true)}
-                className="flex-shrink-0 p-3 bg-surface-container-lowest text-primary rounded-full hover:bg-surface-container transition-colors"
+              <Button
+                type="button"
+                onClick={handleAddItem}
+                variant="ghost"
+                className="h-auto flex-shrink-0 p-3 bg-surface-container-lowest text-primary rounded-full hover:bg-surface-container transition-colors"
               >
                 <span className="material-symbols-outlined">add</span>
-              </button>
+              </Button>
             </div>
 
             {/* Items List */}
@@ -93,23 +109,14 @@ export function MenuManagementPage() {
           </div>
 
           {/* Right Rail Stats & Quick Actions */}
-          <div className="lg:col-span-4">
+          <div className="lg:col-span-4 space-y-6">
             <MenuSidebar
               overview={mockMenuOverview}
-              onAddItem={() => setDialogOpen(true)}
+              onAddItem={handleAddItem}
             />
           </div>
         </div>
       </main>
-
-      {/* Add item dialog */}
-      <AddMenuItemDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onSubmit={(data) => {
-          console.log("New menu item submitted:", data);
-        }}
-      />
     </>
   );
 }

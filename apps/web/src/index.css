@@ -21,8 +21,6 @@
   --color-primary-700: var(--primary-700);
   --color-primary-800: var(--primary-800);
   --color-primary-container: #2e7d32;
-  --color-primary-fixed: #a3f69c;
-  --color-on-primary-fixed: #002204;
 
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -116,14 +114,14 @@
 
 @utility scrollbar-hide {
   -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none;    /* Firefox */
+  scrollbar-width: none; /* Firefox */
   &::-webkit-scrollbar {
-    display: none;        /* Chrome, Safari, etc */
+    display: none; /* Chrome, Safari, etc */
   }
 }
 
 @utility material-symbols-outlined {
-  font-family: 'Material Symbols Outlined';
+  font-family: "Material Symbols Outlined";
   font-weight: normal;
   font-style: normal;
   letter-spacing: normal;
@@ -132,9 +130,13 @@
   white-space: nowrap;
   word-wrap: normal;
   direction: ltr;
-  -webkit-font-feature-settings: 'liga';
+  -webkit-font-feature-settings: "liga";
   -webkit-font-smoothing: antialiased;
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
   vertical-align: middle;
 }
 
@@ -192,7 +194,6 @@
     --error: oklch(0.45 0.2 27);
     --error-container: oklch(0.9 0.05 27);
     --on-error: oklch(1 0 0);
-
 
     /* Surface Hierarchy Tokens */
     --surface-container-lowest: #ffffff;
