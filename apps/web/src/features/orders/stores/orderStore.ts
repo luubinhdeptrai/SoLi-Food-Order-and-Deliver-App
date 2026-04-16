@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { move } from "@dnd-kit/helpers";
 import type { Order, OrderStatus } from "@/features/orders/types/order.types";
 
 const initialOrders: Order[] = [
@@ -148,6 +149,7 @@ type OrderStore = {
   newOrderToast: Order | null;
   setSearchQuery: (q: string) => void;
   moveOrder: (orderId: string, newStatus: OrderStatus) => void;
+  handleDragEvent: (event: any) => void;
   acceptOrder: (orderId: string) => void;
   dismissToast: () => void;
   getOrdersByStatus: (status: OrderStatus) => Order[];
@@ -161,18 +163,61 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
   setSearchQuery: (q) => set({ searchQuery: q }),
 
   moveOrder: (orderId, newStatus) =>
-    set((state) => ({
-      orders: state.orders.map((o) =>
-        o.id === orderId ? { ...o, status: newStatus } : o
-      ),
-    })),
+    set((state) => {
+      const orders = [...state.orders];
+      const index = orders.findIndex((o) => o.id === orderId);
+      if (index === -1) return state;
+      const [order] = orders.splice(index, 1);
+      order.status = newStatus;
+      orders.push(order);
+      return { orders };
+    }),
+
+  handleDragEvent: (event) =>
+    set((state) => {
+      // 1. Group records for dnd-kit helper
+      const grouped: Record<OrderStatus, Order[]> = {
+        requesting: [],
+        todo: [],
+        in_progress: [],
+        done: [],
+      };
+
+      state.orders.forEach((o) => {
+        grouped[o.status].push(o);
+      });
+
+      // 2. Compute spatial move logic automatically
+      const newGrouped = move(grouped, event) as Record<OrderStatus, Order[]>;
+
+      // 3. Un-group back into flat store format
+      const newOrders: Order[] = [];
+      const statuses: OrderStatus[] = ["requesting", "todo", "in_progress", "done"];
+      
+      statuses.forEach((status) => {
+        if (!newGrouped[status]) return;
+        newGrouped[status].forEach((order) => {
+          if (order.status !== status) {
+            newOrders.push({ ...order, status });
+          } else {
+            newOrders.push(order);
+          }
+        });
+      });
+
+      return { orders: newOrders };
+    }),
 
   acceptOrder: (orderId) =>
     set((state) => ({
       orders: state.orders.map((o) =>
         o.id === orderId
-          ? { ...o, status: "todo", tag: { label: "High Priority", variant: "high_priority" } }
-          : o
+          ? {
+              ...o,
+              status: "todo",
+              tag: { label: "High Priority", variant: "high_priority" },
+            }
+          : o,
       ),
       newOrderToast: null,
     })),
@@ -187,7 +232,7 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
         (o) =>
           !searchQuery ||
           o.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase())
+          o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()),
       );
   },
 }));

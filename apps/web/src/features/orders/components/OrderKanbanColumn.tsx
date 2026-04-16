@@ -82,8 +82,8 @@ export function OrderKanbanColumn({ columnId }: OrderKanbanColumnProps) {
 
       {/* Scrollable card list */}
       <div className="flex-1 px-2 pb-2 space-y-2.5 overflow-y-auto min-h-0">
-        {orders.map((order) => (
-          <OrderCard key={order.id} order={order} />
+        {orders.map((order, index) => (
+          <OrderCard key={order.id} order={order} index={index} />
         ))}
 
         {orders.length === 0 && (

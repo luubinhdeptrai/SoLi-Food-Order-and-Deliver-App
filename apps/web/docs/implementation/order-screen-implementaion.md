@@ -126,32 +126,16 @@ The store ships with **16 mock orders** spread across all four statuses, matchin
 
 ## Drag-and-Drop
 
-The board uses the browser's **native HTML5 Drag and Drop API** — no external library required.
+The board uses **`@dnd-kit/react`** along with **`@dnd-kit/helpers`** to manage smooth cross-column list sorting and visual overlays.
 
-Drag state is managed in `OrdersPage` via `useRef<string | null>` (not `useState`) to avoid triggering re-renders during active dragging:
+Drag state is managed globally by the `<DragDropProvider>` mounted inside `OrdersPage`. It captures drop interactions (via `onDragEnd`) and passes the telemetry objects natively to the store.
 
-```tsx
-// OrdersPage.tsx
-const draggingId = useRef<string | null>(null);
+### Reordering Logic (`move` Helper)
 
-const handleDragStart = useCallback((e, orderId) => {
-  draggingId.current = orderId;
-  e.dataTransfer.effectAllowed = "move";
-}, []);
-
-const handleDrop = useCallback(
-  (e, targetStatus) => {
-    e.preventDefault();
-    if (draggingId.current) {
-      moveOrder(draggingId.current, targetStatus);
-      draggingId.current = null;
-    }
-  },
-  [moveOrder],
-);
-```
-
-Each `OrderKanbanColumn` receives `onDragOver` and `onDrop` handlers applied to its root element. Each `OrderCard` receives `onDragStart` and sets `draggable` on its root element.
+Instead of manually calculating visual offsets inside lists, we delegate the math directly to `@dnd-kit/helpers`'s `move()` function inside `orderStore.ts`:
+1. The flat `orders` array is temporarily grouped into an object keyed by `OrderStatus`.
+2. `move(groupedOrders, event)` processes the collision telemetry, mutating the grouped arrays precisely based on how far the item was dragged past another item.
+3. We flatten the result back out, explicitly updating the order's `.status` property if it ended up dropping into a different column object.
 
 ---
 
@@ -174,7 +158,7 @@ The individual item rendered inside each column.
 - `Badge` — order status tag (see [Badge Variants](#badge-variants) below)
 - `Avatar` / `AvatarImage` / `AvatarFallback` — chef assignment avatar
 
-Cards are `draggable` and lift on hover via `hover:-translate-y-0.5 hover:shadow-[...]`.
+Cards are configured using `useSortable` (with an explicit `handleRef` over the drag handle icon) and lift on hover via `hover:-translate-y-0.5 hover:shadow-[...]`. While dragging, their `DragOverlay` clones gain `shadow-[0_8px_30px_rgba(0,0,0,0.12)] rotate-2` for a premium physical feel.
 
 ---
 
@@ -221,10 +205,11 @@ A `subtleBounce` keyframe (defined in `index.css`) provides a recurring gentle b
 
 Route-level composition component. Responsibilities:
 
-1. Owns drag state via `useRef`
-2. Exposes `useCallback` handlers for `dragStart`, `dragOver`, `drop`
+1. Mounts `<DragDropProvider />` to serve as the global context logic provider.
+2. Exposes the `onDragEnd` listener that invokes the Zustand `handleDragEvent` handler.
 3. Lays out four columns with `Separator` dividers between them
-4. Renders `NewOrderToast` as a sibling overlay
+4. Renders `<DragOverlay>` which projects a visually interactive clone of the active `OrderCard` globally attached to the mouse pointer.
+5. Renders `NewOrderToast` as a sibling overlay
 
 **shadcn components used:**
 
@@ -308,6 +293,5 @@ Applied on the toast via `style={{ animation: "subtleBounce 3s ease-in-out infin
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Mock data only**    | `orderStore.ts` holds static orders. Replace with a `useOrdersQuery` TanStack Query hook backed by a real endpoint when the backend is ready. |
 | **No persistence**    | State resets on page refresh. Add server sync or `zustand/middleware/persist` if offline resilience is needed.                                |
-| **DnD accessibility** | Native HTML5 drag-and-drop has no keyboard support. Migrate to `@dnd-kit/core` if keyboard navigation is a requirement.                       |
 | **Toast trigger**     | Hardwired to the first mock order on load. Wire `newOrderToast` to a WebSocket event or polling interval for real incoming orders.            |
 | **Bundle size**       | The JS bundle exceeds 500 kB. Apply React `lazy()` + `Suspense` on `OrdersPage` at the router level for route-based code splitting.           |

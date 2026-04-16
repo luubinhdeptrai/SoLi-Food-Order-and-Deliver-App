@@ -11,19 +11,15 @@ import type { OrderStatus } from "@/features/orders/types/order.types";
 const COLUMN_ORDER: OrderStatus[] = ["requesting", "todo", "in_progress", "done"];
 
 export function OrdersPage() {
-  const moveOrder = useOrderStore((s) => s.moveOrder);
+  const handleDragEvent = useOrderStore((s) => s.handleDragEvent);
   const orders = useOrderStore((s) => s.orders);
 
   const handleDragEnd = useCallback(
     (e: any) => {
       if (e.canceled) return;
-      const targetStatus = e.operation.target?.id as OrderStatus | undefined;
-      const orderId = e.operation.source?.id as string;
-      if (targetStatus && orderId) {
-        moveOrder(orderId, targetStatus);
-      }
+      handleDragEvent(e);
     },
-    [moveOrder]
+    [handleDragEvent]
   );
 
   return (

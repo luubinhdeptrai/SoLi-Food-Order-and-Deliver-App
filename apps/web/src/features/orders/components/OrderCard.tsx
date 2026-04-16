@@ -1,4 +1,4 @@
-import { useDraggable } from "@dnd-kit/react";
+import { useSortable } from "@dnd-kit/react/sortable";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/features/orders/types/order.types";
 import { Badge } from "@/components/ui/badge";
@@ -46,17 +46,24 @@ function getBorderAccent(order: Order): string {
 // ── Component ────────────────────────────────────────────────────────────────
 type OrderCardProps = {
   order: Order;
+  index?: number;
   onDragStart?: (e: React.DragEvent, orderId: string) => void;
   isOverlay?: boolean;
 };
 
-export function OrderCard({ order, onDragStart, isOverlay }: OrderCardProps) {
+export function OrderCard({ order, index = 0, onDragStart, isOverlay }: OrderCardProps) {
   const badgeVariant = TAG_BADGE_VARIANT[order.tag.variant] ?? "order-neutral";
   const statusConfig = getStatusConfig(order);
   const borderAccent = getBorderAccent(order);
   const isOpaque = order.status === "requesting";
 
-  const { ref, handleRef, isDragging } = useDraggable({ id: order.id });
+  const { ref, handleRef, isDragging } = useSortable({
+    id: order.id,
+    index,
+    type: "order",
+    accept: "order",
+    group: order.status,
+  });
 
   return (
     <div
