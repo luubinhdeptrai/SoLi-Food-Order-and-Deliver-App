@@ -3,16 +3,12 @@ import type { OrderStatus } from "@/features/orders/types/order.types";
 import { OrderCard } from "@/features/orders/components/OrderCard";
 import { useOrderStore } from "@/features/orders/stores/orderStore";
 
+// ── Column visual configuration ───────────────────────────────────────────────
 type ColumnConfig = {
   id: OrderStatus;
   label: string;
   icon: string;
-  style: {
-    container: string;
-    headerText: string;
-    countText: string;
-    border?: string;
-  };
+  containerClass: string;
 };
 
 const COLUMN_CONFIGS: ColumnConfig[] = [
@@ -20,44 +16,31 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     id: "requesting",
     label: "REQUESTING",
     icon: "hourglass_empty",
-    style: {
-      container: "bg-[#e2e2e2]/60 border-2 border-dashed border-[#bfcaba]",
-      headerText: "text-[#40493d]",
-      countText: "text-[#707a6c]",
-    },
+    // Dashed border with slightly darker surface to signal "pending" state
+    containerClass:
+      "bg-surface-container-high/60 border-2 border-dashed border-outline-variant/60",
   },
   {
     id: "todo",
     label: "TO DO",
     icon: "checklist",
-    style: {
-      container: "bg-[#EBECF0]",
-      headerText: "text-[#40493d]",
-      countText: "text-[#707a6c]",
-    },
+    containerClass: "bg-surface-container",
   },
   {
     id: "in_progress",
     label: "IN PROGRESS",
     icon: "sync",
-    style: {
-      container: "bg-[#EBECF0]",
-      headerText: "text-[#40493d]",
-      countText: "text-[#707a6c]",
-    },
+    containerClass: "bg-surface-container",
   },
   {
     id: "done",
     label: "DONE",
     icon: "check_circle",
-    style: {
-      container: "bg-[#EBECF0]",
-      headerText: "text-[#40493d]",
-      countText: "text-[#707a6c]",
-    },
+    containerClass: "bg-surface-container",
   },
 ];
 
+// ── Component ────────────────────────────────────────────────────────────────
 type OrderKanbanColumnProps = {
   columnId: OrderStatus;
   onDragOver: (e: React.DragEvent) => void;
@@ -78,42 +61,40 @@ export function OrderKanbanColumn({
   return (
     <div
       className={cn(
-        "flex flex-col rounded-lg min-h-full min-w-[300px] max-w-[360px] flex-shrink-0",
-        config.style.container
+        "flex flex-col rounded-lg h-full w-[300px] xl:w-[340px] flex-shrink-0",
+        config.containerClass
       )}
       onDragOver={onDragOver}
       onDrop={(e) => onDrop(e, columnId)}
     >
       {/* Column header */}
-      <div className="p-4 flex items-center justify-between">
+      <div className="px-4 pt-4 pb-2 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
-          <h3
-            className={cn(
-              "text-xs font-bold uppercase tracking-wider font-['Plus_Jakarta_Sans']",
-              config.style.headerText
-            )}
-          >
+          <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant font-headline">
             {config.label}
           </h3>
-          <span className={cn("text-xs font-bold", config.style.countText)}>
+          <span className="text-xs font-bold text-muted-foreground">
             {orders.length}
           </span>
         </div>
-        <span className="material-symbols-outlined text-[#707a6c] text-sm">
+        <span
+          className="material-symbols-outlined text-muted-foreground text-sm"
+          aria-hidden="true"
+        >
           {config.icon}
         </span>
       </div>
 
-      {/* Cards */}
-      <div className="flex-1 px-2 space-y-3 overflow-y-auto pb-4">
+      {/* Scrollable card list */}
+      <div className="flex-1 px-2 pb-2 space-y-2.5 overflow-y-auto min-h-0">
         {orders.map((order) => (
           <OrderCard key={order.id} order={order} onDragStart={onDragStart} />
         ))}
 
         {orders.length === 0 && (
-          <div className="text-center py-8 text-[#707a6c] text-xs font-medium opacity-60">
+          <p className="text-center py-8 text-muted-foreground text-xs font-medium opacity-60">
             No orders
-          </div>
+          </p>
         )}
       </div>
     </div>

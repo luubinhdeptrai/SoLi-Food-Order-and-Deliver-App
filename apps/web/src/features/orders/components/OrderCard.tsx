@@ -1,65 +1,57 @@
-import type { Order } from "@/features/orders/types/order.types";
 import { cn } from "@/lib/utils";
+import type { Order } from "@/features/orders/types/order.types";
+import { Badge } from "@/components/ui/badge";
+import type { VariantProps } from "class-variance-authority";
+import { badgeVariants } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-type TagVariantConfig = {
-  bg: string;
-  text: string;
+// ── Tag badge variant mapping ────────────────────────────────────────────────
+type BadgeVariant = VariantProps<typeof badgeVariants>["variant"];
+
+const TAG_BADGE_VARIANT: Record<string, BadgeVariant> = {
+  unaccepted: "order-neutral",
+  review: "order-neutral",
+  high_priority: "order-priority",
+  delivery: "order-delivery",
+  preparing: "order-preparing",
+  ready: "order-ready",
+  ready_pickup: "order-ready",
 };
 
-const tagVariants: Record<string, TagVariantConfig> = {
-  unaccepted: { bg: "bg-[#eeeeee]", text: "text-[#40493d]" },
-  review: { bg: "bg-[#eeeeee]", text: "text-[#40493d]" },
-  high_priority: { bg: "bg-green-100", text: "text-green-800" },
-  delivery: { bg: "bg-amber-100", text: "text-amber-700" },
-  preparing: { bg: "bg-blue-50", text: "text-blue-600" },
-  ready: { bg: "bg-green-100", text: "text-green-800" },
-  ready_pickup: { bg: "bg-green-100", text: "text-green-800" },
-};
+// ── Status icon mapping ───────────────────────────────────────────────────────
+type StatusConfig = { icon: string; iconColor: string };
 
-type StatusIndicatorConfig = {
-  icon: string;
-  iconColor: string;
-};
+function getStatusConfig(order: Order): StatusConfig {
+  if (order.status === "requesting")
+    return { icon: "pending", iconColor: "text-outline" };
+  if (order.status === "todo") {
+    return order.tag.variant === "high_priority"
+      ? { icon: "error", iconColor: "text-primary" }
+      : { icon: "radio_button_unchecked", iconColor: "text-outline" };
+  }
+  if (order.status === "in_progress")
+    return { icon: "schedule", iconColor: "text-blue-500" };
+  return { icon: "check_circle", iconColor: "text-primary" };
+}
 
-const statusIndicators: Record<string, StatusIndicatorConfig> = {
-  requesting: { icon: "pending", iconColor: "text-[#707a6c]" },
-  todo_high: { icon: "error", iconColor: "text-[#0d631b]" },
-  todo_normal: { icon: "radio_button_unchecked", iconColor: "text-[#707a6c]" },
-  in_progress: { icon: "schedule", iconColor: "text-blue-500" },
-  done: { icon: "check_circle", iconColor: "text-[#0d631b]" },
-};
+// ── Left-border accent mapping ────────────────────────────────────────────────
+function getBorderAccent(order: Order): string {
+  if (order.status === "requesting") return "border-l-4 border-l-outline-variant";
+  if (order.status === "in_progress") return "border-l-4 border-l-blue-500";
+  if (order.status === "done") return "border-l-4 border-l-primary";
+  return "";
+}
 
-type BorderAccentConfig = {
-  borderClass: string;
-};
-
-const borderAccents: Record<string, BorderAccentConfig> = {
-  requesting: { borderClass: "border-l-4 border-l-[#bfcaba]" },
-  todo_high: { borderClass: "" },
-  todo_normal: { borderClass: "" },
-  in_progress: { borderClass: "border-l-4 border-l-blue-500" },
-  done: { borderClass: "border-l-4 border-l-[#0d631b]" },
-};
-
+// ── Component ────────────────────────────────────────────────────────────────
 type OrderCardProps = {
   order: Order;
   onDragStart?: (e: React.DragEvent, orderId: string) => void;
 };
 
-function getStatusKey(order: Order): string {
-  if (order.status === "requesting") return "requesting";
-  if (order.status === "todo") {
-    return order.tag.variant === "high_priority" ? "todo_high" : "todo_normal";
-  }
-  if (order.status === "in_progress") return "in_progress";
-  return "done";
-}
-
 export function OrderCard({ order, onDragStart }: OrderCardProps) {
-  const tagConfig = tagVariants[order.tag.variant] ?? tagVariants.unaccepted;
-  const statusKey = getStatusKey(order);
-  const statusConfig = statusIndicators[statusKey];
-  const borderConfig = borderAccents[statusKey];
+  const badgeVariant = TAG_BADGE_VARIANT[order.tag.variant] ?? "order-neutral";
+  const statusConfig = getStatusConfig(order);
+  const borderAccent = getBorderAccent(order);
   const isOpaque = order.status === "requesting";
 
   return (
@@ -67,59 +59,65 @@ export function OrderCard({ order, onDragStart }: OrderCardProps) {
       draggable
       onDragStart={(e) => onDragStart?.(e, order.id)}
       className={cn(
-        "bg-white p-4 rounded-lg shadow-sm border-b border-[#eeeeee] transition-all duration-200 cursor-grab active:cursor-grabbing hover:-translate-y-0.5 hover:shadow-md",
-        borderConfig.borderClass,
+        // Base card: white surface with subtle bottom separator (no 1px border per design system)
+        "bg-surface-container-lowest p-4 rounded-lg",
+        "shadow-[0_1px_4px_rgba(0,0,0,0.06)]",
+        "transition-all duration-200 cursor-grab active:cursor-grabbing",
+        "hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
+        borderAccent,
         isOpaque && "opacity-80"
       )}
     >
-      {/* Title row */}
-      <div className="flex justify-between items-start mb-2">
-        <h4 className="text-sm font-medium text-[#1a1c1c] font-['Plus_Jakarta_Sans'] leading-snug pr-2">
+      {/* ── Title row ──────────────────────────────────────────────────── */}
+      <div className="flex justify-between items-start mb-2 gap-2">
+        <h4 className="text-sm font-medium text-on-surface font-headline leading-snug">
           {order.title}
         </h4>
-        <span className="material-symbols-outlined text-[#bfcaba] text-lg flex-shrink-0">
+        {/* Drag handle icon — purely decorative */}
+        <span
+          className="material-symbols-outlined text-outline-variant text-lg flex-shrink-0 select-none"
+          aria-hidden="true"
+        >
           drag_indicator
         </span>
       </div>
 
-      {/* Tag badge */}
+      {/* ── Status badge ────────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-1 mb-4">
-        <span
-          className={cn(
-            "text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wide",
-            tagConfig.bg,
-            tagConfig.text
-          )}
-        >
-          {order.tag.label}
-        </span>
+        <Badge variant={badgeVariant}>{order.tag.label}</Badge>
       </div>
 
-      {/* Footer row */}
+      {/* ── Footer: status icon + order number + timestamp / avatar ──────── */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className={cn("material-symbols-outlined text-sm", statusConfig.iconColor)}>
+          <span
+            className={cn(
+              "material-symbols-outlined text-sm",
+              statusConfig.iconColor
+            )}
+            aria-hidden="true"
+          >
             {statusConfig.icon}
           </span>
-          <span className="text-xs font-bold text-[#707a6c] uppercase font-['Inter']">
+          <span className="text-xs font-bold text-outline uppercase font-body">
             {order.orderNumber}
           </span>
         </div>
 
+        {/* Right slot: action label | chef avatar | timestamp */}
         {order.statusAction ? (
-          <span className="text-[10px] font-bold text-[#0d631b] uppercase tracking-wide">
+          <span className="text-[10px] font-bold text-primary uppercase tracking-wide font-body">
             {order.statusAction}
           </span>
         ) : order.assignedTo ? (
-          <div className="w-6 h-6 rounded-full bg-[#eeeeee] overflow-hidden ring-1 ring-white">
-            <img
-              src={order.assignedTo}
-              alt="Chef"
-              className="w-full h-full object-cover"
-            />
-          </div>
+          <Avatar size="sm">
+            <AvatarImage src={order.assignedTo} alt="Assigned chef" />
+            <AvatarFallback>
+              <span className="material-symbols-outlined text-xs">person</span>
+            </AvatarFallback>
+          </Avatar>
         ) : (
-          <span className="text-[10px] font-bold text-[#707a6c] italic font-['Inter']">
+          <span className="text-[10px] font-bold text-outline italic font-body">
             {order.timestamp}
           </span>
         )}

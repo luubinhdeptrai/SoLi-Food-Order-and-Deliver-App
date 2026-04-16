@@ -19,6 +19,17 @@ const badgeVariants = cva(
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
+        // ── Order-status variants ──────────────────────────────────────
+        "order-neutral":
+          "bg-surface-container text-on-surface-variant uppercase tracking-wide font-black text-[10px]",
+        "order-priority":
+          "bg-green-100 text-green-800 uppercase tracking-wide font-black text-[10px]",
+        "order-delivery":
+          "bg-amber-100 text-amber-700 uppercase tracking-wide font-black text-[10px]",
+        "order-preparing":
+          "bg-blue-50 text-blue-600 uppercase tracking-wide font-black text-[10px]",
+        "order-ready":
+          "bg-green-100 text-green-800 uppercase tracking-wide font-black text-[10px]",
       },
     },
     defaultVariants: {
