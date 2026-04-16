@@ -1,3 +1,4 @@
+import { useDraggable } from "@dnd-kit/react";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/features/orders/types/order.types";
 import { Badge } from "@/components/ui/badge";
@@ -46,26 +47,31 @@ function getBorderAccent(order: Order): string {
 type OrderCardProps = {
   order: Order;
   onDragStart?: (e: React.DragEvent, orderId: string) => void;
+  isOverlay?: boolean;
 };
 
-export function OrderCard({ order, onDragStart }: OrderCardProps) {
+export function OrderCard({ order, onDragStart, isOverlay }: OrderCardProps) {
   const badgeVariant = TAG_BADGE_VARIANT[order.tag.variant] ?? "order-neutral";
   const statusConfig = getStatusConfig(order);
   const borderAccent = getBorderAccent(order);
   const isOpaque = order.status === "requesting";
 
+  const { ref, handleRef, isDragging } = useDraggable({ id: order.id });
+
   return (
     <div
-      draggable
+      ref={isOverlay ? undefined : ref}
+      draggable={!isOverlay && !!onDragStart} // fallback
       onDragStart={(e) => onDragStart?.(e, order.id)}
       className={cn(
         // Base card: white surface with subtle bottom separator (no 1px border per design system)
         "bg-surface-container-lowest p-4 rounded-lg",
         "shadow-[0_1px_4px_rgba(0,0,0,0.06)]",
-        "transition-all duration-200 cursor-grab active:cursor-grabbing",
-        "hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
+        "transition-all duration-200",
+        isOverlay ? "cursor-grabbing shadow-[0_8px_30px_rgba(0,0,0,0.12)] rotate-2" : "hover:-translate-y-0.5",
+        !isOverlay && "hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
         borderAccent,
-        isOpaque && "opacity-80"
+        (isOpaque || isDragging) && "opacity-80"
       )}
     >
       {/* ── Title row ──────────────────────────────────────────────────── */}
@@ -73,13 +79,14 @@ export function OrderCard({ order, onDragStart }: OrderCardProps) {
         <h4 className="text-sm font-medium text-on-surface font-headline leading-snug">
           {order.title}
         </h4>
-        {/* Drag handle icon — purely decorative */}
-        <span
-          className="material-symbols-outlined text-outline-variant text-lg flex-shrink-0 select-none"
-          aria-hidden="true"
+        {/* Drag handle icon */}
+        <button
+          className="material-symbols-outlined text-outline-variant text-lg flex-shrink-0 cursor-grab active:cursor-grabbing outline-none"
+          ref={handleRef}
+          aria-label="Drag handle"
         >
           drag_indicator
-        </span>
+        </button>
       </div>
 
       {/* ── Status badge ────────────────────────────────────────────────── */}

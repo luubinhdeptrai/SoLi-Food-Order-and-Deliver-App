@@ -1,3 +1,4 @@
+import { useDroppable } from "@dnd-kit/react";
 import { cn } from "@/lib/utils";
 import type { OrderStatus } from "@/features/orders/types/order.types";
 import { OrderCard } from "@/features/orders/components/OrderCard";
@@ -43,29 +44,23 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
 // ── Component ────────────────────────────────────────────────────────────────
 type OrderKanbanColumnProps = {
   columnId: OrderStatus;
-  onDragOver: (e: React.DragEvent) => void;
-  onDrop: (e: React.DragEvent, targetStatus: OrderStatus) => void;
-  onDragStart: (e: React.DragEvent, orderId: string) => void;
 };
 
-export function OrderKanbanColumn({
-  columnId,
-  onDragOver,
-  onDrop,
-  onDragStart,
-}: OrderKanbanColumnProps) {
+export function OrderKanbanColumn({ columnId }: OrderKanbanColumnProps) {
   const getOrdersByStatus = useOrderStore((s) => s.getOrdersByStatus);
   const orders = getOrdersByStatus(columnId);
   const config = COLUMN_CONFIGS.find((c) => c.id === columnId)!;
 
+  const { ref, isDropTarget } = useDroppable({ id: columnId });
+
   return (
     <div
+      ref={ref}
       className={cn(
-        "flex flex-col rounded-lg h-full w-[300px] xl:w-[340px] flex-shrink-0",
-        config.containerClass
+        "flex flex-col rounded-lg h-full w-[300px] xl:w-[340px] flex-shrink-0 transition-all duration-200",
+        config.containerClass,
+        isDropTarget && "ring-2 ring-primary ring-offset-2 ring-offset-[#F4F5F7] opacity-90"
       )}
-      onDragOver={onDragOver}
-      onDrop={(e) => onDrop(e, columnId)}
     >
       {/* Column header */}
       <div className="px-4 pt-4 pb-2 flex items-center justify-between flex-shrink-0">
@@ -88,7 +83,7 @@ export function OrderKanbanColumn({
       {/* Scrollable card list */}
       <div className="flex-1 px-2 pb-2 space-y-2.5 overflow-y-auto min-h-0">
         {orders.map((order) => (
-          <OrderCard key={order.id} order={order} onDragStart={onDragStart} />
+          <OrderCard key={order.id} order={order} />
         ))}
 
         {orders.length === 0 && (
