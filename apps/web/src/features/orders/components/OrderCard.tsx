@@ -1,4 +1,5 @@
 import { useSortable } from "@dnd-kit/react/sortable";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/features/orders/types/order.types";
 import { Badge } from "@/components/ui/badge";
@@ -52,6 +53,7 @@ type OrderCardProps = {
 };
 
 export function OrderCard({ order, index = 0, onDragStart, isOverlay }: OrderCardProps) {
+  const navigate = useNavigate();
   const badgeVariant = TAG_BADGE_VARIANT[order.tag.variant] ?? "order-neutral";
   const statusConfig = getStatusConfig(order);
   const borderAccent = getBorderAccent(order);
@@ -70,12 +72,21 @@ export function OrderCard({ order, index = 0, onDragStart, isOverlay }: OrderCar
       ref={isOverlay ? undefined : ref}
       draggable={!isOverlay && !!onDragStart} // fallback
       onDragStart={(e) => onDragStart?.(e, order.id)}
+      onClick={() => !isOverlay && navigate(`/orders/${order.id}`)}
+      role={!isOverlay ? "button" : undefined}
+      tabIndex={!isOverlay ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (!isOverlay && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          navigate(`/orders/${order.id}`);
+        }
+      }}
       className={cn(
         // Base card: white surface with subtle bottom separator (no 1px border per design system)
         "bg-surface-container-lowest p-4 rounded-lg",
         "shadow-[0_1px_4px_rgba(0,0,0,0.06)]",
         "transition-all duration-200",
-        isOverlay ? "cursor-grabbing shadow-[0_8px_30px_rgba(0,0,0,0.12)] rotate-2" : "hover:-translate-y-0.5",
+        isOverlay ? "cursor-grabbing shadow-[0_8px_30px_rgba(0,0,0,0.12)] rotate-2" : "hover:-translate-y-0.5 cursor-pointer",
         !isOverlay && "hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
         borderAccent,
         (isOpaque || isDragging) && "opacity-80"
@@ -91,6 +102,7 @@ export function OrderCard({ order, index = 0, onDragStart, isOverlay }: OrderCar
           className="material-symbols-outlined text-outline-variant text-lg flex-shrink-0 cursor-grab active:cursor-grabbing outline-none"
           ref={handleRef}
           aria-label="Drag handle"
+          onClick={(e) => e.stopPropagation()}
         >
           drag_indicator
         </button>

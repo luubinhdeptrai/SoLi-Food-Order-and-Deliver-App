@@ -11,6 +11,57 @@ const initialOrders: Order[] = [
     status: "requesting",
     tag: { label: "Unaccepted", variant: "unaccepted" },
     timestamp: "Just now",
+    detail: {
+      placedAt: "Oct 24, 2023 at 12:45 PM",
+      deliveryLocation: "Springfield, IL",
+      customer: {
+        name: "Eleanor Fant",
+        phone: "+1 (555) 0123-4567",
+        address: "742 Evergreen Terrace,\nSpringfield, IL 62704",
+        gateCode: "4421",
+      },
+      paymentMethod: "Apple Pay",
+      totals: {
+        subtotal: 40.50,
+        serviceFee: 2.50,
+        deliveryFee: 5.00,
+        tax: 3.24,
+      },
+      items: [
+        {
+          id: "i1",
+          name: "Artisan Harvest Bowl",
+          quantity: 1,
+          price: 18.50,
+          imageUrl:
+            "https://lh3.googleusercontent.com/aida-public/AB6AXuB_6de9BlayCYkFZbOqwnDlYdW17oavkPJci0V0UXEXsc58yRshLHsPQIUdwvXlBaQ6wYlmWwQZw6qbxjzS3omSMrIvnRrM4E0z521IvuAorxT0k1zaRs8hcNxBw-SB86RFBzyEq2TwNajUcwMgPk5LsX9OoAJ2g3lDdVn0HqrZC-AQ2TlvtFVqnCZlRg2GSYEgj48AJntpzz4iGCV1KmxT0q0W7W9HdNK--SAqWdipfn84MVK87b1H7_dxqlGXMRK4Ly-W0m6bvpI",
+          modifiers: [
+            { label: "Extra Avocado" },
+            { label: "No Onions" },
+          ],
+        },
+        {
+          id: "i2",
+          name: "Atelier Signature Burger",
+          quantity: 1,
+          price: 22.00,
+          imageUrl:
+            "https://lh3.googleusercontent.com/aida-public/AB6AXuCLwognIewT16blipkHMQ75p51XiTWYdONu2SXE-lrsqYGTVVHEgRMm_ATEDkx0x7xOXaRPhElrvjBlWiOT9n2epH96QulHG-VxXvMuSLvWcmesPiysWLkH6GwTWUDto03Jp6hWYR9N09YzdM-AY2pgXVC8e37sBS3ymU0lUlxEeskBPY1E5VH4W3tHmu77lNYpT1bHxTlm5TmxByN2CoL3C65539enP5SaJwW6cKC47RiuXZKyTCtEj26lRcMrBOaUf_GyQsQ0Prc",
+          modifiers: [
+            { label: "Medium Rare" },
+            { label: "Truffle Fries Upgrade" },
+          ],
+        },
+      ],
+      history: [
+        { label: "Order Placed", time: "Oct 24, 12:45 PM", step: "completed" },
+        { label: "Order Accepted", time: "Oct 24, 12:48 PM", step: "completed" },
+        { label: "Preparing Food", time: "Estimated 10-15 mins", step: "current" },
+        { label: "Ready for Pickup", time: "Pending", step: "pending" },
+      ],
+      kitchenNotes:
+        "Customer requested double wrapping for the burger to keep it warm. Please include extra napkins and a set of bamboo cutlery.",
+    },
   },
   {
     id: "2",
@@ -65,6 +116,28 @@ const initialOrders: Order[] = [
     timestamp: "12m ago",
     assignedTo:
       "https://lh3.googleusercontent.com/aida-public/AB6AXuBMSpJfhErzfUb1xgNiGE6gMadfDP45egaVaIuxwq7JlVkPAwKfF0DT4wflzvItJSgP6GphNviAKQcZlNENi6hJe2gZYZ9wBkvxghtyUl3DFPRG_c2z07rFwz18OAKkPDI6ci-vzmtIPVZPAUxRo2qkuh9lCykLH9VAF2Ug3jB-rp_jMQu4WuPCjsrrQmbfX6pC3XNS5y1V5EkUQu2p8dBPKv1xYndCp-g0OIPgzutS0hNKhyyV31j-ZHrVdWYlJST_yhkPwGkYdlg",
+    detail: {
+      placedAt: "Oct 24, 2023 at 12:30 PM",
+      deliveryLocation: "Portland, OR",
+      customer: {
+        name: "Marco Bellini",
+        phone: "+1 (555) 0198-7654",
+        address: "18 Harvest Lane, Portland, OR 97201",
+      },
+      paymentMethod: "Credit Card",
+      totals: { subtotal: 65.00, serviceFee: 3.00, deliveryFee: 5.00, tax: 5.85 },
+      items: [
+        { id: "i1", name: "Artisan Cheese Board", quantity: 1, price: 35.00 },
+        { id: "i2", name: "House Red Wine", quantity: 1, price: 18.00 },
+        { id: "i3", name: "Charcuterie Selection", quantity: 2, price: 12.00 },
+      ],
+      history: [
+        { label: "Order Placed", time: "Oct 24, 12:30 PM", step: "completed" },
+        { label: "Order Accepted", time: "Oct 24, 12:33 PM", step: "completed" },
+        { label: "Preparing Food", time: "In progress", step: "current" },
+        { label: "Ready for Pickup", time: "Pending", step: "pending" },
+      ],
+    },
   },
   {
     id: "8",
@@ -73,6 +146,26 @@ const initialOrders: Order[] = [
     status: "in_progress",
     tag: { label: "Preparing", variant: "preparing" },
     timestamp: "15m ago",
+    detail: {
+      placedAt: "Oct 24, 2023 at 12:27 PM",
+      deliveryLocation: "Chicago, IL",
+      customer: {
+        name: "Priya Sharma",
+        phone: "+1 (555) 0234-5678",
+        address: "290 Cedar St, Chicago, IL 60614",
+      },
+      paymentMethod: "Google Pay",
+      totals: { subtotal: 16.00, serviceFee: 1.50, deliveryFee: 4.00, tax: 1.78 },
+      items: [
+        { id: "i1", name: "Organic Grain Bowl", quantity: 1, price: 16.00, modifiers: [{ label: "No Onions" }] },
+      ],
+      history: [
+        { label: "Order Placed", time: "Oct 24, 12:27 PM", step: "completed" },
+        { label: "Order Accepted", time: "Oct 24, 12:29 PM", step: "completed" },
+        { label: "Preparing Food", time: "In progress", step: "current" },
+        { label: "Ready for Pickup", time: "Pending", step: "pending" },
+      ],
+    },
   },
 
   // Done
