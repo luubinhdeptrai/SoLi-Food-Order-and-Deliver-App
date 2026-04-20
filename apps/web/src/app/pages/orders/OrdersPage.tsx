@@ -14,6 +14,14 @@ export function OrdersPage() {
   const handleDragEvent = useOrderStore((s) => s.handleDragEvent);
   const orders = useOrderStore((s) => s.orders);
 
+  const handleDragOver = useCallback(
+    (e: any) => {
+      // For cross-column sorting, we update state immediately on drag over
+      handleDragEvent(e);
+    },
+    [handleDragEvent]
+  );
+
   const handleDragEnd = useCallback(
     (e: any) => {
       if (e.canceled) return;
@@ -24,7 +32,7 @@ export function OrdersPage() {
 
   return (
     // Negate MainLayout's padding so the grey Kanban background bleeds full-width
-    <DragDropProvider onDragEnd={handleDragEnd}>
+    <DragDropProvider onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
       <div
         className="-m-4 lg:-m-6 flex flex-col bg-[#F4F5F7] overflow-hidden"
         style={{ height: "calc(100vh - 4rem)" }}
@@ -54,8 +62,7 @@ export function OrdersPage() {
 
         <DragOverlay>
           {(source) => {
-            const orderId = source?.id;
-            const order = orders.find((o) => o.id === orderId);
+            const order = source?.data as Order | undefined;
             if (!order) return null;
             return <OrderCard order={order} isOverlay />;
           }}

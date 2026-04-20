@@ -65,6 +65,7 @@ export function OrderCard({ order, index = 0, onDragStart, isOverlay }: OrderCar
     type: "order",
     accept: "order",
     group: order.status,
+    data: order,
   });
 
   return (
