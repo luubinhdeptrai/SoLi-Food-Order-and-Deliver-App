@@ -59,7 +59,8 @@ export function OrderKanbanColumn({ columnId }: OrderKanbanColumnProps) {
       className={cn(
         "flex flex-col rounded-lg h-full w-[300px] xl:w-[340px] flex-shrink-0 transition-all duration-200",
         config.containerClass,
-        isDropTarget && "ring-2 ring-primary ring-offset-2 ring-offset-[#F4F5F7] opacity-90"
+        isDropTarget &&
+          "ring-2 ring-primary ring-offset-2 ring-offset-[#F4F5F7] opacity-90",
       )}
     >
       {/* Column header */}
@@ -82,15 +83,11 @@ export function OrderKanbanColumn({ columnId }: OrderKanbanColumnProps) {
 
       {/* Scrollable card list */}
       <div className="flex-1 px-2 pb-2 space-y-2.5 overflow-y-auto min-h-0">
-        {orders.length > 0 ? (
-          orders.map((order, index) => (
-            <OrderCard key={order.id} order={order} index={index} />
-          ))
-        ) : (
-          <p
-            key="empty-state"
-            className="text-center py-8 text-muted-foreground text-xs font-medium opacity-60"
-          >
+        {orders.map((order, index) => (
+          <OrderCard key={order.id} order={order} index={index} />
+        ))}
+        {orders.length === 0 && (
+          <p className="text-center py-8 text-muted-foreground text-xs font-medium opacity-60">
             No orders
           </p>
         )}

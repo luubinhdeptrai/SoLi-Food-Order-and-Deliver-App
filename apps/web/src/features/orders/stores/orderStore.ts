@@ -268,7 +268,11 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
 
   handleDragEvent: (event) =>
     set((state) => {
+      const { searchQuery } = state;
+      
       // 1. Group records for dnd-kit helper
+      // We must preserve the same filtering logic used in the UI (getOrdersByStatus)
+      // so that indices in the event match indices in these arrays.
       const grouped: Record<OrderStatus, Order[]> = {
         requesting: [],
         todo: [],
@@ -276,14 +280,24 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
         done: [],
       };
 
+      const filteredOut: Order[] = [];
+
       state.orders.forEach((o) => {
-        grouped[o.status].push(o);
+        const matchesSearch = !searchQuery ||
+          o.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase());
+
+        if (matchesSearch) {
+          grouped[o.status].push(o);
+        } else {
+          filteredOut.push(o);
+        }
       });
 
-      // 2. Compute spatial move logic automatically
+      // 2. Compute spatial move logic automatically on the filtered items
       const newGrouped = move(grouped, event) as Record<OrderStatus, Order[]>;
 
-      // 3. Un-group back into flat store format
+      // 3. Un-group back into flat store format, adding back items that were filtered out
       const newOrders: Order[] = [];
       const statuses: OrderStatus[] = ["requesting", "todo", "in_progress", "done"];
       
@@ -298,7 +312,8 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
         });
       });
 
-      return { orders: newOrders };
+      // Maintain filtered-out items (they stay in their original relative positions/statuses)
+      return { orders: [...newOrders, ...filteredOut] };
     }),
 
   acceptOrder: (orderId) =>

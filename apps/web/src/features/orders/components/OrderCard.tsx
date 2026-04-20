@@ -48,11 +48,10 @@ function getBorderAccent(order: Order): string {
 type OrderCardProps = {
   order: Order;
   index?: number;
-  onDragStart?: (e: React.DragEvent, orderId: string) => void;
   isOverlay?: boolean;
 };
 
-export function OrderCard({ order, index = 0, onDragStart, isOverlay }: OrderCardProps) {
+export function OrderCard({ order, index = 0, isOverlay }: OrderCardProps) {
   const navigate = useNavigate();
   const badgeVariant = TAG_BADGE_VARIANT[order.tag.variant] ?? "order-neutral";
   const statusConfig = getStatusConfig(order);
@@ -71,8 +70,6 @@ export function OrderCard({ order, index = 0, onDragStart, isOverlay }: OrderCar
   return (
     <div
       ref={isOverlay ? undefined : ref}
-      draggable={!isOverlay && !!onDragStart} // fallback
-      onDragStart={(e) => onDragStart?.(e, order.id)}
       onClick={() => !isOverlay && navigate(`/orders/${order.id}`)}
       role={!isOverlay ? "button" : undefined}
       tabIndex={!isOverlay ? 0 : undefined}
