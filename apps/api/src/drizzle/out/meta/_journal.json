@@ -15,6 +15,13 @@
       "when": 1776083727978,
       "tag": "0001_slim_mongu",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776541523540,
+      "tag": "0002_huge_stephen_strange",
+      "breakpoints": true
     }
   ]
 }

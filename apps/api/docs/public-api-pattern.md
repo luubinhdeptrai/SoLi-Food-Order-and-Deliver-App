@@ -36,24 +36,24 @@ Goals:
 Every bounded context MUST follow this structure:
 
 ```
-<bounded-context>/
+  <bounded-context>/
 
-├── public-api/              ← ONLY thing other modules can import
-│   ├── <feature>.port.ts
-│   ├── <feature>.dto.ts
-│   ├── <feature>.snapshot.ts
-│   └── <bc>-public-api.module.ts
+  ├── public-api/              ← ONLY thing other modules can import
+  │   ├── <feature>.port.ts
+  │   ├── <feature>.dto.ts
+  │   ├── <feature>.snapshot.ts
+  │   └── <bc>-public-api.module.ts
 
-├── application/
-│   └── *.service.ts
+  ├── application/
+  │   └── *.service.ts
 
-├── domain/
-│   └── *.entity.ts
+  ├── domain/
+  │   └── *.entity.ts
 
-├── infrastructure/ (optional)
-│   └── *.repository.ts
+  ├── infrastructure/ (optional)
+  │   └── *.repository.ts
 
-└── <bc>.module.ts           ← root module
+  └── <bc>.module.ts           ← root module
 ```
 
 ---
