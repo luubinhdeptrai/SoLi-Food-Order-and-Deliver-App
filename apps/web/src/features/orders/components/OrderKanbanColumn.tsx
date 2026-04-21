@@ -1,4 +1,3 @@
-import { useDroppable } from "@dnd-kit/react";
 import { cn } from "@/lib/utils";
 import type { OrderStatus } from "@/features/orders/types/order.types";
 import { OrderCard } from "@/features/orders/components/OrderCard";
@@ -51,16 +50,11 @@ export function OrderKanbanColumn({ columnId }: OrderKanbanColumnProps) {
   const orders = getOrdersByStatus(columnId);
   const config = COLUMN_CONFIGS.find((c) => c.id === columnId)!;
 
-  const { ref, isDropTarget } = useDroppable({ id: columnId });
-
   return (
     <div
-      ref={ref}
       className={cn(
         "flex flex-col rounded-lg h-full w-[300px] xl:w-[340px] flex-shrink-0 transition-all duration-200",
         config.containerClass,
-        isDropTarget &&
-          "ring-2 ring-primary ring-offset-2 ring-offset-[#F4F5F7] opacity-90",
       )}
     >
       {/* Column header */}

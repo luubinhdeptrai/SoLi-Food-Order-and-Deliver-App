@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { move } from "@dnd-kit/helpers";
 import type { Order, OrderStatus } from "@/features/orders/types/order.types";
 
 const initialOrders: Order[] = [
@@ -242,7 +241,6 @@ type OrderStore = {
   newOrderToast: Order | null;
   setSearchQuery: (q: string) => void;
   moveOrder: (orderId: string, newStatus: OrderStatus) => void;
-  handleDragEvent: (event: any) => void;
   acceptOrder: (orderId: string) => void;
   dismissToast: () => void;
   getOrdersByStatus: (status: OrderStatus) => Order[];
@@ -264,56 +262,6 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
       order.status = newStatus;
       orders.push(order);
       return { orders };
-    }),
-
-  handleDragEvent: (event) =>
-    set((state) => {
-      const { searchQuery } = state;
-      
-      // 1. Group records for dnd-kit helper
-      // We must preserve the same filtering logic used in the UI (getOrdersByStatus)
-      // so that indices in the event match indices in these arrays.
-      const grouped: Record<OrderStatus, Order[]> = {
-        requesting: [],
-        todo: [],
-        in_progress: [],
-        done: [],
-      };
-
-      const filteredOut: Order[] = [];
-
-      state.orders.forEach((o) => {
-        const matchesSearch = !searchQuery ||
-          o.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          o.orderNumber.toLowerCase().includes(searchQuery.toLowerCase());
-
-        if (matchesSearch) {
-          grouped[o.status].push(o);
-        } else {
-          filteredOut.push(o);
-        }
-      });
-
-      // 2. Compute spatial move logic automatically on the filtered items
-      const newGrouped = move(grouped, event) as Record<OrderStatus, Order[]>;
-
-      // 3. Un-group back into flat store format, adding back items that were filtered out
-      const newOrders: Order[] = [];
-      const statuses: OrderStatus[] = ["requesting", "todo", "in_progress", "done"];
-      
-      statuses.forEach((status) => {
-        if (!newGrouped[status]) return;
-        newGrouped[status].forEach((order) => {
-          if (order.status !== status) {
-            newOrders.push({ ...order, status });
-          } else {
-            newOrders.push(order);
-          }
-        });
-      });
-
-      // Maintain filtered-out items (they stay in their original relative positions/statuses)
-      return { orders: [...newOrders, ...filteredOut] };
     }),
 
   acceptOrder: (orderId) =>

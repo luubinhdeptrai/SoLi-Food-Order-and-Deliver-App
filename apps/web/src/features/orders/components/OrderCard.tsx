@@ -1,4 +1,3 @@
-import { useSortable } from "@dnd-kit/react/sortable";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/features/orders/types/order.types";
@@ -58,18 +57,8 @@ export function OrderCard({ order, index = 0, isOverlay }: OrderCardProps) {
   const borderAccent = getBorderAccent(order);
   const isOpaque = order.status === "requesting";
 
-  const { ref, handleRef, isDragging } = useSortable({
-    id: order.id,
-    index,
-    type: "order",
-    accept: "order",
-    group: order.status,
-    data: order,
-  });
-
   return (
     <div
-      ref={isOverlay ? undefined : ref}
       onClick={() => !isOverlay && navigate(`/orders/${order.id}`)}
       role={!isOverlay ? "button" : undefined}
       tabIndex={!isOverlay ? 0 : undefined}
@@ -87,7 +76,7 @@ export function OrderCard({ order, index = 0, isOverlay }: OrderCardProps) {
         isOverlay ? "cursor-grabbing shadow-[0_8px_30px_rgba(0,0,0,0.12)] rotate-2" : "hover:-translate-y-0.5 cursor-pointer",
         !isOverlay && "hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
         borderAccent,
-        (isOpaque || isDragging) && "opacity-80"
+        isOpaque && "opacity-80"
       )}
     >
       {/* ── Title row ──────────────────────────────────────────────────── */}
@@ -95,15 +84,6 @@ export function OrderCard({ order, index = 0, isOverlay }: OrderCardProps) {
         <h4 className="text-sm font-medium text-on-surface font-headline leading-snug">
           {order.title}
         </h4>
-        {/* Drag handle icon */}
-        <button
-          className="material-symbols-outlined text-outline-variant text-lg flex-shrink-0 cursor-grab active:cursor-grabbing outline-none"
-          ref={handleRef}
-          aria-label="Drag handle"
-          onClick={(e) => e.stopPropagation()}
-        >
-          drag_indicator
-        </button>
       </div>
 
       {/* ── Status badge ────────────────────────────────────────────────── */}
