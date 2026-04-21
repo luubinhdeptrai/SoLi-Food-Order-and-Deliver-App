@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import type { VariantProps } from "class-variance-authority";
 import { badgeVariants } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Draggable } from "@hello-pangea/dnd";
 
 // ── Tag badge variant mapping ────────────────────────────────────────────────
 type BadgeVariant = VariantProps<typeof badgeVariants>["variant"];
@@ -58,27 +59,35 @@ export function OrderCard({ order, index = 0, isOverlay }: OrderCardProps) {
   const isOpaque = order.status === "requesting";
 
   return (
-    <div
-      onClick={() => !isOverlay && navigate(`/orders/${order.id}`)}
-      role={!isOverlay ? "button" : undefined}
-      tabIndex={!isOverlay ? 0 : undefined}
-      onKeyDown={(e) => {
-        if (!isOverlay && (e.key === "Enter" || e.key === " ")) {
-          e.preventDefault();
-          navigate(`/orders/${order.id}`);
-        }
-      }}
-      className={cn(
-        // Base card: white surface with subtle bottom separator (no 1px border per design system)
-        "bg-surface-container-lowest p-4 rounded-lg",
-        "shadow-[0_1px_4px_rgba(0,0,0,0.06)]",
-        "transition-all duration-200",
-        isOverlay ? "cursor-grabbing shadow-[0_8px_30px_rgba(0,0,0,0.12)] rotate-2" : "hover:-translate-y-0.5 cursor-pointer",
-        !isOverlay && "hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
-        borderAccent,
-        isOpaque && "opacity-80"
-      )}
-    >
+    <Draggable draggableId={order.id} index={index}>
+      {(provided, snapshot) => {
+        const isDragging = snapshot.isDragging;
+        return (
+          <div
+            ref={provided.innerRef}
+            {...provided.draggableProps}
+            {...provided.dragHandleProps}
+            onClick={() => !isOverlay && navigate(`/orders/${order.id}`)}
+            role={!isOverlay ? "button" : undefined}
+            tabIndex={!isOverlay ? 0 : undefined}
+            onKeyDown={(e) => {
+              if (!isOverlay && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                navigate(`/orders/${order.id}`);
+              }
+            }}
+            className={cn(
+              // Base card: white surface with subtle bottom separator (no 1px border per design system)
+              "bg-surface-container-lowest p-4 rounded-lg",
+              "shadow-[0_1px_4px_rgba(0,0,0,0.06)]",
+              "transition-all duration-200",
+              isOverlay || isDragging ? "cursor-grabbing shadow-[0_8px_30px_rgba(0,0,0,0.12)] rotate-2 z-50 bg-white" : "hover:-translate-y-0.5 cursor-pointer",
+              !(isOverlay || isDragging) && "hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]",
+              borderAccent,
+              isOpaque && "opacity-80"
+            )}
+            style={provided.draggableProps.style}
+          >
       {/* ── Title row ──────────────────────────────────────────────────── */}
       <div className="flex justify-between items-start mb-2 gap-2">
         <h4 className="text-sm font-medium text-on-surface font-headline leading-snug">
@@ -127,5 +136,8 @@ export function OrderCard({ order, index = 0, isOverlay }: OrderCardProps) {
         )}
       </div>
     </div>
+        );
+      }}
+    </Draggable>
   );
 }

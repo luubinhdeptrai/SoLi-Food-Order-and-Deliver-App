@@ -240,7 +240,13 @@ type OrderStore = {
   searchQuery: string;
   newOrderToast: Order | null;
   setSearchQuery: (q: string) => void;
-  moveOrder: (orderId: string, newStatus: OrderStatus) => void;
+  reorderOrder: (
+    orderId: string,
+    sourceStatus: OrderStatus,
+    destinationStatus: OrderStatus,
+    sourceIndex: number,
+    destinationIndex: number
+  ) => void;
   acceptOrder: (orderId: string) => void;
   dismissToast: () => void;
   getOrdersByStatus: (status: OrderStatus) => Order[];
@@ -253,15 +259,40 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
 
   setSearchQuery: (q) => set({ searchQuery: q }),
 
-  moveOrder: (orderId, newStatus) =>
+  reorderOrder: (orderId, sourceStatus, destinationStatus, sourceIndex, destinationIndex) =>
     set((state) => {
-      const orders = [...state.orders];
-      const index = orders.findIndex((o) => o.id === orderId);
-      if (index === -1) return state;
-      const [order] = orders.splice(index, 1);
-      order.status = newStatus;
-      orders.push(order);
-      return { orders };
+      const grouped: Record<OrderStatus, Order[]> = {
+        requesting: [],
+        todo: [],
+        in_progress: [],
+        done: [],
+      };
+
+      state.orders.forEach((o) => {
+        if (grouped[o.status]) grouped[o.status].push(o);
+      });
+
+      const sourceList = grouped[sourceStatus];
+      const destList = grouped[destinationStatus];
+
+      if (!sourceList || !destList) return state;
+
+      const actualSourceIndex = sourceList.findIndex((o) => o.id === orderId);
+      if (actualSourceIndex === -1) return state;
+
+      const [movedOrder] = sourceList.splice(actualSourceIndex, 1);
+      movedOrder.status = destinationStatus;
+
+      destList.splice(destinationIndex, 0, movedOrder);
+
+      return {
+        orders: [
+          ...grouped.requesting,
+          ...grouped.todo,
+          ...grouped.in_progress,
+          ...grouped.done,
+        ],
+      };
     }),
 
   acceptOrder: (orderId) =>

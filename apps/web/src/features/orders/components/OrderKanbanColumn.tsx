@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import type { OrderStatus } from "@/features/orders/types/order.types";
 import { OrderCard } from "@/features/orders/components/OrderCard";
 import { useOrderStore } from "@/features/orders/stores/orderStore";
+import { Droppable } from "@hello-pangea/dnd";
 
 // ── Column visual configuration ───────────────────────────────────────────────
 type ColumnConfig = {
@@ -46,7 +47,11 @@ type OrderKanbanColumnProps = {
 };
 
 export function OrderKanbanColumn({ columnId }: OrderKanbanColumnProps) {
+  // We must subscribe to the data so this component re-renders!
+  const _ordersSub = useOrderStore((s) => s.orders);
+  const _searchSub = useOrderStore((s) => s.searchQuery);
   const getOrdersByStatus = useOrderStore((s) => s.getOrdersByStatus);
+  
   const orders = getOrdersByStatus(columnId);
   const config = COLUMN_CONFIGS.find((c) => c.id === columnId)!;
 
@@ -76,16 +81,28 @@ export function OrderKanbanColumn({ columnId }: OrderKanbanColumnProps) {
       </div>
 
       {/* Scrollable card list */}
-      <div className="flex-1 px-2 pb-2 space-y-2.5 overflow-y-auto min-h-0">
-        {orders.map((order, index) => (
-          <OrderCard key={order.id} order={order} index={index} />
-        ))}
-        {orders.length === 0 && (
-          <p className="text-center py-8 text-muted-foreground text-xs font-medium opacity-60">
-            No orders
-          </p>
+      <Droppable droppableId={columnId}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={cn(
+              "flex-1 px-2 pb-2 space-y-2.5 overflow-y-auto min-h-0",
+              snapshot.isDraggingOver && "bg-black/5 rounded-md"
+            )}
+          >
+            {orders.map((order, index) => (
+              <OrderCard key={order.id} order={order} index={index} />
+            ))}
+            {orders.length === 0 && (
+              <p className="text-center py-8 text-muted-foreground text-xs font-medium opacity-60">
+                No orders
+              </p>
+            )}
+            {provided.placeholder}
+          </div>
         )}
-      </div>
+      </Droppable>
     </div>
   );
 }
