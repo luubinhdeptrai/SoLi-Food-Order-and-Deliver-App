@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "food-deliver-FE",
-    "slug": "food-deliver-FE",
+    "name": "UIT Food",
+    "slug": "uit-food",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "fooddeliverfe",
+    "scheme": "uitfood",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.truongdanh.uitfood"
     },
     "web": {
       "output": "static",
