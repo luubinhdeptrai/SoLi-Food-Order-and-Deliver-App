@@ -167,10 +167,15 @@ These are **owned by the Ordering context**, kept in sync via domain events from
 │ name                                                    │
 │ isOpen                                                  │
 │ isApproved                                              │
+│ address        ← [FIXED][from MISSING]                  │
 │ deliveryRadiusKm  (if available)                        │
 │ lastSyncedAt                                            │
 └─────────────────────────────────────────────────────────┘
 ```
+
+> ⚠️ **[WARNING]** `deliveryRadiusKm` does **not exist** in the current `restaurants` table (`restaurant.schema.ts` confirmed: no such column). BR-3 delivery-radius enforcement at checkout (Phase 4) is **unimplementable as specified** until `deliveryRadiusKm` is added to the `restaurants` schema and a migration is run. Add this column to the catalog schema **before** Phase 4 begins.
+
+> 🔵 **[MISSING]** The `ordering_restaurant_snapshots` table is missing an `address` field. `OrderReadyForPickupEvent` (Phase 6) requires `restaurantAddress` but the snapshot has no address column. Add `address: text` to this projection table (sourced from `restaurants.address`).
 
 ---
 
@@ -472,6 +477,8 @@ Server: if key seen → return cached Order
 - Client must generate and manage the key
 - Requires a short-lived storage for processed keys (Redis or DB table)
 
+> 🟢 **[FIXED][from RISK]** Idempotency key storage is documented. Redis key schema and TTL are specified in Phase 0 config (see Phase 0 scope below).
+
 ---
 
 #### Option B: DB Unique Constraint on Cart ID (tui chọn option B này và cả option A bên trên, tui có giải thích lý do bên dưới ✅SELECTED)
@@ -570,6 +577,18 @@ Each phase has a **clear scope**, is **independently deliverable**, and ends wit
 - Register `OrderingModule` in `app.module.ts`
 - Create `src/shared/events/` directory (or `src/module/ordering/events/`)
 - Create placeholder module files: `cart.module.ts`, `order.module.ts`, `order-lifecycle.module.ts`, `order-history.module.ts`
+- Document Redis key schema for idempotency (used in Phase 4):   ← [FIXED][from RISK]
+  - Key pattern: `idempotency:order:<X-Idempotency-Key>` → stores `orderId`
+  - TTL value: read from `app_settings` table (`ORDER_IDEMPOTENCY_TTL_SECONDS`) — see Phase 1
+  - Set with `SET ... EX <ttl> NX`
+
+> ⚠️ **[WARNING — Confirmed Decision]** `@nestjs/cqrs` is **not** present in `apps/api/package.json`. Phase 0 **must** install it before any event or command handler is written. `@nestjs/event-emitter` is **not required** — all events (catalog-level and ordering-level) will use the single CQRS `EventBus`.
+>
+> **Implication for Phase 3:** Because only `EventBus` is used, both publishers and subscribers must use `@nestjs/cqrs` conventions:
+> - Publishers (e.g., `MenuService`, `RestaurantService`): inject `EventBus` and call `this.eventBus.publish(new MenuItemUpdatedEvent(...))`
+> - Subscribers (e.g., `MenuItemProjector`, `RestaurantSnapshotProjector`): decorate with `@EventsHandler(MenuItemUpdatedEvent)` and implement `IEventHandler<MenuItemUpdatedEvent>`
+>
+> This is the correct, simpler approach — one bus, one contract. Ensure `CqrsModule` is imported in every module that publishes or handles events.
 
 **Folder Structure:**
 ```
@@ -603,6 +622,7 @@ src/module/ordering/
 - `order_status_logs` table
 - (Optional) `ordering_menu_item_snapshots` table (if D4-B selected)
 - (Optional) `ordering_restaurant_snapshots` table (if D3-B + D4-B selected)
+- `app_settings` table — stores runtime-configurable platform parameters (see Table Overview)
 - Export all types
 - Register schemas in `drizzle/schema.ts`
 - Run migration (`db:push`)
@@ -613,13 +633,31 @@ src/module/ordering/
 |---------------------------------|-----------------------------------------------------------------|
 | `carts`                         | id, customerId, restaurantId, status(active/checked_out/abandoned) |
 | `cart_items`                    | id, cartId(FK), menuItemId, itemName*, unitPrice*, quantity     |
-| `orders`                        | id, customerId, restaurantId, restaurantName*, status(pending/paid/confirmed/preparing/ready_for_pickup/picked_up/delivering/delivered/cancelled/refunded), totalAmount, paymentMethod, deliveryAddress(JSON), note |
+| `orders`                        | id, customerId, restaurantId, restaurantName*, **cartId**(FK — UNIQUE for D5-B), status(pending/paid/confirmed/preparing/ready_for_pickup/picked_up/delivering/delivered/cancelled/refunded), totalAmount, paymentMethod, deliveryAddress(JSON), note, **paymentUrl** ← [FIXED][from MISSING], **expiresAt** ← [FIXED][from MISSING] |
 | `order_items`                   | id, orderId(FK), menuItemId, itemName*, unitPrice*, quantity, subtotal |
-| `order_status_logs`             | id, orderId(FK), fromStatus, toStatus, triggeredBy, triggeredByRole, createdAt |
+| `order_status_logs`             | id, orderId(FK), fromStatus, toStatus, triggeredBy, triggeredByRole, **note**, createdAt |
 | `ordering_menu_item_snapshots`  | menuItemId(PK), restaurantId, name, price, status, lastSyncedAt |
-| `ordering_restaurant_snapshots` | restaurantId(PK), name, isOpen, isApproved, lastSyncedAt        |
+| `ordering_restaurant_snapshots` | restaurantId(PK), name, isOpen, isApproved, **address** ← [FIXED][from MISSING], lastSyncedAt |
+| `app_settings`                  | key(PK, text), value(text), description(text), updatedAt |
 
 > `*` = snapshotted value (not a FK, stored as plain data)
+
+**`app_settings` seed rows (inserted in migration):**
+
+| key | default value | description |
+|-----|---------------|-------------|
+| `ORDER_IDEMPOTENCY_TTL_SECONDS` | `300` | How long an idempotency key is retained in Redis before expiry |
+| `RESTAURANT_ACCEPT_TIMEOUT_SECONDS` | `600` | How long before an unconfirmed PENDING/PAID order is auto-cancelled by the cron job |
+
+> Runtime changes: update the row value directly in the DB. The `OrderTimeoutTask` (Phase 5) and checkout handler (Phase 4) read these values at startup via `AppSettingsService`. No redeployment required.
+
+> 🔴 **[FIX]** `orders` table was missing `cartId` — required by D5-B (`UNIQUE(cartId)` constraint). Added above. Include it in the Drizzle schema definition and migration.
+
+> 🔴 **[FIX]** `order_status_logs` table was missing `note` field — present in the Domain Model (Section 3.1) but absent from this table overview. Added above. Without it, state transition notes cannot be persisted.
+
+> 🟢 **[FIXED][from MISSING]** `orders` table: added `paymentUrl text` — stores the VNPay payment URL so the client can retrieve it if the app is closed before payment completes.
+
+> 🟢 **[FIXED][from MISSING]** `orders` table: added `expiresAt timestamptz` — set at order creation to `NOW() + <RESTAURANT_ACCEPT_TIMEOUT_SECONDS from app_settings>`. Used by the auto-cancel cron job (Phase 5) to identify timed-out orders.
 
 **Deliverable:** Tables exist in DB. Types are exported. No logic yet.
 
@@ -681,6 +719,9 @@ addItem(cartId, menuItemId):
 - `MenuItemUpdatedEvent` — published by `MenuService` after any create/update/delete/status-change
 - `RestaurantUpdatedEvent` — published by `RestaurantService` after any create/update (isOpen, isApproved changes)
 
+> ⚠️ **[WARNING]** `menu.schema.ts` (confirmed in codebase) has **two** availability fields: `status` (enum: `available | unavailable | out_of_stock`) and `isAvailable` (boolean). The `MenuItemUpdatedEvent` payload below includes **both** fields but the snapshot stores only `status`. Decide and document the canonical field:
+> - **Recommendation:** Use `status` enum as the single source of truth. Drop `isAvailable` from the event payload and derive boolean availability in snapshot consumers as `status === 'available'`. Remove the dual-field ambiguity before Phase 3 implementation begins. (I agree to this recommendation, bạn cứ triển khai như giả định sẽ bỏ isAvailable đi, tui sẽ bỏ isAvailable ở restaurant-catalog sau)
+
 **Part B — Restaurant Catalog Changes (Upstream)**
 - `MenuService`: publish `MenuItemUpdatedEvent` after `create()`, `update()`, `toggleSoldOut()`
 - `RestaurantService`: publish `RestaurantUpdatedEvent` after `create()`, `update()`, status changes
@@ -698,8 +739,8 @@ MenuService.toggleSoldOut()
     │  persist to DB
     │
     │  eventBus.publish(MenuItemUpdatedEvent {
-    │      menuItemId, name, price, status,
-    │      restaurantId, isAvailable
+    │      menuItemId, name, price, status,   ← [FIXED][from WARNING] isAvailable removed; status enum is canonical
+    │      restaurantId
     │  })
     │                        ─────────────────────────►
     │                                                  MenuItemProjector
@@ -765,10 +806,9 @@ Create Order aggregate:
   - Set paymentMethod from DTO
     │
     ▼
-Persist Order + OrderItems in one transaction
-    │
-    ▼
-Set cart.status = 'checked_out'
+Persist Order + OrderItems + cart.status='checked_out' in ONE transaction   ← [FIXED][from RISK]
+  (atomic: if any step fails, the entire transaction rolls back;
+   cart never stays in 'checking_out' without a matching order)
     │
     ▼
 Append OrderStatusLog(null → PENDING)
@@ -785,6 +825,7 @@ Publish OrderPlacedEvent {
     │
     └─── paymentMethod = 'vnpay' ────────────────────────────────────►
                                   Payment Context creates VNPay payment link
+                                  Store vnpayPaymentUrl → orders.paymentUrl   ← [FIXED][from MISSING]
                                   Return { orderId, vnpayPaymentUrl } to client (201)
                                   Order stays PENDING until PaymentConfirmedEvent
                                       │
@@ -800,6 +841,14 @@ Publish OrderPlacedEvent {
                                       │
                                       ▼
                                   Restaurant can now confirm (PAID → CONFIRMED)
+
+                    [PaymentFailedEvent received]   ← [FIXED][from MISSING]
+                                      │
+                                      ▼
+                                  Ordering transitions PENDING → CANCELLED
+                                  Reset cart.status = 'active'   ← customer can retry checkout
+                                  Append OrderStatusLog(PENDING → CANCELLED)
+                                  Publish OrderStatusChangedEvent(PENDING → CANCELLED)
 ```
 
 **REST Endpoints:**
@@ -825,6 +874,7 @@ GET    /orders/:id                  → get order detail
 - `OrderLifecycleController` — REST endpoints for state transitions
 - `OrderLifecycleModule`
 - `OrderStatusLog` appended on every transition
+- `OrderTimeoutTask` — `@Cron` job that queries PENDING/PAID orders where `expiresAt < NOW()` and transitions them to `CANCELLED` with `triggeredBy = 'system'`, then publishes `OrderStatusChangedEvent`   ← [FIXED][from MISSING]
 
 **State Machine:**
 
@@ -877,7 +927,7 @@ GET    /orders/:id                  → get order detail
 | `PENDING → CONFIRMED`             | Restaurant              | COD orders only — direct restaurant confirmation         |
 | `PENDING → CANCELLED`             | Customer, Restaurant    | Before payment (VNPay) or before restaurant confirms (COD) |
 | `PAID → CONFIRMED`                | Restaurant              | VNPay orders — restaurant confirms after payment         |
-| `PAID → CANCELLED`                | Customer, Restaurant    | After VNPay payment but before restaurant confirms       |
+| `PAID → CANCELLED`                | Customer, Restaurant    | After VNPay payment but before restaurant confirms — publishes `OrderCancelledAfterPaymentEvent` to trigger refund   ← [FIXED][from WARNING] |
 | `CONFIRMED → PREPARING`           | Restaurant              | Cooking started                                          |
 | `CONFIRMED → CANCELLED`           | Restaurant              | Cannot fulfill                                           |
 | `PREPARING → READY_FOR_PICKUP`    | Restaurant              | Ready for shipper                                        |
@@ -895,6 +945,10 @@ GET    /orders/:id/timeline  → get OrderStatusLog history
 **Events Published on Each Transition:**
 - Every transition → `OrderStatusChangedEvent` → Notification Context reacts
 - `READY_FOR_PICKUP` → `OrderReadyForPickupEvent` → Delivery Context reacts
+
+> � **[FIXED][from MISSING]** Restaurant accept timeout implemented via **both** mechanisms:
+> - `orders.expiresAt` set at order creation to `NOW() + RESTAURANT_ACCEPT_TIMEOUT_SECONDS` (see Phase 1 schema)
+> - `OrderTimeoutTask` (`@Cron`) in `OrderLifecycleModule` periodically queries `WHERE status IN ('PENDING','PAID') AND expiresAt < NOW()` and transitions matching orders to `CANCELLED` with `triggeredBy = 'system'`, publishing `OrderStatusChangedEvent` for each
 
 **Deliverable:** Full state machine works. History is logged. Events are published.
 
@@ -946,6 +1000,13 @@ PaymentFailedEvent:      ← INCOMING (published by Payment Context)
   paymentMethod,         ← 'vnpay'
   reason,
   failedAt
+
+OrderCancelledAfterPaymentEvent:   ← OUTGOING (published by Ordering)   ← [FIXED][from WARNING]
+  orderId, customerId,
+  paymentMethod,         ← 'vnpay'
+  paidAmount,            ← amount to refund
+  cancelledAt,
+  cancelledByRole        ← 'customer' | 'restaurant'
 ```
 
 **Deliverable:** Events are published and received by stub handlers. Event bus wiring confirmed.
@@ -1043,11 +1104,12 @@ src/module/ordering/
 ```
 src/shared/
 └── events/
-    ├── menu-item-updated.event.ts         ← published by Restaurant Catalog
-    ├── restaurant-updated.event.ts        ← published by Restaurant Catalog
-    ├── order-placed.event.ts              ← published by Ordering
-    ├── order-status-changed.event.ts      ← published by Ordering
-    └── order-ready-for-pickup.event.ts    ← published by Ordering
+    ├── menu-item-updated.event.ts              ← published by Restaurant Catalog
+    ├── restaurant-updated.event.ts             ← published by Restaurant Catalog
+    ├── order-placed.event.ts                   ← published by Ordering
+    ├── order-status-changed.event.ts           ← published by Ordering
+    ├── order-ready-for-pickup.event.ts         ← published by Ordering
+    └── order-cancelled-after-payment.event.ts  ← published by Ordering   ← [FIXED][from WARNING]
 ```
 
 ### 6.3 Dependency Graph
@@ -1056,8 +1118,8 @@ src/shared/
 app.module.ts
     │
     ├── RestaurantCatalogModule
-    │       ├── RestaurantModule   ──publishes──► MenuItemUpdatedEvent
-    │       └── MenuModule         ──publishes──► RestaurantUpdatedEvent
+    │       ├── RestaurantModule   ──publishes──► RestaurantUpdatedEvent
+    │       └── MenuModule         ──publishes──► MenuItemUpdatedEvent
     │
     └── OrderingModule
             ├── CartModule         ──reads──► MenuItemProjector (ACL)
@@ -1327,13 +1389,17 @@ These items in `restaurant-catalog` are required before implementing the Orderin
 | `MenuService` must publish `MenuItemUpdatedEvent` | Ordering's menu item projector needs this | Phase 3 |
 | Add `PATCH /restaurants/:id/approve` endpoint | Admin approval must work before orders can flow | Phase 4 |
 | Fix return types: `create()` / `update()` return `NewRestaurant` instead of `Restaurant` | Type safety for downstream consumers | Phase 1 |
+| **Add `deliveryRadiusKm` column to `restaurants` table** | BR-3 delivery radius check at checkout requires this field (currently absent) | Phase 4 |
+
+
 
 ### 10.3 Infrastructure Verification
 
 - [ ] PostgreSQL running and `DB_CONNECTION` configured
-- [ ] (If D2-B selected) Redis instance available and configured
-- [ ] `@nestjs/cqrs` installed (if D1-A or D1-C selected)
-- [ ] `EventEmitter2` available (if D1-B selected): check if `@nestjs/event-emitter` needs to be installed
+- [ ] (If D2-B selected) Redis instance available and configured — **add Redis service to `docker-compose.yml`** (currently only PostgreSQL is defined)
+- [ ] `@nestjs/cqrs` installed — **required** (D1-C selected; used for all events across all contexts)
+- [ ] `CqrsModule` registered in every module that publishes or handles events (including `RestaurantCatalogModule`)
+- [ ] `@nestjs/event-emitter` — **not needed** (all events use CQRS `EventBus` exclusively)
 
 ---
 
