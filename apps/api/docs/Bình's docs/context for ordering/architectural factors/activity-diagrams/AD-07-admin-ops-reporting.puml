@@ -1,0 +1,163 @@
+@startuml
+' Activity Diagram - Admin Operations & Reporting (Release 1 / MVP)
+skinparam swimlaneOrientation vertical
+
+title Activity - Admin Ops & Reporting (UC-D7)
+
+|Admin|
+start
+:Open admin dashboard;
+
+|System|
+:Authenticate admin;
+if (Authenticated?) then (Yes)
+  :Enforce RBAC (401/403 on deny);
+else (No)
+  |Admin|
+  :Show login failure;
+  stop
+endif
+
+|System|
+if (Has required permission?) then (Yes)
+else (No)
+  |Admin|
+  :Show access denied (non-sensitive);
+  |System|
+  :Record denied attempt;
+  stop
+endif
+
+|Admin|
+:Choose admin operation
+(Approvals
+ OR Suspension
+ OR Monitor Orders/Health
+ OR Search Users
+ OR Cancel Order
+ OR Commission Config
+ OR Reports/Export
+ OR Audit Log);
+
+|System|
+if (Operation = Approvals?) then (Yes)
+  :Load pending partner applications [BR-1];
+  |Admin|
+  :Approve OR Reject (reason required on reject);
+  |System|
+  :Validate request;
+  :Apply status change;
+  :Notify applicant;
+  :Write immutable audit entry;
+  if (Audit write succeeds?) then (Yes)
+    stop
+  else (No)
+    :Retry audit write OR block action
+    (consistent policy);
+    stop
+  endif
+
+else (No)
+  if (Operation = Suspension?) then (Yes)
+    |Admin|
+    :Suspend OR Reactivate partner
+    (reason required on suspend);
+    |System|
+    :Validate request;
+    :Apply partner status change;
+    :Enforce "Suspended" blocks
+    across intake/dispatch (<= 1 min);
+    :Write immutable audit entry;
+    stop
+
+  else (No)
+    if (Operation = Monitor Orders/Health?) then (Yes)
+      |System|
+      :Load order metrics + status counts;
+      :Detect stuck orders using
+      configured thresholds;
+      :Return dashboard view
+      (freshness <= 60s, p95 <= 2s);
+      |Admin|
+      :Review flagged orders;
+      stop
+
+    else (No)
+      if (Operation = Search Users?) then (Yes)
+        |Admin|
+        :Set role/status filters;
+        |System|
+        :Execute search (p95 <= 2s);
+        :Return user list;
+        |Admin|
+        :Open user details;
+        stop
+
+      else (No)
+        if (Operation = Cancel Order?) then (Yes)
+          |Admin|
+          :Select order;
+          :Enter cancellation reason;
+          |System|
+          :Validate order state;
+          if (Order state != Delivered?) then (Yes)
+            :Cancel order + record actor/timestamp;
+            :Notify customer + restaurant
+            (+ shipper if assigned);
+            :Write immutable audit entry;
+            stop
+          else (No)
+            |Admin|
+            :Show cancel blocked (Delivered);
+            stop
+          endif
+
+        else (No)
+          if (Operation = Commission Config?) then (Yes)
+            |Admin|
+            :Update commission percent;
+            |System|
+            :Validate (0..100%);
+            :Persist new config;
+            :Write change history entry;
+            :Write immutable audit entry;
+            stop
+
+          else (No)
+            if (Operation = Reports/Export?) then (Yes)
+              |Admin|
+              :Select report + filters;
+              |System|
+              :Run report query (server-side filters);
+              :Show report results;
+              |Admin|
+              :Export CSV;
+              |System|
+              :Generate CSV (stable headers, UTF-8);
+              :Log export (actor+timestamp);
+              stop
+
+            else (Audit Log)
+              |Admin|
+              :Query audit log (read-only);
+              |System|
+              :Filter by time/action type;
+              :Return immutable entries;
+              stop
+            endif
+          endif
+        endif
+      endif
+    endif
+  endif
+endif
+
+|External Systems (Scheduler / Batch Job)|
+:Periodic job runs;
+
+|System|
+:Calculate GMV + commission
+for Delivered orders [BR-5];
+:Snapshot commission rate per order;
+
+@enduml

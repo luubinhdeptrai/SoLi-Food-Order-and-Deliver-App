@@ -1,0 +1,101 @@
+@startuml
+' Activity Diagram - Order Tracking & Notifications (Release 1 / MVP)
+skinparam swimlaneOrientation vertical
+
+title Activity - Tracking & Notifications (UC-D6)
+
+|System|
+start
+:Order status changes
+(from restaurant/shipper/admin action);
+:Validate transition [BR-7];
+:Persist new status + history;
+:Create notification event;
+
+fork
+  ' Customer delivery path
+  |System|
+  :Route event to Customer;
+  if (Customer app state?) then (Foreground)
+    :Send WebSocket update (SLA <= 5s);
+    if (WebSocket connected?) then (Yes)
+      |Customer|
+      :Receive in-app status update;
+    else (No)
+      |Customer|
+      :Detect disconnect;
+      :Reconnect;
+      |System|
+      :Sync latest status on reconnect;
+      |Customer|
+      :Show latest status;
+    endif
+
+  else (Background/Closed)
+    |External Systems (Push Provider)|
+    :Deliver push notification;
+    |Customer|
+    :Receive push;
+    :Open app later;
+    |System|
+    :Sync latest status on open;
+    |Customer|
+    :Show latest status;
+  endif
+
+  |System|
+  if (Push/WebSocket degraded?) then (Yes)
+    :Enable polling fallback;
+    |Customer|
+    :Poll latest status periodically;
+    |System|
+    :Return latest status;
+  endif
+
+fork again
+  ' Restaurant path
+  |System|
+  :Route event to Restaurant;
+  :Send in-app update;
+  |External Systems (Push Provider)|
+  :Send optional alert
+  (e.g., cancellation/assignment);
+  |Restaurant|
+  :See updated order state;
+
+fork again
+  ' Shipper path
+  |System|
+  :Route event to assigned shipper;
+  if (Status requires shipper action?) then (Yes)
+    |External Systems (Push Provider)|
+    :Send dispatch/status push;
+  endif
+  |Shipper|
+  :See updated order state;
+
+fork again
+  ' Admin path
+  |System|
+  :Route event to Admin monitoring;
+  :Refresh dashboard data
+  (freshness <= 60s);
+  |Admin|
+  :View updated status;
+end fork
+
+|System|
+if (Order cancelled?) then (Yes)
+  :Attach cancellation reason;
+  :Notify affected parties;
+endif
+
+|System|
+if (Status = Picked Up?) then (Yes)
+  :Provide shipper contact details
+  to customer (controlled access);
+endif
+
+stop
+
+@enduml

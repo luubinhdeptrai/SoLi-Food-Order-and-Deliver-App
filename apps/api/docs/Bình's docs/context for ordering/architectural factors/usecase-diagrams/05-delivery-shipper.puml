@@ -1,0 +1,48 @@
+@startuml delivery-shipper
+title Use Case Diagram - Delivery Management (Shipper) (Release 1 / MVP)
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Shipper" as A_Shipper
+actor "Push Provider\n(APNs/FCM)" as A_Push
+actor "Maps / Navigation SDK" as A_Maps
+
+rectangle "Food Delivery System (MVP)" as SYS {
+  usecase "UC-40 Set Availability\n(Online/Offline)" as UC40
+
+  usecase "UC-44 Receive Delivery Job Request" as UC44
+  usecase "UC-45 View Assigned Job Details" as UC45
+  usecase "UC-41 Accept Delivery Job" as UC41
+  usecase "UC-46 Navigate to Pickup/Dropoff" as UC46
+  usecase "UC-42 Confirm Pickup" as UC42
+  usecase "UC-43 Confirm Delivery" as UC43
+
+  usecase "UC-48 Enforce Assignment Authorization\n(only assigned shipper)" as UC48
+  usecase "UC-38 Enforce Order Lifecycle Integrity\n(BR-7)" as UC38
+  usecase "UC-49 Record COD Cash Collected" as UC49
+}
+
+A_Shipper -- UC40
+A_Shipper -- UC44
+A_Shipper -- UC45
+A_Shipper -- UC41
+A_Shipper -- UC46
+A_Shipper -- UC42
+A_Shipper -- UC43
+
+A_Push -- UC44
+A_Maps -- UC46
+
+UC41 .> UC45 : <<include>>
+UC41 .> UC48 : <<include>>
+
+UC42 .> UC48 : <<include>>
+UC42 .> UC38 : <<include>>
+
+UC43 .> UC48 : <<include>>
+UC43 .> UC38 : <<include>>
+UC49 .> UC43 : <<extend>>\n[payment=COD]
+
+@enduml

@@ -1,0 +1,56 @@
+@startuml
+title Use Case Diagram - Discovery & Cart (Customer) (Release 1 / MVP)
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Customer" as A_Customer
+actor "Device Location Service (GPS)" as A_GPS
+actor "Maps / Geocoding API" as A_Maps
+
+rectangle "Food Delivery System (MVP)" as SYS {
+  usecase "UC-10 Browse/Search Restaurants" as UC10
+  usecase "UC-11 Search/Filter Food Items\n(Category + Proximity)" as UC11
+  usecase "UC-12 Check Availability\n(Restaurant / Menu Item)" as UC12
+
+  usecase "UC-16 View Restaurant/Menu Details" as UC16
+
+  usecase "UC-13 Manage Shopping Cart" as UC13
+  usecase "UC-14 Enforce Single-Restaurant Cart" as UC14
+
+  usecase "UC-17 Clear Cart" as UC17
+
+  usecase "UC-15 Provide Delivery Location\n(GPS or Enter Address)" as UC15
+  usecase "UC-18 Geocode / Reverse-Geocode Location" as UC18
+  usecase "UC-19 Enforce Service Area Restriction" as UC19
+  usecase "UC-20 Confirm Deliverability\n(Within Restaurant Radius)" as UC20
+}
+
+A_Customer -- UC10
+A_Customer -- UC11
+A_Customer -- UC12
+A_Customer -- UC16
+A_Customer -- UC13
+A_Customer -- UC15
+A_GPS -- UC15
+A_Maps -- UC18
+
+UC13 .> UC14 : <<include>>
+UC13 .> UC12 : <<include>>
+
+UC16 .> UC10 : <<extend>>\n[restaurant selected]
+UC16 .> UC11 : <<extend>>\n[item result selected]
+
+UC17 .> UC14 : <<extend>>\n[attempt add item from different restaurant\nAND customer chooses "Clear Cart"]
+
+UC16 .> UC12 : <<include>>
+
+UC10 .> UC20 : <<include>>
+UC11 .> UC20 : <<include>>
+UC20 .> UC15 : <<include>>
+UC20 .> UC19 : <<include>>
+
+UC20 .> UC18 : <<include>>
+
+@enduml

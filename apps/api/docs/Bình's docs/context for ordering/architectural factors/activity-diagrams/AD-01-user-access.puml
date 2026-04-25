@@ -1,0 +1,206 @@
+@startuml
+' Activity Diagram - User & Access Management (Release 1 / MVP)
+skinparam swimlaneOrientation vertical
+
+title Activity - User & Access Management (UC-D1)
+
+|System|
+start
+:Receive access-management request;
+if (Initiator = Customer?) then (Yes)
+  |Customer|
+  :Open auth/account screen;
+  :Choose action\n(Register/Login\nOR Manage Profile\nOR Reset Password\nOR Logout);
+
+  |System|
+  if (Action = Register/Login?) then (Yes)
+    if (Login method?) then (Email/Phone)
+      |Customer|
+      :Enter credentials;
+      |System|
+      :Validate input;
+      :Authenticate;
+      if (Auth service available?) then (Yes)
+        if (Credentials valid?) then (Yes)
+          :Issue session/token;
+          :Write audit log entry\n(account created / login success);
+          |Customer|
+          :Enter application;
+          stop
+        else (No)
+          :Write audit log entry (failed login);
+          |Customer|
+          :Show login error\n(no sensitive details);
+          stop
+        endif
+      else (No)
+        |Customer|
+        :Show retryable auth-unavailable error;
+        if (Retry?) then (Yes)
+          |System|
+          :Retry authenticate (bounded retries);
+          -[#gray]-> :Authenticate;
+        else (No)
+          stop
+        endif
+      endif
+
+    else (OAuth)
+      |Customer|
+      :Choose OAuth provider;
+      |System|
+      :Create OAuth auth request;
+      |External Systems (OAuth Provider)|
+      :Authenticate user;
+      :Return auth result;
+      |System|
+      if (OAuth success?) then (Yes)
+        :Create/lookup account;
+        :Issue session/token;
+        :Write audit log entry\n(account created / login success);
+        |Customer|
+        :Enter application;
+        stop
+      else (No)
+        :Write audit log entry (failed login);
+        |Customer|
+        :Show OAuth failure/cancel message;
+        stop
+      endif
+    endif
+
+  else (No)
+    if (Action = Manage Profile?) then (Yes)
+      |System|
+      :Authorize session;
+      if (Authorized?) then (Yes)
+        |Customer|
+        :View/Edit profile;
+        |System|
+        :Validate profile fields;
+        :Save profile;
+        |Customer|
+        :See updated profile;
+        stop
+      else (No)
+        |Customer|
+        :Prompt login;
+        stop
+      endif
+
+    else (No)
+      if (Action = Reset Password?) then (Yes)
+        |Customer|
+        :Request password reset;
+        |System|
+        :Validate account identifier;
+        :Send reset instruction;
+        if (Send succeeded?) then (Yes)
+          |Customer|
+          :Complete reset flow;
+          stop
+        else (No)
+          |Customer|
+          :Show retryable error;
+          stop
+        endif
+
+      else (Logout)
+        |System|
+        :Invalidate session/token;
+        |Customer|
+        :Return to login screen;
+        stop
+      endif
+    endif
+  endif
+
+else (No)
+  if (Initiator = Partner: Restaurant/Shipper?) then (Yes)
+    |Restaurant|
+    :Open partner onboarding;
+    :Submit partner application;
+
+    |System|
+    :Validate application fields;
+    if (Valid?) then (Yes)
+      :Create partner account\n(status=Pending Approval) [BR-1];
+      :Notify admin queue;
+      |Restaurant|
+      :View application status;
+      stop
+    else (No)
+      |Restaurant|
+      :Show validation errors;
+      stop
+    endif
+
+  else (Admin)
+    |Admin|
+    :Open admin dashboard;
+    :Enter credentials;
+
+    |System|
+    :Authenticate admin;
+    if (Authenticated?) then (Yes)
+      :Enforce RBAC;
+      if (Has permission?) then (Yes)
+        |Admin|
+        :Choose admin action\n(Approve/Reject\nOR Suspend/Reactivate\nOR Search Users);
+
+        |System|
+        if (Action = Approve/Reject?) then (Yes)
+          :Load pending applications [BR-1];
+          |Admin|
+          :Approve OR Reject (reason required on reject);
+          |System|
+          :Validate decision payload;
+          :Apply status change;
+          :Notify applicant;
+          :Write immutable audit log entry;
+          if (Audit write succeeds?) then (Yes)
+            stop
+          else (No)
+            :Retry audit write OR\nblock decision per policy;
+            stop
+          endif
+
+        else (No)
+          if (Action = Suspend/Reactivate?) then (Yes)
+            |Admin|
+            :Submit suspension/reactivation\n(reason required on suspend);
+            |System|
+            :Validate request;
+            :Apply partner status change;
+            :Enforce blocked operations\nfor Suspended partners;
+            :Write immutable audit log entry;
+            stop
+
+          else (Search Users)
+            |System|
+            :Execute search (role/status filters);
+            :Return results (p95 <= 2s);
+            |Admin|
+            :View user details;
+            |System|
+            :Write immutable audit log entry;
+            stop
+          endif
+        endif
+
+      else (No)
+        |Admin|
+        :Show 401/403 (non-sensitive);
+        |System|
+        :Record denied attempt (audit/security log);
+        stop
+      endif
+    else (No)
+      |Admin|
+      :Show login failure;
+      stop
+    endif
+  endif
+endif
+
+@enduml

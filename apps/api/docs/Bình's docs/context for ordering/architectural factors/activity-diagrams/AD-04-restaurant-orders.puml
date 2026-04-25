@@ -1,0 +1,145 @@
+@startuml
+' Activity Diagram - Restaurant Order Management (Release 1 / MVP)
+skinparam swimlaneOrientation vertical
+
+title Activity - Restaurant Order Management (UC-D4)
+
+|Restaurant|
+start
+:Sign in to restaurant portal;
+
+|System|
+:Authenticate restaurant staff;
+if (Authenticated + Active partner?) then (Yes)
+else (No)
+  |Restaurant|
+  :Show access blocked
+  (Pending/Rejected/Suspended);
+  stop
+endif
+
+|Restaurant|
+:Choose operation
+(Menu Management
+ OR Availability Control
+ OR Incoming Orders);
+
+|System|
+if (Operation = Menu Management?) then (Yes)
+  |Restaurant|
+  :Create/Edit menu item;
+  |System|
+  :Validate fields (e.g., price >= 0);
+  if (Valid?) then (Yes)
+    :Save menu item;
+    :Propagate to customers (<= 60s);
+    |Restaurant|
+    :See confirmation;
+    stop
+  else (No)
+    |Restaurant|
+    :Show validation errors;
+    stop
+  endif
+
+else (No)
+  if (Operation = Availability Control?) then (Yes)
+    |Restaurant|
+    :Toggle item Sold Out OR restaurant Closed;
+    |System|
+    :Authorize action;
+    :Apply availability change [BR-8];
+    :Propagate to customers (<= 10s);
+    |Restaurant|
+    :See updated state;
+    stop
+
+  else (Incoming Orders)
+    |System|
+    :Route new order to restaurant;
+    |External Systems (Push Provider)|
+    :Send persistent new-order alert
+    (audio + visual until acknowledged);
+
+    |Restaurant|
+    :Acknowledge alert;
+    :Open order details;
+
+    |System|
+    :Authorize view/action
+    (owning restaurant only);
+    if (Authorized?) then (Yes)
+    else (No)
+      |Restaurant|
+      :Show access denied;
+      stop
+    endif
+
+    |Restaurant|
+    :Accept OR Reject OR Cancel;
+
+    |System|
+    if (Action = Accept?) then (Yes)
+      :Validate transition [BR-7];
+      :Update order -> Accepted;
+      :Publish status update (SLA <= 5s);
+      |Restaurant|
+      :Start preparation;
+
+      |System|
+      :Validate transition [BR-7];
+      :Update order -> Preparing;
+      :Publish status update;
+
+      |Restaurant|
+      :Mark ready for pickup;
+      |System|
+      :Validate transition [BR-7];
+      :Update order -> Ready for Pickup;
+      :Publish status update;
+      stop
+
+    else (No)
+      if (Action = Reject?) then (Yes)
+        |Restaurant|
+        :Provide reject reason;
+        |System|
+        :Cancel order with reason;
+        :Publish cancellation + reason;
+        stop
+
+      else (Cancel)
+        |Restaurant|
+        :Provide cancellation reason;
+        |System|
+        if (Order state before Picked Up?) then (Yes)
+          :Cancel order with reason;
+          :Record actor + timestamp;
+          :Publish cancellation + reason;
+          stop
+        else (No)
+          |Restaurant|
+          :Show cancel blocked
+          (Picked Up/Delivered);
+          stop
+        endif
+      endif
+    endif
+
+    |External Systems (Timer/Scheduler)|
+    :Monitor accept timeout;
+
+    |System|
+    if (No accept/reject before
+RESTAURANT_ACCEPT_TIMEOUT_SECONDS?) then (Yes)
+      :Mark order Unaccepted/Expired
+      (reason code);
+      :Notify customer;
+      stop
+    else (No)
+      ' no-op (already accepted/rejected)
+    endif
+  endif
+endif
+
+@enduml

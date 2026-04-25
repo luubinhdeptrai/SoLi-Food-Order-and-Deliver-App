@@ -1,0 +1,132 @@
+@startuml
+' Activity Diagram - Discovery & Cart (Customer) (Release 1 / MVP)
+skinparam swimlaneOrientation vertical
+
+title Activity - Discovery & Cart (UC-D2)
+
+|Customer|
+start
+:Open discovery screen;
+
+|System|
+:Fetch restaurant list (p95 <= 2s);
+if (Restaurant list available?) then (Yes)
+  |Customer|
+  :Browse/search restaurants;
+else (No)
+  |Customer|
+  :Show retryable load error;
+  if (Retry?) then (Yes)
+    |System|
+    :Retry fetch restaurants (bounded);
+    -[#gray]-> :Fetch restaurant list (p95 <= 2s);
+  else (No)
+    stop
+  endif
+endif
+
+|Customer|
+:Select restaurant OR open item search;
+
+|System|
+if (User enters item search
+with proximity?) then (Yes)
+  |Customer|
+  :Provide delivery location
+(GPS permission or enter address);
+
+  |System|
+  if (Has GPS permission?) then (Yes)
+    |External Systems (GPS + Maps API)|
+    :Get current GPS coordinates;
+    |System|
+    :Reverse-geocode location;
+  else (No)
+    |Customer|
+    :Enter address;
+    |External Systems (GPS + Maps API)|
+    :Geocode address;
+    |System|
+    :Normalize location;
+  endif
+
+  |System|
+  if (Location resolved?) then (Yes)
+    :Enforce service area policy [BR-6];
+    if (Inside service area?) then (Yes)
+      :Compute distance to restaurants;
+      :Filter items by proximity
+      + deliverability [BR-3];
+      :Return item results (p95 <= 2s);
+    else (No)
+      |Customer|
+      :Show out-of-service-area message;
+      stop
+    endif
+  else (No)
+    |Customer|
+    :Show actionable location error;
+    if (Retry provide location?) then (Yes)
+      -[#gray]-> :Provide delivery location
+(GPS permission or enter address);
+    else (No)
+      stop
+    endif
+  endif
+
+else (No)
+  :Load restaurant/menu details;
+endif
+
+|Customer|
+:View restaurant/menu details;
+
+|System|
+:Load availability state;
+if (Restaurant closed OR item sold out?) then (Yes)
+  |Customer|
+  :Show unavailable state;
+  :Block add-to-cart;
+  stop
+else (No)
+  |Customer|
+  :Choose item and quantity;
+endif
+
+|System|
+:Validate add-to-cart request;
+if (BR-2 Single-restaurant cart?) then (Yes)
+  :Add item to cart;
+  :Recalculate totals (<= 1s);
+else (No)
+  |Customer|
+  :See explanation + options
+(Clear cart or Cancel) [BR-2];
+  if (Clear cart?) then (Yes)
+    |System|
+    :Clear cart;
+    :Add item from selected restaurant;
+    :Recalculate totals;
+  else (Cancel)
+    |System|
+    :Keep cart unchanged;
+    stop
+  endif
+endif
+
+|Customer|
+:Manage cart (update qty/remove);
+
+|System|
+:Persist cart state;
+if (Cart update succeeds?) then (Yes)
+  |Customer|
+  :Proceed to checkout OR continue browsing;
+  stop
+else (No)
+  |Customer|
+  :Show retryable cart error;
+  stop
+endif
+
+@enduml
