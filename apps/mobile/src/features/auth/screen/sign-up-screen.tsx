@@ -46,42 +46,13 @@ export function SignUpScreen({
     <View className="flex-1 bg-surface">
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
-      {/* ── Background Blobs ─────────────────────────────────────────── */}
-      <View
-        style={{
-          position: "absolute",
-          top: 96,
-          left: 40,
-          width: 128,
-          height: 128,
-          borderRadius: 64,
-          backgroundColor: "rgba(163, 246, 156, 0.3)",
-        }}
-        pointerEvents="none"
-      />
-      <View
-        style={{
-          position: "absolute",
-          bottom: 128,
-          right: 40,
-          width: 160,
-          height: 160,
-          borderRadius: 80,
-          backgroundColor: "rgba(255, 220, 190, 0.2)",
-        }}
-        pointerEvents="none"
-      />
 
       {/* ── Header ───────────────────────────────────────────────────── */}
       <View
         className="flex-row items-center justify-between px-6 bg-surface"
         style={{ paddingTop: insets.top + 12, paddingBottom: 12 }}
       >
-        <TouchableOpacity
-          onPress={onBack}
-          activeOpacity={0.7}
-          className="w-10 h-10 items-center justify-center rounded-full bg-surface-container"
-        >
+        <TouchableOpacity onPress={onBack} activeOpacity={0.7}>
           <ArrowLeft size={24} color="#1a6b20" />
         </TouchableOpacity>
 
