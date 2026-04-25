@@ -10,7 +10,7 @@ export default function WelcomePage() {
   };
 
   const handleGetStarted = () => {
-    router.replace("/(customer)" as any);
+    router.push("/(auth)/sign-up");
   };
 
   return (
