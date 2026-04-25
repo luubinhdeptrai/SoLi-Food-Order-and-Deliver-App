@@ -6,7 +6,8 @@
       "@/*": [
         "./*"
       ]
-    }
+    },
+    "jsxImportSource": "nativewind"
   },
   "include": [
     "**/*.ts",
