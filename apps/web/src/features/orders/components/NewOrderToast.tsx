@@ -45,7 +45,18 @@ export function NewOrderToast() {
             New Order {newOrderToast.orderNumber}
           </h3>
           <p className="text-sm text-muted-foreground mb-4 font-body">
-            4 items • $54.20 total
+            {(() => {
+              const itemCount = newOrderToast.detail?.items?.length ?? 0;
+              const total = newOrderToast.detail?.totals?.total;
+              const itemLabel = itemCount === 1 ? "item" : "items";
+              const totalStr =
+                total != null
+                  ? `$${total.toFixed(2)} total`
+                  : "";
+              return itemCount > 0
+                ? `${itemCount} ${itemLabel}${totalStr ? ` • ${totalStr}` : ""}`
+                : totalStr || "New order received";
+            })()}
           </p>
 
           {/* Action buttons — shadcn Button */}

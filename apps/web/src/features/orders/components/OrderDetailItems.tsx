@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { OrderItem } from "@/features/orders/types/order.types";
@@ -8,6 +9,30 @@ type OrderDetailItemsProps = {
 
 function formatPrice(value: number) {
   return `$${value.toFixed(2)}`;
+}
+
+/** Renders a food image thumbnail with a graceful icon fallback on load error. */
+function ItemImage({ imageUrl, name }: { imageUrl?: string; name: string }) {
+  const [isImageError, setIsImageError] = useState(false);
+
+  if (imageUrl && !isImageError) {
+    return (
+      <img
+        src={imageUrl}
+        alt={name}
+        className="w-full h-full object-cover"
+        onError={() => setIsImageError(true)}
+      />
+    );
+  }
+
+  return (
+    <div className="w-full h-full flex items-center justify-center text-outline">
+      <span className="material-symbols-outlined text-2xl" aria-hidden="true">
+        restaurant
+      </span>
+    </div>
+  );
 }
 
 export function OrderDetailItems({ items }: OrderDetailItemsProps) {
@@ -33,22 +58,7 @@ export function OrderDetailItems({ items }: OrderDetailItemsProps) {
               <div className="flex items-start gap-4">
                 {/* Food image thumbnail */}
                 <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-surface-container">
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-outline">
-                      <span
-                        className="material-symbols-outlined text-2xl"
-                        aria-hidden="true"
-                      >
-                        restaurant
-                      </span>
-                    </div>
-                  )}
+                  <ItemImage imageUrl={item.imageUrl} name={item.name} />
                 </div>
 
                 {/* Item details */}
@@ -58,7 +68,7 @@ export function OrderDetailItems({ items }: OrderDetailItemsProps) {
                       {item.name}
                     </h4>
                     <span className="font-headline font-bold text-primary flex-shrink-0">
-                      {formatPrice(item.price)}
+                      {formatPrice(item.unitPrice)}
                     </span>
                   </div>
                   <p className="text-sm text-stone-500 mt-1 font-body">

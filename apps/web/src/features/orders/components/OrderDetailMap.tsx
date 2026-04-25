@@ -4,12 +4,18 @@ import { Button } from "@/components/ui/button";
 type OrderDetailMapProps = {
   location?: string;
   imageUrl?: string;
+  /** Called when the user clicks the "Expand Map" button. */
+  onExpand?: () => void;
 };
 
 const DEFAULT_MAP_URL =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuBSRB96bmkQ10LvrPV7nEALjtUBeCBMkp8rw00IDENXW8meD-PgCU1uSWXSsr1PfUPTu2hWPLFlp0leo2hem1ZKd5EVoS6rKLiLjUmHnhuxhL0Lv-0vPsHA1Go6LhZhhWGHFOJGZeuCvP1SnkMT86NthaM5H9SzqgVHS9iYqCtSJDmrgpkLbN1Fa6qACLpEz8a6YICyLv_kQt1YylrkaNOVpVXP0yexINHpcNoKhS_Udow3mp7A0huDC5cMtEDH8iCAUpsI7vK_6Mt4";
 
-export function OrderDetailMap({ location = "Springfield, IL", imageUrl }: OrderDetailMapProps) {
+export function OrderDetailMap({
+  location = "Springfield, IL",
+  imageUrl,
+  onExpand,
+}: OrderDetailMapProps) {
   const mapSrc = imageUrl ?? DEFAULT_MAP_URL;
 
   return (
@@ -44,7 +50,10 @@ export function OrderDetailMap({ location = "Springfield, IL", imageUrl }: Order
         <Button
           variant="ghost"
           size="sm"
-          className="bg-white/20 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 h-auto rounded-full border border-white/30 hover:bg-white/30 hover:text-white"
+          className="bg-white/20 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 h-auto rounded-full border border-white/30 hover:bg-white/30 hover:text-white disabled:opacity-50"
+          onClick={onExpand}
+          disabled={!onExpand}
+          aria-label="Expand map"
         >
           Expand Map
         </Button>

@@ -1,6 +1,13 @@
 export type OrderStatus = "requesting" | "todo" | "in_progress" | "done";
 
-export type OrderPriority = "high" | "normal" | "review";
+/** Branded ISO-8601 date-time string for compile-time safety. */
+export type ISOString = string & { readonly _brand: unique symbol };
+
+/** Priority levels – does NOT include review state (see OrderReviewStatus). */
+export type OrderPriority = "high" | "normal";
+
+/** Separate status for orders requiring a manual review step. */
+export type OrderReviewStatus = "review";
 
 export type OrderTag = {
   label: string;
@@ -9,13 +16,18 @@ export type OrderTag = {
 
 export type OrderItemModifier = {
   label: string;
+  /** Additional cost of this modifier, in the order's currency units. */
+  price: number;
 };
 
 export type OrderItem = {
   id: string;
   name: string;
   quantity: number;
-  price: number;
+  /** Cost per single unit of this item. */
+  unitPrice: number;
+  /** Total cost for this line (unitPrice × quantity). Computed or pre-populated. */
+  totalPrice?: number;
   imageUrl?: string;
   modifiers?: OrderItemModifier[];
 };
@@ -24,7 +36,8 @@ export type OrderHistoryStep = "completed" | "current" | "pending";
 
 export type OrderHistoryEvent = {
   label: string;
-  time: string;
+  /** ISO-8601 date-time string when this event occurred (or a human label for pending). */
+  time: ISOString | string;
   step: OrderHistoryStep;
 };
 
@@ -33,6 +46,8 @@ export type OrderTotals = {
   serviceFee: number;
   deliveryFee: number;
   tax: number;
+  /** Grand total: subtotal + serviceFee + deliveryFee + tax. */
+  total: number;
 };
 
 export type OrderDetail = {
@@ -47,7 +62,8 @@ export type OrderDetail = {
   items: OrderItem[];
   history: OrderHistoryEvent[];
   kitchenNotes?: string;
-  placedAt: string;
+  /** ISO-8601 date-time string when the order was placed. */
+  placedAt: ISOString | string;
   deliveryLocation?: string;
 };
 
@@ -57,7 +73,8 @@ export type Order = {
   title: string;
   status: OrderStatus;
   tag: OrderTag;
-  timestamp: string;
+  /** ISO-8601 date-time or relative label (e.g. "Just now", "5m ago"). */
+  timestamp: ISOString | string;
   assignedTo?: string;
   statusAction?: string;
   detail?: OrderDetail;

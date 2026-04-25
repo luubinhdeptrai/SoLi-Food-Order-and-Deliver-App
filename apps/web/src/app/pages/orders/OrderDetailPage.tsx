@@ -11,7 +11,16 @@ import { OrderDetailNotes } from "@/features/orders/components/OrderDetailNotes"
 export function OrderDetailPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const orders = useOrderStore((s) => s.orders);
+  // isLoaded tracks whether the store has finished its initial load.
+  // The current store uses synchronous initial state, so it is always true;
+  // update this selector when async loading is introduced.
+  const isLoaded = useOrderStore((s) => !s.isLoading);
   const order = orders.find((o) => o.id === orderId);
+
+  if (!isLoaded) {
+    // Store is still loading — render nothing to avoid a premature redirect.
+    return null;
+  }
 
   if (!order) {
     return <Navigate to="/orders" replace />;

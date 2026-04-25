@@ -53,7 +53,12 @@ export function OrderKanbanColumn({ columnId }: OrderKanbanColumnProps) {
   const getOrdersByStatus = useOrderStore((s) => s.getOrdersByStatus);
   
   const orders = getOrdersByStatus(columnId);
-  const config = COLUMN_CONFIGS.find((c) => c.id === columnId)!;
+  const config = COLUMN_CONFIGS.find((c) => c.id === columnId);
+
+  if (!config) {
+    console.error(`[OrderKanbanColumn] No column config found for columnId: "${columnId}"`);
+    return null;
+  }
 
   return (
     <div

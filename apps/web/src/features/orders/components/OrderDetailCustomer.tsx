@@ -16,9 +16,23 @@ type CustomerInfo = {
 
 type OrderDetailCustomerProps = {
   customer: CustomerInfo;
+  /**
+   * Called when the user clicks the "Contact Support" icon in the card header.
+   * TODO: wire to a real support dialog/route when available.
+   */
+  onContactSupport?: () => void;
+  /**
+   * Called when the user clicks the "Contact Customer" button.
+   * TODO: wire to a real messaging flow when available.
+   */
+  onContactCustomer?: () => void;
 };
 
-export function OrderDetailCustomer({ customer }: OrderDetailCustomerProps) {
+export function OrderDetailCustomer({
+  customer,
+  onContactSupport,
+  onContactCustomer,
+}: OrderDetailCustomerProps) {
   return (
     <Card className="rounded-2xl ring-0 shadow-none bg-surface-container-lowest gap-0 py-0">
       <CardHeader className="px-6 pt-6 pb-0">
@@ -29,7 +43,9 @@ export function OrderDetailCustomer({ customer }: OrderDetailCustomerProps) {
           <button
             type="button"
             aria-label="Contact support"
-            className="text-primary material-symbols-outlined"
+            className="text-primary material-symbols-outlined disabled:opacity-40"
+            onClick={onContactSupport}
+            disabled={!onContactSupport}
           >
             contact_support
           </button>
@@ -71,7 +87,10 @@ export function OrderDetailCustomer({ customer }: OrderDetailCustomerProps) {
         {/* Contact button — shadcn outline variant, rounded-xl */}
         <Button
           variant="outline"
-          className="w-full rounded-xl border-primary/20 text-primary font-bold hover:bg-primary/5 hover:text-primary"
+          className="w-full rounded-xl border-primary/20 text-primary font-bold hover:bg-primary/5 hover:text-primary disabled:opacity-40"
+          onClick={onContactCustomer}
+          disabled={!onContactCustomer}
+          aria-label="Contact customer"
         >
           <span className="material-symbols-outlined text-sm" aria-hidden="true">
             chat_bubble

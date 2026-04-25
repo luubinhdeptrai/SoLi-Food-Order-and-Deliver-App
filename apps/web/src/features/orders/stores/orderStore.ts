@@ -25,30 +25,33 @@ const initialOrders: Order[] = [
         serviceFee: 2.50,
         deliveryFee: 5.00,
         tax: 3.24,
+        total: 51.24,
       },
       items: [
         {
           id: "i1",
           name: "Artisan Harvest Bowl",
           quantity: 1,
-          price: 18.50,
+          unitPrice: 18.50,
+          totalPrice: 18.50,
           imageUrl:
             "https://lh3.googleusercontent.com/aida-public/AB6AXuB_6de9BlayCYkFZbOqwnDlYdW17oavkPJci0V0UXEXsc58yRshLHsPQIUdwvXlBaQ6wYlmWwQZw6qbxjzS3omSMrIvnRrM4E0z521IvuAorxT0k1zaRs8hcNxBw-SB86RFBzyEq2TwNajUcwMgPk5LsX9OoAJ2g3lDdVn0HqrZC-AQ2TlvtFVqnCZlRg2GSYEgj48AJntpzz4iGCV1KmxT0q0W7W9HdNK--SAqWdipfn84MVK87b1H7_dxqlGXMRK4Ly-W0m6bvpI",
           modifiers: [
-            { label: "Extra Avocado" },
-            { label: "No Onions" },
+            { label: "Extra Avocado", price: 0 },
+            { label: "No Onions", price: 0 },
           ],
         },
         {
           id: "i2",
           name: "Atelier Signature Burger",
           quantity: 1,
-          price: 22.00,
+          unitPrice: 22.00,
+          totalPrice: 22.00,
           imageUrl:
             "https://lh3.googleusercontent.com/aida-public/AB6AXuCLwognIewT16blipkHMQ75p51XiTWYdONu2SXE-lrsqYGTVVHEgRMm_ATEDkx0x7xOXaRPhElrvjBlWiOT9n2epH96QulHG-VxXvMuSLvWcmesPiysWLkH6GwTWUDto03Jp6hWYR9N09YzdM-AY2pgXVC8e37sBS3ymU0lUlxEeskBPY1E5VH4W3tHmu77lNYpT1bHxTlm5TmxByN2CoL3C65539enP5SaJwW6cKC47RiuXZKyTCtEj26lRcMrBOaUf_GyQsQ0Prc",
           modifiers: [
-            { label: "Medium Rare" },
-            { label: "Truffle Fries Upgrade" },
+            { label: "Medium Rare", price: 0 },
+            { label: "Truffle Fries Upgrade", price: 2.50 },
           ],
         },
       ],
@@ -124,11 +127,11 @@ const initialOrders: Order[] = [
         address: "18 Harvest Lane, Portland, OR 97201",
       },
       paymentMethod: "Credit Card",
-      totals: { subtotal: 65.00, serviceFee: 3.00, deliveryFee: 5.00, tax: 5.85 },
+      totals: { subtotal: 65.00, serviceFee: 3.00, deliveryFee: 5.00, tax: 5.85, total: 78.85 },
       items: [
-        { id: "i1", name: "Artisan Cheese Board", quantity: 1, price: 35.00 },
-        { id: "i2", name: "House Red Wine", quantity: 1, price: 18.00 },
-        { id: "i3", name: "Charcuterie Selection", quantity: 2, price: 12.00 },
+        { id: "i1", name: "Artisan Cheese Board", quantity: 1, unitPrice: 35.00, totalPrice: 35.00 },
+        { id: "i2", name: "House Red Wine", quantity: 1, unitPrice: 18.00, totalPrice: 18.00 },
+        { id: "i3", name: "Charcuterie Selection", quantity: 2, unitPrice: 12.00, totalPrice: 24.00 },
       ],
       history: [
         { label: "Order Placed", time: "Oct 24, 12:30 PM", step: "completed" },
@@ -154,9 +157,9 @@ const initialOrders: Order[] = [
         address: "290 Cedar St, Chicago, IL 60614",
       },
       paymentMethod: "Google Pay",
-      totals: { subtotal: 16.00, serviceFee: 1.50, deliveryFee: 4.00, tax: 1.78 },
+      totals: { subtotal: 16.00, serviceFee: 1.50, deliveryFee: 4.00, tax: 1.78, total: 23.28 },
       items: [
-        { id: "i1", name: "Organic Grain Bowl", quantity: 1, price: 16.00, modifiers: [{ label: "No Onions" }] },
+        { id: "i1", name: "Organic Grain Bowl", quantity: 1, unitPrice: 16.00, totalPrice: 16.00, modifiers: [{ label: "No Onions", price: 0 }] },
       ],
       history: [
         { label: "Order Placed", time: "Oct 24, 12:27 PM", step: "completed" },
@@ -239,6 +242,8 @@ type OrderStore = {
   orders: Order[];
   searchQuery: string;
   newOrderToast: Order | null;
+  /** True while the store is fetching orders asynchronously. Always false for the current synchronous mock data. */
+  isLoading: boolean;
   setSearchQuery: (q: string) => void;
   reorderOrder: (
     orderId: string,
@@ -255,7 +260,8 @@ type OrderStore = {
 export const useOrderStore = create<OrderStore>((set, get) => ({
   orders: initialOrders,
   searchQuery: "",
-  newOrderToast: initialOrders[0],
+  isLoading: false,
+  newOrderToast: null,
 
   setSearchQuery: (q) => set({ searchQuery: q }),
 
@@ -277,11 +283,17 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
 
       if (!sourceList || !destList) return state;
 
-      const actualSourceIndex = sourceList.findIndex((o) => o.id === orderId);
-      if (actualSourceIndex === -1) return state;
+      // Prefer the caller-supplied sourceIndex; fall back to a find for safety.
+      const resolvedSourceIndex =
+        sourceIndex >= 0 && sourceIndex < sourceList.length && sourceList[sourceIndex]?.id === orderId
+          ? sourceIndex
+          : sourceList.findIndex((o) => o.id === orderId);
 
-      const [movedOrder] = sourceList.splice(actualSourceIndex, 1);
-      movedOrder.status = destinationStatus;
+      if (resolvedSourceIndex === -1) return state;
+
+      // Remove without mutating the original order object.
+      const [originalOrder] = sourceList.splice(resolvedSourceIndex, 1);
+      const movedOrder: Order = { ...originalOrder, status: destinationStatus };
 
       destList.splice(destinationIndex, 0, movedOrder);
 

@@ -25,8 +25,10 @@ export function OrderBoardHeader({ onRelease }: OrderBoardHeaderProps) {
             search
           </span>
           <Input
+            id="order-quick-filter"
             type="text"
             placeholder="Quick Filters"
+            aria-label="Quick Filters"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-8 w-48 bg-surface-container-lowest shadow-sm border-none focus-visible:ring-2 focus-visible:ring-primary/20"
