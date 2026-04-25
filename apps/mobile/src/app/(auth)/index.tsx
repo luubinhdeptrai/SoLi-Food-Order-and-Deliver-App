@@ -9,8 +9,7 @@ export default function WelcomePage() {
   };
 
   const handleSignIn = () => {
-    // TODO: Navigate to sign-in screen when implemented
-    console.log("Sign In pressed");
+    router.push("/(auth)/sign-in");
   };
 
   const handleGoogleSignIn = () => {
