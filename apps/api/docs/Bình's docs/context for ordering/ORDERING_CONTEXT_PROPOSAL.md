@@ -106,14 +106,12 @@ The **Ordering Context** is the **core domain** of the SoLi Food Delivery platfo
 │ ORDERING CONTEXT — Domain Model                                        │
 │                                                                        │
 │  ┌─────────────┐  1        N  ┌──────────────┐                        │
-│  │    Cart     │ ──────────── │   CartItem   │                        │
-│  │─────────────│              │──────────────│                        │
-│  │ id (PK)     │              │ id (PK)      │                        │
-│  │ customerId  │              │ cartId (FK)  │                        │
-│  │ restaurantId│              │ menuItemId   │                        │
-│  │ status      │              │ quantity     │                        │
-│  │ createdAt   │              │ unitPrice    │  ← snapshotted at add  │
-│  │ updatedAt   │              │ itemName     │  ← snapshotted at add  │
+│  │    Cart     │ ──────────── │   CartItem   │  ← Redis-only (D2-B)  │
+│  │─────────────│              │──────────────│  No DB tables.        │
+│  │ id (uuid)   │              │ menuItemId   │  Stored as JSON at    │
+│  │ customerId  │              │ quantity     │  cart:<customerId>    │
+│  │ restaurantId│              │ unitPrice    │  ← snapshotted at add  │
+│  │ items[]     │              │ itemName     │  ← snapshotted at add  │
 │  └─────────────┘              └──────────────┘                        │
 │                                                                        │
 │  ┌─────────────────┐  1    N  ┌──────────────┐                        │
@@ -615,8 +613,8 @@ src/module/ordering/
 **Goal:** Define all database tables for the Ordering context.
 
 **Scope:**
-- `carts` table
-- `cart_items` table
+- ~~`carts` table~~ — **not needed (D2-B): cart is Redis-only**
+- ~~`cart_items` table~~ — **not needed (D2-B): items are embedded in the Redis cart JSON**
 - `orders` table
 - `order_items` table (immutable price snapshot)
 - `order_status_logs` table
@@ -629,11 +627,25 @@ src/module/ordering/
 
 **Table Overview:**
 
+> **Redis Cart Structure (D2-B — no DB tables for cart):**
+> ```
+> Key:   cart:<customerId>          (one active cart per customer)
+> Value: JSON {
+>   cartId: uuid,                  ← generated at first item add; used for orders.cartId (D5-B)
+>   customerId: string,
+>   restaurantId: string,
+>   restaurantName: string,        ← snapshotted at first item add
+>   items: [
+>     { menuItemId, itemName, unitPrice, quantity }  ← price/name snapshotted at add
+>   ],
+>   createdAt: ISO string
+> }
+> TTL:   CART_ABANDONED_TTL_SECONDS (e.g. 86400 = 24h)  ← add to app_settings
+> ```
+
 | Table                           | Key Fields                                                      |
 |---------------------------------|-----------------------------------------------------------------|
-| `carts`                         | id, customerId, restaurantId, status(active/checked_out/abandoned) |
-| `cart_items`                    | id, cartId(FK), menuItemId, itemName*, unitPrice*, quantity     |
-| `orders`                        | id, customerId, restaurantId, restaurantName*, **cartId**(FK — UNIQUE for D5-B), status(pending/paid/confirmed/preparing/ready_for_pickup/picked_up/delivering/delivered/cancelled/refunded), totalAmount, paymentMethod, deliveryAddress(JSON), note, **paymentUrl** ← [FIXED][from MISSING], **expiresAt** ← [FIXED][from MISSING] |
+| `orders`                        | id, customerId, restaurantId, restaurantName*, **cartId**(UNIQUE for D5-B — sourced from Redis cart.cartId), status(pending/paid/confirmed/preparing/ready_for_pickup/picked_up/delivering/delivered/cancelled/refunded), totalAmount, paymentMethod, deliveryAddress(JSON), note, **paymentUrl** ← [FIXED][from MISSING], **expiresAt** ← [FIXED][from MISSING] |
 | `order_items`                   | id, orderId(FK), menuItemId, itemName*, unitPrice*, quantity, subtotal |
 | `order_status_logs`             | id, orderId(FK), fromStatus, toStatus, triggeredBy, triggeredByRole, **note**, createdAt |
 | `ordering_menu_item_snapshots`  | menuItemId(PK), restaurantId, name, price, status, lastSyncedAt |
@@ -648,10 +660,11 @@ src/module/ordering/
 |-----|---------------|-------------|
 | `ORDER_IDEMPOTENCY_TTL_SECONDS` | `300` | How long an idempotency key is retained in Redis before expiry |
 | `RESTAURANT_ACCEPT_TIMEOUT_SECONDS` | `600` | How long before an unconfirmed PENDING/PAID order is auto-cancelled by the cron job |
+| `CART_ABANDONED_TTL_SECONDS` | `86400` | Redis TTL for inactive carts (24h); cart is auto-evicted by Redis after this duration |
 
 > Runtime changes: update the row value directly in the DB. The `OrderTimeoutTask` (Phase 5) and checkout handler (Phase 4) read these values at startup via `AppSettingsService`. No redeployment required.
 
-> 🔴 **[FIX]** `orders` table was missing `cartId` — required by D5-B (`UNIQUE(cartId)` constraint). Added above. Include it in the Drizzle schema definition and migration.
+> 🔴 **[FIX]** `orders` table: `cartId` (UNIQUE) is sourced from `cart.cartId` UUID stored in Redis — **it is NOT a FK to a `carts` DB table** (no such table exists with D2-B). The UNIQUE constraint still enforces that a cart can only produce one order. Include this in the Drizzle schema with `.unique()` and no foreign key reference.
 
 > 🔴 **[FIX]** `order_status_logs` table was missing `note` field — present in the Domain Model (Section 3.1) but absent from this table overview. Added above. Without it, state transition notes cannot be persisted.
 
@@ -668,37 +681,39 @@ src/module/ordering/
 **Goal:** Customers can manage their cart. Single-restaurant constraint is enforced.
 
 **Scope:**
-- `CartRepository` — DB operations for cart and cart_items
+- `CartRedisRepository` — Redis operations: read/write/delete cart JSON at `cart:<customerId>`
 - `CartService` — Domain logic:
-  - `createCart(customerId)` → creates empty cart
-  - `addItem(cartId, menuItemId, quantity)` → enforces BR-2 (single-restaurant)
-  - `removeItem(cartId, cartItemId)`
-  - `updateItemQuantity(cartId, cartItemId, quantity)`
-  - `clearCart(cartId)`
-  - `getCart(cartId)` → returns cart with items
+  - `getOrCreateCart(customerId)` → reads Redis; creates new cart JSON if key absent
+  - `addItem(customerId, menuItemId, quantity)` → enforces BR-2 (single-restaurant); snapshots price/name from `MenuItemProjector`
+  - `removeItem(customerId, menuItemId)`
+  - `updateItemQuantity(customerId, menuItemId, quantity)`
+  - `clearCart(customerId)` → deletes Redis key
+  - `getCart(customerId)` → returns cart JSON from Redis
 - `CartController` — REST endpoints
 - `CartModule`
+
+> **No `CartRepository` (DB).** Cart state is never written to PostgreSQL. At checkout, cart data is read from Redis and written to `orders` + `order_items` in one DB transaction. The Redis key is deleted after successful order creation.
 
 **REST Endpoints:**
 
 ```
-GET    /carts/my            → get customer's active cart (or create one)
-POST   /carts/:id/items     → add item to cart
-PATCH  /carts/:id/items/:itemId  → update quantity
-DELETE /carts/:id/items/:itemId  → remove item
-DELETE /carts/:id           → clear cart
+GET    /carts/my                     → get customer's active cart (from Redis)
+POST   /carts/my/items               → add item to cart
+PATCH  /carts/my/items/:menuItemId   → update quantity
+DELETE /carts/my/items/:menuItemId   → remove item
+DELETE /carts/my                     → clear cart (delete Redis key)
 ```
 
 **BR-2 Enforcement Logic:**
 ```
-addItem(cartId, menuItemId):
-  1. Load snapshot of menuItemId → get restaurantId
-  2. Load current cart
-  3. If cart.restaurantId is null → set it
+addItem(customerId, menuItemId):
+  1. Load snapshot of menuItemId from MenuItemProjector → get restaurantId, name, price
+  2. Load cart JSON from Redis (key: cart:<customerId>)
+  3. If cart is empty → set cart.restaurantId = snapshot.restaurantId; assign new cartId UUID
   4. If cart.restaurantId !== snapshot.restaurantId → throw 409 CONFLICT
      "Cart already contains items from [restaurant name]. 
       Clear cart before adding from a different restaurant."
-  5. Proceed with insert
+  5. Upsert item in cart.items[]; re-SET the key in Redis (refresh TTL)
 ```
 
 **Note on D3 Impact:** For Step 1 above, how `menuItemId → restaurantId` is resolved depends on D3 option selected.
@@ -792,23 +807,28 @@ Validate all items available        ← snapshot (D3-B) or direct call (D3-A)
 Validate delivery address in radius ← BR-3 (see D7 below if implemented)
     │
     ▼
-Lock cart (status = 'checking_out') ← optional concurrency protection
+Lock cart in Redis (SET cart:<customerId>:lock 1 EX 30 NX) ← prevent concurrent checkouts
+    │  If lock not acquired → throw 409 CONFLICT "Checkout already in progress"
     │
     ▼
 Create Order aggregate:
   - orderId = uuid
-  - Copy restaurantId, restaurantName (snapshot)
-  - For each CartItem:
-      orderItem.unitPrice = snapshot.price   ← NOT cart item price
+  - cartId  = cart.cartId (from Redis)          ← written to orders.cartId for D5-B
+  - Copy restaurantId, restaurantName (from Redis cart)
+  - For each CartItem in Redis:
+      orderItem.unitPrice = snapshot.price   ← from MenuItemProjector (re-validated)
       orderItem.itemName  = snapshot.name    ← frozen at this moment
   - Calculate totalAmount
   - Set status = PENDING
   - Set paymentMethod from DTO
     │
     ▼
-Persist Order + OrderItems + cart.status='checked_out' in ONE transaction   ← [FIXED][from RISK]
-  (atomic: if any step fails, the entire transaction rolls back;
-   cart never stays in 'checking_out' without a matching order)
+Persist Order + OrderItems in ONE DB transaction
+  (if transaction fails → release Redis lock; customer retries)
+    │
+    ▼
+Delete Redis cart key (cart:<customerId>) + release lock   ← outside DB tx; safe because:
+  if API crashes here, D5-B UNIQUE(cartId) prevents duplicate order on retry
     │
     ▼
 Append OrderStatusLog(null → PENDING)
@@ -846,14 +866,15 @@ Publish OrderPlacedEvent {
                                       │
                                       ▼
                                   Ordering transitions PENDING → CANCELLED
-                                  Reset cart.status = 'active'   ← customer can retry checkout
+                                  Restore Redis cart from order data   ← customer can retry
+                                    (re-SET cart:<customerId> with original items JSON)
                                   Append OrderStatusLog(PENDING → CANCELLED)
                                   Publish OrderStatusChangedEvent(PENDING → CANCELLED)
 ```
 
 **REST Endpoints:**
 ```
-POST   /carts/:id/checkout          → place order from cart
+POST   /carts/my/checkout           → place order from active cart
 GET    /orders/:id                  → get order detail
 ```
 
