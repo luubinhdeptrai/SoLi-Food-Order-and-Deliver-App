@@ -1,10 +1,10 @@
 import {
-  pgTable,
-  uuid,
-  text,
   boolean,
-  real,
+  doublePrecision,
+  pgTable,
+  text,
   timestamp,
+  uuid,
 } from 'drizzle-orm/pg-core';
 
 export const restaurants = pgTable('restaurants', {
@@ -16,8 +16,8 @@ export const restaurants = pgTable('restaurants', {
   phone: text('phone').notNull(),
   isOpen: boolean('is_open').notNull().default(false),
   isApproved: boolean('is_approved').notNull().default(false),
-  latitude: real('latitude'),
-  longitude: real('longitude'),
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

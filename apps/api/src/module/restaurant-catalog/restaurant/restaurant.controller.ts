@@ -6,20 +6,18 @@ import {
   Delete,
   Param,
   Body,
-  UseGuards,
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Roles, Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { RestaurantService } from './restaurant.service';
-import { CreateRestaurantDto, UpdateRestaurantDto } from './dto/restaurant.dto';
-import { JwtAuthGuard } from '@/module/auth/guards/jwt-auth.guard';
-import { RolesGuard } from '@/module/auth/guards/roles.guard';
-import { Roles } from '@/module/auth/decorators/roles.decorator';
+import { hasRole } from '@/module/auth/role.util';
 import {
-  CurrentUser,
-  type JwtPayload,
-} from '@/module/auth/decorators/current-user.decorator';
+  CreateRestaurantDto,
+  RestaurantResponseDto,
+  UpdateRestaurantDto,
+} from './dto/restaurant.dto';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -33,13 +31,11 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { RestaurantResponseDto } from './dto/restaurant.dto';
 
 @ApiTags('Restaurants')
 @ApiBearerAuth()
 @ApiUnauthorizedResponse({ description: 'Missing or invalid bearer token' })
 @Controller('restaurants')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class RestaurantController {
   constructor(private readonly service: RestaurantService) {}
 
@@ -78,7 +74,7 @@ export class RestaurantController {
   }
 
   @Post()
-  @Roles('admin', 'restaurant')
+  @Roles(['admin', 'restaurant'])
   @ApiOperation({
     summary: 'Create restaurant',
     description: 'Creates a new restaurant for the authenticated owner.',
@@ -90,12 +86,12 @@ export class RestaurantController {
   @ApiForbiddenResponse({
     description: 'Insufficient permissions (requires admin or restaurant role)',
   })
-  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateRestaurantDto) {
-    return this.service.create(user.sub, dto);
+  create(@Session() session: UserSession, @Body() dto: CreateRestaurantDto) {
+    return this.service.create(session.user.id, dto);
   }
 
   @Patch(':id')
-  @Roles('admin', 'restaurant')
+  @Roles(['admin', 'restaurant'])
   @ApiOperation({
     summary: 'Update restaurant',
     description:
@@ -120,19 +116,19 @@ export class RestaurantController {
   @ApiNotFoundResponse({ description: 'Restaurant not found' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: JwtPayload,
+    @Session() session: UserSession,
     @Body() dto: UpdateRestaurantDto,
   ) {
     return this.service.update(
       id,
-      user.sub,
-      user.roles?.includes('admin') ?? false,
+      session.user.id,
+      hasRole(session.user.role, 'admin'),
       dto,
     );
   }
 
   @Delete(':id')
-  @Roles('admin')
+  @Roles(['admin'])
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Delete restaurant',

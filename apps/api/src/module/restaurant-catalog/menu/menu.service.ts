@@ -1,7 +1,8 @@
 import {
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { MenuRepository } from './menu.repository';
 import type {
@@ -64,6 +65,11 @@ export class MenuService {
     isAdmin: boolean,
   ): Promise<MenuItem> {
     const item = await this.assertOwnership(id, requesterId, isAdmin);
+    if (item.status === 'unavailable') {
+      throw new ConflictException(
+        'Cannot toggle sold-out on an unavailable item; mark it available first',
+      );
+    }
     const nextStatus =
       item.status === 'out_of_stock' ? 'available' : 'out_of_stock';
     return this.repo.update(id, { status: nextStatus });
