@@ -1,0 +1,15 @@
+/**
+ * ACL (Anti-Corruption Layer) folder — Phase 3 implementation target.
+ *
+ * Will contain:
+ *   projectors/
+ *     menu-item.projector.ts          — @EventsHandler(MenuItemUpdatedEvent)
+ *     restaurant-snapshot.projector.ts — @EventsHandler(RestaurantUpdatedEvent)
+ *   schemas/
+ *     menu-item-snapshot.schema.ts    — Drizzle schema (D4-B)
+ *     restaurant-snapshot.schema.ts   — Drizzle schema (D4-B)
+ *
+ * Projectors listen to upstream events via the CQRS EventBus and upsert
+ * rows into the local PostgreSQL snapshot tables (D3-B + D4-B).
+ * No direct imports of RestaurantModule or MenuModule are allowed here.
+ */

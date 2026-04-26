@@ -2,7 +2,7 @@
 
 > **Document Type:** Design Proposal (No Code)
 > **Author Role:** Senior Software Architect
-> **Status:** Decisions Finalized — Ready for Implementation
+> **Status:** Phase 0 Complete — Infrastructure Implemented
 > **Target Project:** `SoLi-Food-Order-and-Deliver-App` / `apps/api`
 
 ---
@@ -569,15 +569,22 @@ Each phase has a **clear scope**, is **independently deliverable**, and ends wit
 **Goal:** Prepare the Ordering context skeleton without any domain logic.
 
 **Scope:**
-- Install `@nestjs/cqrs` — required (D1-C selected)   [SYNCED with D1]
-- Create context folder structure `src/module/ordering/`
-- Create `ordering.module.ts` (empty context module)
-- Register `OrderingModule` in `app.module.ts`
-- Create `src/shared/events/` directory (or `src/module/ordering/events/`)
-- Create placeholder module files: `cart.module.ts`, `order.module.ts`, `order-lifecycle.module.ts`, `order-history.module.ts`
+- Install `@nestjs/cqrs` — required (D1-C selected)   [SYNCED with D1]   **[INFRA IMPLEMENTED]** `@nestjs/cqrs ^11.0.3`
+- Install `ioredis` — required (D2-B selected)   **[INFRA IMPLEMENTED]** `ioredis ^5.10.1`
+- Create context folder structure `src/module/ordering/`   **[INFRA IMPLEMENTED]**
+- Create `ordering.module.ts` (empty context module)   **[INFRA IMPLEMENTED]** `src/module/ordering/ordering.module.ts`
+- Register `OrderingModule` in `app.module.ts`   **[INFRA IMPLEMENTED]**
+- Create `RedisModule` (global) in `src/lib/redis/`   **[INFRA IMPLEMENTED]** — `redis.module.ts`, `redis.service.ts`, `redis.constants.ts`
+- Register `RedisModule` in `app.module.ts`   **[INFRA IMPLEMENTED]**
+- Create `src/shared/events/` with all 8 typed event classes   **[INFRA IMPLEMENTED]** `src/shared/events/`
+- Create placeholder module files: `cart.module.ts`, `order.module.ts`, `order-lifecycle.module.ts`, `order-history.module.ts`   **[INFRA IMPLEMENTED]**
+- Create `src/module/ordering/acl/` folder placeholder   **[INFRA IMPLEMENTED]**
+- Create `src/module/ordering/common/ordering.constants.ts` — Redis key patterns + TTL fallback   **[INFRA IMPLEMENTED]**
+- Add Redis service to `docker-compose.yml`   **[INFRA IMPLEMENTED]** `redis:7-alpine`
+- Add `REDIS_HOST`, `REDIS_PORT` to `.env.example`   **[INFRA IMPLEMENTED]**
 - Document Redis key schema for idempotency (used in Phase 4):   ← [FIXED][from RISK]
-  - Key pattern: `idempotency:order:<X-Idempotency-Key>` → stores `orderId`
-  - TTL value: read from `app_settings` table (`ORDER_IDEMPOTENCY_TTL_SECONDS`) — see Phase 1
+  - Key pattern: `idempotency:order:<X-Idempotency-Key>` → stores `orderId`   **[INFRA IMPLEMENTED]** (constant in `ordering.constants.ts`)
+  - TTL value: read from `app_settings` table (`ORDER_IDEMPOTENCY_TTL_SECONDS`) — see Phase 1; fallback = 86400s
   - Set with `SET ... EX <ttl> NX`
 
 > ⚠️ **[WARNING — Confirmed Decision]** `@nestjs/cqrs` is **not** present in `apps/api/package.json`. Phase 0 **must** install it before any event or command handler is written. `@nestjs/event-emitter` is **not required** — all events (catalog-level and ordering-level) will use the single CQRS `EventBus`.
@@ -604,7 +611,7 @@ src/module/ordering/
     └── (projectors / facades)
 ```
 
-**Deliverable:** App boots with `OrderingModule` registered and no errors.
+**Deliverable:** App boots with `OrderingModule` + `RedisModule` registered and no errors.   **[INFRA IMPLEMENTED]** — See `apps/api/docs/phases/phase-0-test-guide.md`
 
 ---
 

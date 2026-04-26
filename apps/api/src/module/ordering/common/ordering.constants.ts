@@ -1,0 +1,27 @@
+/**
+ * Redis key patterns for the Ordering bounded context (D5-A).
+ *
+ * Key format: idempotency:order:<X-Idempotency-Key-header-value>
+ * Stored value: orderId (UUID string) once the order is created
+ *
+ * TTL is resolved at runtime from the DB setting ORDER_IDEMPOTENCY_TTL_SECONDS.
+ * The value below is used as a fallback before Phase 1 DB seeding is complete.
+ */
+export const IDEMPOTENCY_KEY_PREFIX = 'idempotency:order:' as const;
+
+/**
+ * Fallback TTL (24 h) used when app_settings DB row is not yet seeded.
+ * Phase 1 will replace this with a DB-backed lookup.
+ */
+// export const IDEMPOTENCY_TTL_FALLBACK_SECONDS = 86_400;
+
+/**
+ * Cart key format: cart:<customerId>
+ * Each customer has exactly one active cart (D2-B, Redis-only).
+ */
+export const CART_KEY_PREFIX = 'cart:' as const;
+
+/**
+ * Cart TTL — 7 days. Items left in cart expire silently.
+ */
+export const CART_TTL_SECONDS = 7 * 24 * 60 * 60;
