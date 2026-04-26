@@ -2,7 +2,7 @@
 
 > **Document Type:** Design Proposal (No Code)
 > **Author Role:** Senior Software Architect
-> **Status:** Draft — Awaiting Option Selections
+> **Status:** Decisions Finalized — Ready for Implementation
 > **Target Project:** `SoLi-Food-Order-and-Deliver-App` / `apps/api`
 
 ---
@@ -80,7 +80,7 @@ The **Ordering Context** is the **core domain** of the SoLi Food Delivery platfo
 | Concern              | Belongs To             | How Ordering Interacts                           |
 |----------------------|------------------------|--------------------------------------------------|
 | Menu item data/price | Restaurant & Catalog   | Via local projection (event-driven snapshot)     |
-| Restaurant open/closed | Restaurant & Catalog | Validation at checkout (see Decision D3)         |
+| Restaurant open/closed | Restaurant & Catalog | Via local projection snapshot (D3-B selected)    |
 | Payment processing   | Payment Context        | Ordering publishes `OrderPlacedEvent`            |
 | Shipper assignment   | Delivery Context       | Ordering publishes `OrderReadyForPickupEvent`    |
 | Push notifications   | Notification Context   | Ordering publishes `OrderStatusChangedEvent`     |
@@ -148,7 +148,7 @@ These are **owned by the Ordering context**, kept in sync via domain events from
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ ordering.menu_item_snapshots  (Projection Table / Map)  │
+│ ordering.menu_item_snapshots  (Projection Table — PostgreSQL, D4-B)    │   [SYNCED with D4]
 │─────────────────────────────────────────────────────────│
 │ menuItemId     ← from Restaurant Catalog                │
 │ restaurantId                                            │
@@ -159,7 +159,7 @@ These are **owned by the Ordering context**, kept in sync via domain events from
 └─────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────┐
-│ ordering.restaurant_snapshots  (Projection Table / Map) │
+│ ordering.restaurant_snapshots  (Projection Table — PostgreSQL, D4-B)   │   [SYNCED with D4]
 │─────────────────────────────────────────────────────────│
 │ restaurantId   ← from Restaurant Catalog                │
 │ name                                                    │
@@ -179,7 +179,7 @@ These are **owned by the Ordering context**, kept in sync via domain events from
 
 ## 4. Key Design Decisions
 
-> ⚠️ **Action Required:** Review each decision, select an option, and mark it with `✅ SELECTED`.
+> ✅ **All decisions have been finalized.** The selections below are locked in and reflected throughout this document. No further action required in this section.
 
 ---
 
@@ -569,7 +569,7 @@ Each phase has a **clear scope**, is **independently deliverable**, and ends wit
 **Goal:** Prepare the Ordering context skeleton without any domain logic.
 
 **Scope:**
-- (Conditional on D1) Install `@nestjs/cqrs` if selected
+- Install `@nestjs/cqrs` — required (D1-C selected)   [SYNCED with D1]
 - Create context folder structure `src/module/ordering/`
 - Create `ordering.module.ts` (empty context module)
 - Register `OrderingModule` in `app.module.ts`
@@ -600,7 +600,7 @@ src/module/ordering/
 │   ├── order-lifecycle.module.ts
 ├── order-history/
 │   ├── order-history.module.ts
-└── acl/                            ← if D3-B or D3-C selected
+└── acl/                            ← required (D3-B selected)   [SYNCED with D3]
     └── (projectors / facades)
 ```
 
@@ -618,8 +618,8 @@ src/module/ordering/
 - `orders` table
 - `order_items` table (immutable price snapshot)
 - `order_status_logs` table
-- (Optional) `ordering_menu_item_snapshots` table (if D4-B selected)
-- (Optional) `ordering_restaurant_snapshots` table (if D3-B + D4-B selected)
+- `ordering_menu_item_snapshots` table — required (D4-B selected)   [SYNCED with D4]
+- `ordering_restaurant_snapshots` table — required (D3-B + D4-B selected)   [SYNCED with D3][SYNCED with D4]
 - `app_settings` table — stores runtime-configurable platform parameters (see Table Overview)
 - Export all types
 - Register schemas in `drizzle/schema.ts`
@@ -716,7 +716,7 @@ addItem(customerId, menuItemId):
   5. Upsert item in cart.items[]; re-SET the key in Redis (refresh TTL)
 ```
 
-**Note on D3 Impact:** For Step 1 above, how `menuItemId → restaurantId` is resolved depends on D3 option selected.
+**Note (D3-B):** Step 1 above uses `MenuItemProjector` (local PostgreSQL snapshot) to resolve `menuItemId → restaurantId, name, price` — no direct call to `MenuModule` or `RestaurantModule`.   [SYNCED with D3][SYNCED with D4]
 
 **Deliverable:** Cart CRUD works end-to-end with single-restaurant constraint.
 
@@ -724,7 +724,7 @@ addItem(customerId, menuItemId):
 
 ### Phase 3 — ACL Layer (Menu Item & Restaurant Projections)
 
-> **Skip this phase if D3-A (Direct call) is selected.** In that case, the Cart/Order modules will import `RestaurantModule` directly.
+> **This phase is REQUIRED.** D3-B (Local Projection) is selected — the Ordering context must not import `RestaurantModule` or `MenuModule` directly. All validation uses local PostgreSQL snapshots (D4-B).   [SYNCED with D3][SYNCED with D4]
 
 **Goal:** The Ordering context maintains local, up-to-date snapshots of `MenuItem` and `Restaurant` state. No cross-module service calls at runtime.
 
@@ -761,8 +761,8 @@ MenuService.toggleSoldOut()
     │                                                  MenuItemProjector
     │                                                  .handle(event)
     │                                                      │
-    │                                                      │ update snapshot
-    │                                                      │ (Map or DB table)
+    │                                                      │ update snapshot in DB table   [SYNCED with D4]
+    │                                                      │ (ordering_menu_item_snapshots, D4-B)
     │                                                      ▼
     │                                              [snapshot updated]
     ▼
@@ -784,24 +784,24 @@ MenuService.toggleSoldOut()
 
 **Scope:**
 - `OrderRepository` — DB operations for orders and order_items
-- `OrderService` / `PlaceOrderHandler` (depending on D1)
+- `PlaceOrderHandler` — CQRS `CommandHandler` (D1-C); dispatched via `CommandBus`   [SYNCED with D1]
 - `CheckoutService` — orchestrates checkout flow
 - `OrderController` — REST endpoint
 
 **Checkout Flow Sequence:**
 ```
-Client                CartController         CheckoutService/Handler
+Client                CartController         PlaceOrderHandler (CQRS)   [SYNCED with D1]
 ──────────────────────────────────────────────────────────────────────
-POST /carts/:id/checkout
+POST /carts/my/checkout   [SYNCED with D2]
     │
     ▼
 Load cart + items
     │
     ▼
-Validate restaurant open/approved   ← snapshot (D3-B) or direct call (D3-A)
+Validate restaurant open/approved   ← RestaurantSnapshotProjector lookup (D3-B)   [SYNCED with D3]
     │
     ▼
-Validate all items available        ← snapshot (D3-B) or direct call (D3-A)
+Validate all items available        ← MenuItemProjector lookup (D3-B)   [SYNCED with D3]
     │
     ▼
 Validate delivery address in radius ← BR-3 (see D7 below if implemented)
@@ -878,9 +878,10 @@ POST   /carts/my/checkout           → place order from active cart
 GET    /orders/:id                  → get order detail
 ```
 
-**Idempotency (D5 impact):**
-- If D5-B: add `UNIQUE(cart_id)` constraint on `orders` table
-- If D5-A: check `X-Idempotency-Key` before processing
+**Idempotency (D5-A + D5-B — both apply):**   [SYNCED with D5]
+- D5-B: `UNIQUE(cart_id)` constraint on `orders` table — enforced at DB level via Drizzle `.unique()`
+- D5-A: check `X-Idempotency-Key` header before processing; cache result in Redis
+  (`idempotency:order:<key>`, TTL from `app_settings.ORDER_IDEMPOTENCY_TTL_SECONDS`)
 
 **Deliverable:** Order is successfully created with frozen prices. `OrderPlacedEvent` is published.
 
@@ -1072,9 +1073,8 @@ src/module/ordering/
 ├── cart/
 │   ├── cart.module.ts
 │   ├── cart.controller.ts
-│   ├── cart.service.ts
-│   ├── cart.repository.ts
-│   ├── cart.schema.ts                    ← Drizzle table definitions
+│   ├── cart.service.ts                   ← Service pattern (D1-C); no CommandHandler   [SYNCED with D1]
+│   ├── cart.redis-repository.ts          ← Redis ops only (D2-B); no DB repo or schema   [SYNCED with D2]
 │   └── dto/
 │       └── cart.dto.ts
 │
@@ -1082,15 +1082,12 @@ src/module/ordering/
 │   ├── order.module.ts
 │   ├── order.controller.ts
 │   │
-│   ├── application/                      ← if D1-A (full CQRS) selected
-│   │   ├── commands/
-│   │   │   ├── place-order.command.ts
-│   │   │   └── place-order.handler.ts
-│   │   └── queries/
-│   │       ├── get-order.query.ts
-│   │       └── get-order.handler.ts
+│   ├── application/                      ← D1-C: CQRS for order placement only   [SYNCED with D1]
+│   │   └── commands/
+│   │       ├── place-order.command.ts
+│   │       └── place-order.handler.ts
 │   │
-│   ├── order.service.ts                  ← if D1-B (simple) selected
+│   ├── order.service.ts                  ← query methods (get order, etc.)   [SYNCED with D1]
 │   ├── order.repository.ts
 │   ├── order.schema.ts
 │   └── dto/
@@ -1111,13 +1108,13 @@ src/module/ordering/
 │   └── dto/
 │       └── order-history-query.dto.ts
 │
-└── acl/                                  ← only if D3-B selected
+└── acl/                                  ← required (D3-B selected)   [SYNCED with D3]
     ├── projectors/
     │   ├── menu-item.projector.ts
     │   └── restaurant-snapshot.projector.ts
-    └── read-models/
-        ├── menu-item.read-model.ts
-        └── restaurant.read-model.ts
+    └── schemas/                            ← Drizzle schemas for snapshot tables (D4-B)   [SYNCED with D4]
+        ├── menu-item-snapshot.schema.ts
+        └── restaurant-snapshot.schema.ts
 ```
 
 ### 6.2 Shared Events Location
@@ -1283,7 +1280,7 @@ Coupling: Only via event class (shared contract)
 ```
 For paymentMethod = 'vnpay':
 
-  Customer places order (POST /carts/:id/checkout)
+  Customer places order (POST /carts/my/checkout)   [SYNCED with D2]
          │
          ▼
       PENDING ── Payment Context generates VNPay payment URL
@@ -1303,7 +1300,7 @@ For paymentMethod = 'vnpay':
 
 For paymentMethod = 'cod':
 
-  Customer places order (POST /carts/:id/checkout)
+  Customer places order (POST /carts/my/checkout)   [SYNCED with D2]
          │
          ▼
       PENDING ── No payment step required
@@ -1372,8 +1369,7 @@ Phase 4 ──►  Phase 5 ──► Phase 6
 Phase 4 ──►  Phase 7
 ```
 
-> Phase 3 (ACL) must complete **before** Phase 4 if D3-B (projections) is selected.
-> Phase 3 can be **skipped** if D3-A (direct call) is selected.
+> Phase 3 (ACL) **must complete before** Phase 4 — D3-B (projections) is selected and required.   [SYNCED with D3]
 
 ### 9.3 Minimum Viable Ordering (MVO)
 
@@ -1393,12 +1389,12 @@ Before writing any code, verify these are resolved:
 
 ### 10.1 Option Selections (Required)
 
-- [ ] **D1** — CQRS strategy selected: [ ] A (Full CQRS)  [ ] B (Simple Services)  [ ] C (Hybrid)
-- [ ] **D2** — Cart persistence selected: [ ] A (DB only)  [ ] B (Redis+DB)  [ ] C (DB+cron)
-- [ ] **D3** — Checkout validation selected: [ ] A (Direct call)  [ ] B (Projections)  [ ] C (ACL Facade)
-- [ ] **D4** — Snapshot storage selected: [ ] A (In-memory)  [ ] B (DB table)  *(only if D3-B)*
-- [ ] **D5** — Idempotency selected: [ ] A (X-Idempotency-Key)  [ ] B (DB unique on cartId)
-- [ ] **D6** — State machine selected: [ ] A (Transition table)  [ ] B (XState)
+- [x] **D1** — ✅ C (Hybrid CQRS): Cart = Service pattern; Order placement = `PlaceOrderHandler` (CQRS `CommandHandler` + `EventBus`)   [SYNCED with D1]
+- [x] **D2** — ✅ B (Redis+DB): Cart stored in Redis; no `carts`/`cart_items` DB tables   [SYNCED with D2]
+- [x] **D3** — ✅ B (Projections): Validation via `MenuItemProjector` + `RestaurantSnapshotProjector`; no direct service calls   [SYNCED with D3]
+- [x] **D4** — ✅ B (DB table): Snapshots in `ordering_menu_item_snapshots` + `ordering_restaurant_snapshots` PostgreSQL tables   [SYNCED with D4]
+- [x] **D5** — ✅ A + B (both): `X-Idempotency-Key` header (Redis, TTL from `app_settings`) + `UNIQUE(cartId)` on `orders` table   [SYNCED with D5]
+- [x] **D6** — ✅ A (Transition table): Hand-crafted `ALLOWED_TRANSITIONS` map in `OrderLifecycleService`   [SYNCED with D6]
 
 ### 10.2 Blockers in Restaurant Catalog (Must Fix First)
 
@@ -1417,7 +1413,7 @@ These items in `restaurant-catalog` are required before implementing the Orderin
 ### 10.3 Infrastructure Verification
 
 - [ ] PostgreSQL running and `DB_CONNECTION` configured
-- [ ] (If D2-B selected) Redis instance available and configured — **add Redis service to `docker-compose.yml`** (currently only PostgreSQL is defined)
+- [ ] Redis instance available and configured — **add Redis service to `docker-compose.yml`** (currently only PostgreSQL is defined) — required (D2-B selected)   [SYNCED with D2]
 - [ ] `@nestjs/cqrs` installed — **required** (D1-C selected; used for all events across all contexts)
 - [ ] `CqrsModule` registered in every module that publishes or handles events (including `RestaurantCatalogModule`)
 - [ ] `@nestjs/event-emitter` — **not needed** (all events use CQRS `EventBus` exclusively)
