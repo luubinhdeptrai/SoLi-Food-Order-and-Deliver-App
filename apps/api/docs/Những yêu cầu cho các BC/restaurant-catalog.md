@@ -163,3 +163,69 @@ Until Phase 3, the snapshot tables are empty, so the checkout validation in Phas
 | Inject `EventBus` in `RestaurantService` | `restaurant.service.ts` | Phase 3 |
 | Publish `RestaurantUpdatedEvent` after mutations | `restaurant.service.ts` | Phase 3 |
 | Confirm `address` field on `restaurants` table | `restaurant.schema.ts` | Phase 3 |
+| **Add `delivery_radius_km` column** | `restaurant.schema.ts` | Phase 4 |
+| **Include `deliveryRadiusKm` in `RestaurantUpdatedEvent`** | `restaurant.service.ts` | Phase 4 |
+| **Include `latitude`/`longitude` in `RestaurantUpdatedEvent`** | `restaurant.service.ts` | Phase 4 |
+
+---
+
+## 6. Missing Fields — Required for Phase 4 (BR-3 Delivery Radius)
+
+> ⚠️ These fields are **not yet present** in `restaurant.schema.ts`. They are needed
+> for BR-3 (delivery radius enforcement at checkout). Phase 4 is blocked until resolved.
+
+### 6.1 `delivery_radius_km` — MISSING
+
+**What it is:** The maximum distance (in km) from the restaurant within which the platform
+accepts delivery orders.
+
+**Where it is missing:** `restaurants` table in `restaurant.schema.ts` — no such column.
+
+**What Ordering expects:**
+```typescript
+// In RestaurantUpdatedEvent payload:
+deliveryRadiusKm?: number;  // nullable — restaurants may not set a radius
+```
+
+**What to add in `restaurant.schema.ts`:**
+```typescript
+deliveryRadiusKm: real('delivery_radius_km'),  // nullable
+```
+
+**Impact if missing:**
+- `ordering_restaurant_snapshots.delivery_radius_km` will always be `null`
+- BR-3 (Phase 4 checkout validation) cannot enforce the delivery area constraint
+- All orders will be accepted regardless of delivery distance (silently skips radius check)
+
+---
+
+### 6.2 `latitude` / `longitude` in `RestaurantUpdatedEvent`
+
+**What they are:** Geospatial coordinates of the restaurant location.
+
+**Current status:** `restaurants.latitude` and `restaurants.longitude` **exist** in
+`restaurant.schema.ts` (`real` type, nullable). However, they are NOT included in
+`RestaurantUpdatedEvent` yet (event does not exist yet as of Phase 1).
+
+**What Ordering expects in `RestaurantUpdatedEvent`:**
+```typescript
+latitude?: number;   // from restaurants.latitude
+longitude?: number;  // from restaurants.longitude
+```
+
+**These are stored in `ordering_restaurant_snapshots` for the Haversine distance
+calculation at checkout (BR-3).**
+
+---
+
+### 6.3 `isAvailable` field on `menu_items` — DEPRECATE
+
+**Current status:** `menu_items` table has BOTH `status` (enum) and `is_available` (boolean).
+
+**Required action:** The Ordering context uses `status` as the single source of truth
+(per ORDERING_CONTEXT_PROPOSAL §3 decision). The `isAvailable` boolean creates ambiguity.
+
+**Recommended:** Remove `is_available` from `menu_items` table (or keep as derived column
+populated from `status === 'available'` for backward compatibility with existing API clients).
+
+**The `MenuItemUpdatedEvent` must NOT include `isAvailable`** — only `status` enum.
