@@ -15,8 +15,11 @@ export class RestaurantRepository {
     @Inject(DB_CONNECTION) readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
-  async findAll(): Promise<Restaurant[]> {
-    return this.db.select().from(restaurants).orderBy(restaurants.createdAt);
+  async findAll(offset?: number, limit?: number): Promise<Restaurant[]> {
+    const query = this.db.select().from(restaurants).orderBy(restaurants.createdAt);
+    const withOffset = offset !== undefined ? query.offset(offset) : query;
+    const withLimit = limit !== undefined ? withOffset.limit(limit) : withOffset;
+    return withLimit;
   }
 
   async findById(id: string): Promise<Restaurant | null> {

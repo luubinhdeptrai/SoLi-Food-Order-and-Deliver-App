@@ -84,6 +84,20 @@ export class MenuService {
     return this.repo.remove(id);
   }
 
+  async assertItemAvailable(id: string): Promise<MenuItem> {
+    const item = await this.findOne(id);
+    if (!item.isAvailable) {
+      throw new ConflictException('Item is not available for ordering');
+    }
+    if (item.status === 'out_of_stock') {
+      throw new ConflictException('Item is out of stock');
+    }
+    if (item.status === 'unavailable') {
+      throw new ConflictException('Item is unavailable');
+    }
+    return item;
+  }
+
   getCategories(): typeof MENU_ITEM_CATEGORIES {
     return MENU_ITEM_CATEGORIES;
   }

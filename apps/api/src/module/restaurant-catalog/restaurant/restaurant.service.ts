@@ -12,8 +12,8 @@ import type { Restaurant } from '@/module/restaurant-catalog/restaurant/restaura
 export class RestaurantService {
   constructor(private readonly repo: RestaurantRepository) {}
 
-  async findAll(): Promise<Restaurant[]> {
-    return this.repo.findAll();
+  async findAll(offset?: number, limit?: number): Promise<Restaurant[]> {
+    return this.repo.findAll(offset, limit);
   }
 
   async findOne(id: string): Promise<Restaurant> {
@@ -44,6 +44,11 @@ export class RestaurantService {
   async remove(id: string): Promise<void> {
     await this.findOne(id);
     return this.repo.remove(id);
+  }
+
+  async setApproved(id: string, isApproved: boolean): Promise<Restaurant> {
+    await this.findOne(id);
+    return this.repo.update(id, { isApproved });
   }
 
   async assertOpenAndApproved(id: string): Promise<Restaurant> {

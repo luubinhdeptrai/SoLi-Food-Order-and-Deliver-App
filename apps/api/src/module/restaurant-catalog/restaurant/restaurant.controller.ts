@@ -6,7 +6,9 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   ParseUUIDPipe,
+  ParseIntPipe,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -42,14 +44,17 @@ export class RestaurantController {
   @Get()
   @ApiOperation({
     summary: 'List restaurants',
-    description: 'Returns all restaurants ordered by creation date.',
+    description: 'Returns paginated restaurants ordered by creation date.',
   })
   @ApiOkResponse({
     description: 'Restaurants retrieved successfully',
     type: [RestaurantResponseDto],
   })
-  findAll() {
-    return this.service.findAll();
+  findAll(
+    @Query('offset', new ParseIntPipe({ optional: true })) offset?: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
+  ) {
+    return this.service.findAll(offset, limit);
   }
 
   @Get(':id')
@@ -125,6 +130,56 @@ export class RestaurantController {
       hasRole(session.user.role, 'admin'),
       dto,
     );
+  }
+
+  @Patch(':id/approve')
+  @Roles(['admin'])
+  @ApiOperation({
+    summary: 'Approve restaurant',
+    description: 'Mark a restaurant as approved. Admin only endpoint.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Restaurant UUID',
+    format: 'uuid',
+    example: 'f7d6df40-6c7e-4f44-b0d0-c544d6f9e8f9',
+  })
+  @ApiOkResponse({
+    description: 'Restaurant approved successfully',
+    type: RestaurantResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid UUID format' })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions (admin role required)',
+  })
+  @ApiNotFoundResponse({ description: 'Restaurant not found' })
+  approve(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.setApproved(id, true);
+  }
+
+  @Patch(':id/unapprove')
+  @Roles(['admin'])
+  @ApiOperation({
+    summary: 'Unapprove restaurant',
+    description: 'Mark a restaurant as unapproved. Admin only endpoint.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Restaurant UUID',
+    format: 'uuid',
+    example: 'f7d6df40-6c7e-4f44-b0d0-c544d6f9e8f9',
+  })
+  @ApiOkResponse({
+    description: 'Restaurant unapproved successfully',
+    type: RestaurantResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid UUID format' })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions (admin role required)',
+  })
+  @ApiNotFoundResponse({ description: 'Restaurant not found' })
+  unapprove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.setApproved(id, false);
   }
 
   @Delete(':id')
