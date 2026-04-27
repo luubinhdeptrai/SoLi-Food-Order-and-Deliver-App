@@ -39,6 +39,7 @@
 
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { sql } from 'drizzle-orm';
 
 // Auth
 import { user } from '../../module/auth/auth.schema';
@@ -255,7 +256,19 @@ async function seedOrderingMenuItemSnapshots() {
       status: 'available' as const,
     },
   ];
-  await db.insert(orderingMenuItemSnapshots).values(rows).onConflictDoNothing();
+  await db
+    .insert(orderingMenuItemSnapshots)
+    .values(rows)
+    .onConflictDoUpdate({
+      target: orderingMenuItemSnapshots.menuItemId,
+      set: {
+        restaurantId: sql`excluded.restaurant_id`,
+        name: sql`excluded.name`,
+        price: sql`excluded.price`,
+        status: sql`excluded.status`,
+        lastSyncedAt: sql`now()`,
+      },
+    });
   console.log('✅ ordering_menu_item_snapshots seeded');
 }
 

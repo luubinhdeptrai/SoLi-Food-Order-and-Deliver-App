@@ -148,7 +148,7 @@ These checks read from the **Ordering BC's own snapshot tables** — NOT via `Re
 These changes to `RestaurantCatalogModule` are **not required for Phase 1 or Phase 2**.  
 They are needed **before Phase 3 begins**, to populate snapshot tables via projectors.
 
-Until Phase 3, the snapshot tables are empty, so the checkout validation in Phase 4 should have a fallback that allows orders when no snapshot is found (or blocks them — TBD by team).
+Until Phase 3, the snapshot tables are empty. **Decided (Phase 2):** absent snapshot → cart `addItem` is permitted, client-supplied values are trusted (BR-PRICE-TRUST). Blocking on absent snapshot is Phase 3+ behaviour once `MenuItemProjector` is live.
 
 ---
 
