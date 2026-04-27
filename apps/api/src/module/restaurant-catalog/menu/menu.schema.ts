@@ -44,3 +44,19 @@ export const menuItems = pgTable('menu_items', {
 
 export type MenuItem = typeof menuItems.$inferSelect;
 export type NewMenuItem = typeof menuItems.$inferInsert;
+
+export const menuItemModifiers = pgTable('menu_item_modifiers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  menuItemId: uuid('menu_item_id')
+    .notNull()
+    .references(() => menuItems.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  price: doublePrecision('price').notNull().default(0),
+  isRequired: boolean('is_required').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type MenuItemModifier = typeof menuItemModifiers.$inferSelect;
+export type NewMenuItemModifier = typeof menuItemModifiers.$inferInsert;
