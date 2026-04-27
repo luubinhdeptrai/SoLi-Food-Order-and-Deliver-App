@@ -13,7 +13,7 @@ export const IDEMPOTENCY_KEY_PREFIX = 'idempotency:order:' as const;
  * Fallback TTL (24 h) used when app_settings DB row is not yet seeded.
  * Phase 1 will replace this with a DB-backed lookup.
  */
-// export const IDEMPOTENCY_TTL_FALLBACK_SECONDS = 86_400;
+export const IDEMPOTENCY_TTL_FALLBACK_SECONDS = 86_400;
 
 /**
  * Cart key format: cart:<customerId>
@@ -25,3 +25,17 @@ export const CART_KEY_PREFIX = 'cart:' as const;
  * Cart TTL — 7 days. Items left in cart expire silently.
  */
 export const CART_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+/**
+ * Cart checkout lock (Phase 4).
+ * Full key: `${CART_KEY_PREFIX}${customerId}:lock`
+ * Acquired with SET NX EX before PlaceOrderHandler runs to prevent
+ * concurrent checkouts of the same cart.
+ */
+export const CART_LOCK_SUFFIX = ':lock' as const;
+
+/**
+ * TTL for the cart checkout lock — 30 seconds.
+ * Covers worst-case PlaceOrderHandler latency (DB write + VNPay init).
+ */
+export const CART_LOCK_TTL_SECONDS = 30;

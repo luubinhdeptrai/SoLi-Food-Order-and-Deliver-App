@@ -10,7 +10,9 @@ import {
   HttpStatus,
   UseGuards,
   ParseUUIDPipe,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -108,22 +110,28 @@ export class CartController {
     summary: 'Update item quantity (quantity=0 removes the item)',
   })
   @ApiOkResponse({
-    description: 'Updated cart, or null when cart became empty after removal',
+    description: 'Updated cart',
     type: CartResponseDto,
   })
+  @ApiNoContentResponse({ description: 'Cart is now empty after the update' })
   @ApiNotFoundResponse({ description: 'Cart or item not found' })
   @ApiBadRequestResponse({ description: 'Invalid quantity' })
   async updateItemQuantity(
     @CurrentUser() user: JwtPayload,
     @Param('menuItemId', ParseUUIDPipe) menuItemId: string,
     @Body() dto: UpdateCartItemQuantityDto,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<CartResponseDto | null> {
     const cart = await this.cartService.updateItemQuantity(
       user.sub,
       menuItemId,
       dto,
     );
-    return cart ? this.toResponse(cart) : null;
+    if (!cart) {
+      res.status(HttpStatus.NO_CONTENT);
+      return null;
+    }
+    return this.toResponse(cart);
   }
 
   // -------------------------------------------------------------------------
@@ -133,16 +141,22 @@ export class CartController {
   @Delete('my/items/:menuItemId')
   @ApiOperation({ summary: 'Remove a specific item from the cart' })
   @ApiOkResponse({
-    description: 'Updated cart, or null when cart became empty after removal',
+    description: 'Updated cart after removal',
     type: CartResponseDto,
   })
+  @ApiNoContentResponse({ description: 'Cart is now empty after removal' })
   @ApiNotFoundResponse({ description: 'Cart or item not found' })
   async removeItem(
     @CurrentUser() user: JwtPayload,
     @Param('menuItemId', ParseUUIDPipe) menuItemId: string,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<CartResponseDto | null> {
     const cart = await this.cartService.removeItem(user.sub, menuItemId);
-    return cart ? this.toResponse(cart) : null;
+    if (!cart) {
+      res.status(HttpStatus.NO_CONTENT);
+      return null;
+    }
+    return this.toResponse(cart);
   }
 
   // -------------------------------------------------------------------------

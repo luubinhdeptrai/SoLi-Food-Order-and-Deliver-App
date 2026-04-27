@@ -6,7 +6,9 @@ import {
   IsInt,
   Min,
   MinLength,
+  MaxLength,
   Max,
+  IsPositive,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -43,27 +45,31 @@ export class AddItemToCartDto {
     description: 'Display name of the restaurant (snapshotted in cart)',
     example: 'Sunset Bistro',
     minLength: 1,
+    maxLength: 200,
   })
   @IsString()
   @MinLength(1)
+  @MaxLength(200)
   restaurantName!: string;
 
   @ApiProperty({
     description: 'Display name of the menu item (snapshotted in cart)',
     example: 'Margherita Pizza',
     minLength: 1,
+    maxLength: 200,
   })
   @IsString()
   @MinLength(1)
+  @MaxLength(200)
   itemName!: string;
 
   @ApiProperty({
     description: 'Unit price in store currency (snapshotted in cart)',
     example: 12.5,
-    minimum: 0,
+    minimum: 0.01,
   })
   @IsNumber()
-  @Min(0)
+  @IsPositive()
   @Type(() => Number)
   unitPrice!: number;
 
@@ -147,10 +153,4 @@ export class CartResponseDto {
   updatedAt!: string;
 }
 
-export class EmptyCartResponseDto {
-  @ApiPropertyOptional({ nullable: true, example: null })
-  cart!: null;
 
-  @ApiProperty({ example: 'Cart is empty' })
-  message!: string;
-}

@@ -108,7 +108,7 @@ export const orders = pgTable(
     expiresAt: timestamp('expires_at', { withTimezone: true }),
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdateFn(() => new Date()),
   },
   (t) => [
     // D5-B idempotency — one cart can produce exactly one order

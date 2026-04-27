@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '@/lib/redis/redis.service';
 import { CART_KEY_PREFIX, CART_TTL_SECONDS } from '../common/ordering.constants';
 import type { Cart } from './cart.types';
@@ -17,6 +17,8 @@ import type { Cart } from './cart.types';
  */
 @Injectable()
 export class CartRedisRepository {
+  private readonly logger = new Logger(CartRedisRepository.name);
+
   constructor(private readonly redis: RedisService) {}
 
   /** Builds the Redis key for a customer's cart. */
@@ -26,11 +28,21 @@ export class CartRedisRepository {
 
   /**
    * Returns the customer's active cart, or `null` if not found / expired.
+   * Returns `null` and logs a warning if the stored value is not valid JSON
+   * (e.g. manual Redis edit or partial write).
    */
   async findByCustomerId(customerId: string): Promise<Cart | null> {
     const raw = await this.redis.get(this.buildKey(customerId));
     if (!raw) return null;
-    return JSON.parse(raw) as Cart;
+
+    try {
+      return JSON.parse(raw) as Cart;
+    } catch {
+      this.logger.warn(
+        `Cart data for customer ${customerId} is corrupted (invalid JSON). Returning null.`,
+      );
+      return null;
+    }
   }
 
   /**
