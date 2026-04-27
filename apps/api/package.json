@@ -22,7 +22,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "db:seed": "tsx src/drizzle/seeds/seed.ts"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.5.6",

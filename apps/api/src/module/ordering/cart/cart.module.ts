@@ -1,14 +1,30 @@
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
+import { DatabaseModule } from '@/drizzle/drizzle.module';
+import { CartController } from './cart.controller';
+import { CartService } from './cart.service';
+import { CartRedisRepository } from './cart.redis-repository';
+import { MenuItemSnapshotRepository } from '../acl/repositories/menu-item-snapshot.repository';
 
 /**
- * CartModule — Phase 2 implementation target.
+ * CartModule — Phase 2 implementation.
+ *
  * Cart state is stored entirely in Redis (D2-B). No DB tables.
  *
- * Placeholder registered here so OrderingModule can import it
- * without any Phase 0 side-effects.
+ * Providers:
+ *  - CartController        → REST endpoints (/carts/my/*)
+ *  - CartService           → business rules (BR-2, quantity merge, TTL reset)
+ *  - CartRedisRepository   → Redis I/O  (`cart:<customerId>` key)
+ *  - MenuItemSnapshotRepository → optional Phase 3 snapshot validation
+ *
+ * DatabaseModule is imported to provide DB_CONNECTION for
+ * MenuItemSnapshotRepository.  RedisService is globally provided by
+ * RedisModule (registered in AppModule) so no explicit import is needed.
  */
 @Module({
-  imports: [CqrsModule],
+  imports: [CqrsModule, DatabaseModule],
+  controllers: [CartController],
+  providers: [CartService, CartRedisRepository, MenuItemSnapshotRepository],
+  exports: [CartService],
 })
 export class CartModule {}
