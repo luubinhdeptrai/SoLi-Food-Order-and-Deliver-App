@@ -23,11 +23,11 @@ pnpm db:seed
 | Tên | UUID |
 |-----|------|
 | **Restaurant: Sunset Bistro** (open, approved) | `fe8b2648-2260-4bc5-9acd-d88972148c78` |
-| **Restaurant: Closed Kitchen** (closed) | `00000000-0000-0000-0000-000000000004` |
+| **Restaurant: Closed Kitchen** (closed) | `cccccccc-cccc-4ccc-8ccc-cccccccccccc` |
 | **MenuItem: Margherita Pizza** — R1, 12.50 | `4dc7cdfa-5a54-402f-b1a8-2d47de146081` |
-| **MenuItem: Caesar Salad** — R1, 9.00 | `00000000-0000-0000-0000-000000000006` |
-| **MenuItem: Tiramisu** — R1, 6.50 | `00000000-0000-0000-0000-000000000007` |
-| **MenuItem: Classic Burger** — R2, 11.00 | `00000000-0000-0000-0000-000000000008` |
+| **MenuItem: Caesar Salad** — R1, 9.00 | `a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5` |
+| **MenuItem: Tiramisu** — R1, 6.50 | `b2c3d4e5-f6a7-4b8c-9d0e-f1a2b3c4d5e6` |
+| **MenuItem: Classic Burger** — R2, 11.00 | `c3d4e5f6-a7b8-4c9d-8e0f-a1b2c3d4e5f6` |
 
 > **Lưu ý auth (dev):** `disableGlobalAuthGuard: true` trong `AuthModule.forRoot` tắt global Better Auth guard.
 > `JwtAuthGuard` (placeholder) accept mọi Bearer token và hardcode `user.sub = 'user-id'`.
@@ -100,7 +100,7 @@ Invoke-RestMethod -Method POST "http://localhost:3000/api/carts/my/items" -Heade
 
 ```powershell
 $body2 = @{
-  menuItemId    = "00000000-0000-0000-0000-000000000006"
+  menuItemId    = "a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5"
   restaurantId  = "fe8b2648-2260-4bc5-9acd-d88972148c78"
   restaurantName = "Sunset Bistro"
   itemName      = "Caesar Salad"
@@ -118,8 +118,8 @@ Invoke-RestMethod -Method POST "http://localhost:3000/api/carts/my/items" -Heade
 
 ```powershell
 $bodyWrong = @{
-  menuItemId    = "00000000-0000-0000-0000-000000000008"
-  restaurantId  = "00000000-0000-0000-0000-000000000004"
+  menuItemId    = "c3d4e5f6-a7b8-4c9d-8e0f-a1b2c3d4e5f6"
+  restaurantId  = "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
   restaurantName = "Closed Kitchen"
   itemName      = "Classic Burger"
   unitPrice     = 11.00
@@ -172,7 +172,7 @@ Invoke-RestMethod -Method POST "http://localhost:3000/api/carts/my/items" -Heade
 Xoá Caesar Salad:
 ```powershell
 Invoke-RestMethod -Method DELETE `
-  "http://localhost:3000/api/carts/my/items/00000000-0000-0000-0000-000000000006" `
+  "http://localhost:3000/api/carts/my/items/a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5" `
   -Headers $H
 # Expected: 200, cart chỉ còn Margherita Pizza
 ```
@@ -186,7 +186,7 @@ Invoke-RestMethod -Method DELETE `
 ```powershell
 try {
   Invoke-RestMethod -Method DELETE `
-    "http://localhost:3000/api/carts/my/items/00000000-0000-0000-0000-000000000007" `
+    "http://localhost:3000/api/carts/my/items/b2c3d4e5-f6a7-4b8c-9d0e-f1a2b3c4d5e6" `
     -Headers $H
 } catch {
   Write-Host "Status:" $_.Exception.Response.StatusCode
@@ -301,7 +301,7 @@ $r = Invoke-RestMethod -Method POST "$BASE/carts/my/items" -Headers $H -Body (@{
 # S4: Add Caesar Salad x1
 Write-Host "`n[S4] Add Caesar Salad x1"
 $r = Invoke-RestMethod -Method POST "$BASE/carts/my/items" -Headers $H -Body (@{
-  menuItemId="00000000-0000-0000-0000-000000000006"; restaurantId="fe8b2648-2260-4bc5-9acd-d88972148c78"
+  menuItemId="a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5"; restaurantId="fe8b2648-2260-4bc5-9acd-d88972148c78"
   restaurantName="Sunset Bistro"; itemName="Caesar Salad"; unitPrice=9.00; quantity=1
 } | ConvertTo-Json); Write-Host "itemCount=$($r.items.Count)"
 
@@ -309,7 +309,7 @@ $r = Invoke-RestMethod -Method POST "$BASE/carts/my/items" -Headers $H -Body (@{
 Write-Host "`n[S5] Wrong restaurant → expect 409"
 try {
   Invoke-RestMethod -Method POST "$BASE/carts/my/items" -Headers $H -Body (@{
-    menuItemId="00000000-0000-0000-0000-000000000008"; restaurantId="00000000-0000-0000-0000-000000000004"
+    menuItemId="c3d4e5f6-a7b8-4c9d-8e0f-a1b2c3d4e5f6"; restaurantId="cccccccc-cccc-4ccc-8ccc-cccccccccccc"
     restaurantName="Closed Kitchen"; itemName="Classic Burger"; unitPrice=11.00; quantity=1
   } | ConvertTo-Json)
 } catch { Write-Host "Got $($_.Exception.Response.StatusCode)" }
@@ -329,7 +329,7 @@ Write-Host "itemCount=$($r.items.Count)  (should be 1)"
 # S8: DELETE item not in cart → 404
 Write-Host "`n[S8] DELETE Tiramisu (not in cart) → expect 404"
 try {
-  Invoke-RestMethod -Method DELETE "$BASE/carts/my/items/00000000-0000-0000-0000-000000000007" -Headers $H
+  Invoke-RestMethod -Method DELETE "$BASE/carts/my/items/b2c3d4e5-f6a7-4b8c-9d0e-f1a2b3c4d5e6" -Headers $H
 } catch { Write-Host "Got $($_.Exception.Response.StatusCode)" }
 
 # S9: DELETE cart

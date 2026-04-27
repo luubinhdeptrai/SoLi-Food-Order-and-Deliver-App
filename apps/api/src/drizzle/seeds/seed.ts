@@ -3,25 +3,26 @@
  *
  * Run:  pnpm db:seed
  *
- * Idempotent: all inserts use onConflictDoNothing(), safe to re-run.
+ * Behavior: Deletes all existing data, then inserts fresh test data.
+ * Safe to re-run; each run starts with a clean slate.
  *
  * Fixed UUIDs (copy these into test scripts):
  * ─────────────────────────────────────────────────────────────────
  *  USERS
- *    Owner    : 00000000-0000-0000-0000-000000000001
- *    Customer : 00000000-0000-0000-0000-000000000002
+ *    Owner    : 11111111-1111-4111-8111-111111111111
+ *    Customer : 22222222-2222-4222-8222-222222222222
  *
  *  RESTAURANTS
  *    Sunset Bistro  (open, approved)  : fe8b2648-2260-4bc5-9acd-d88972148c78
- *    Closed Kitchen (closed)          : 00000000-0000-0000-0000-000000000004
+ *    Closed Kitchen (closed)          : cccccccc-cccc-4ccc-8ccc-cccccccccccc
  *
  *  MENU ITEMS  (Sunset Bistro)
  *    Margherita Pizza  (mains)    : 4dc7cdfa-5a54-402f-b1a8-2d47de146081
- *    Caesar Salad      (salads)   : 00000000-0000-0000-0000-000000000006
- *    Tiramisu          (desserts) : 00000000-0000-0000-0000-000000000007
+ *    Caesar Salad      (salads)   : a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5
+ *    Tiramisu          (desserts) : b2c3d4e5-f6a7-4b8c-9d0e-f1a2b3c4d5e6
  *
  *  MENU ITEMS  (Closed Kitchen)
- *    Classic Burger    (mains)    : 00000000-0000-0000-0000-000000000008
+ *    Classic Burger    (mains)    : c3d4e5f6-a7b8-4c9d-8e0f-a1b2c3d4e5f6
  *
  *  ORDERING SNAPSHOTS
  *    ordering_restaurant_snapshots : mirrors restaurants above
@@ -39,7 +40,6 @@
 
 import 'dotenv/config';
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { sql } from 'drizzle-orm';
 
 // Auth
 import { user } from '../../module/auth/auth.schema';
@@ -61,21 +61,54 @@ const db = drizzle(process.env.DATABASE_URL!);
 
 const IDS = {
   // Users
-  ownerUserId: '00000000-0000-0000-0000-000000000001',
-  customerUserId: '00000000-0000-0000-0000-000000000002',
+  ownerUserId:    '11111111-1111-4111-8111-111111111111',
+  customerUserId: '22222222-2222-4222-8222-222222222222',
 
   // Restaurants
   restaurant1: 'fe8b2648-2260-4bc5-9acd-d88972148c78', // open + approved
-  restaurant2: '00000000-0000-0000-0000-000000000004', // closed
+  restaurant2: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', // closed
 
   // Menu items — Sunset Bistro (restaurant1)
   menuItem1: '4dc7cdfa-5a54-402f-b1a8-2d47de146081', // Margherita Pizza
-  menuItem2: '00000000-0000-0000-0000-000000000006', // Caesar Salad
-  menuItem3: '00000000-0000-0000-0000-000000000007', // Tiramisu
+  menuItem2: 'a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5', // Caesar Salad
+  menuItem3: 'b2c3d4e5-f6a7-4b8c-9d0e-f1a2b3c4d5e6', // Tiramisu
 
   // Menu items — Closed Kitchen (restaurant2)
-  menuItem4: '00000000-0000-0000-0000-000000000008', // Classic Burger
+  menuItem4: 'c3d4e5f6-a7b8-4c9d-8e0f-a1b2c3d4e5f6', // Classic Burger
 } as const;
+
+// ─── Delete functions ─────────────────────────────────────────────────────────
+// Delete order: reverse of insert order to respect foreign keys
+
+async function deleteOrderingMenuItemSnapshots() {
+  await db.delete(orderingMenuItemSnapshots);
+  console.log('🗑️  ordering_menu_item_snapshots cleared');
+}
+
+async function deleteOrderingRestaurantSnapshots() {
+  await db.delete(orderingRestaurantSnapshots);
+  console.log('🗑️  ordering_restaurant_snapshots cleared');
+}
+
+async function deleteMenuItems() {
+  await db.delete(menuItems);
+  console.log('🗑️  menu_items cleared');
+}
+
+async function deleteRestaurants() {
+  await db.delete(restaurants);
+  console.log('🗑️  restaurants cleared');
+}
+
+async function deleteAppSettings() {
+  await db.delete(appSettings);
+  console.log('🗑️  app_settings cleared');
+}
+
+async function deleteUsers() {
+  await db.delete(user);
+  console.log('🗑️  users cleared');
+}
 
 // ─── Seed functions ───────────────────────────────────────────────────────────
 
@@ -94,7 +127,7 @@ async function seedUsers() {
       emailVerified: true,
     },
   ];
-  await db.insert(user).values(rows).onConflictDoNothing();
+  await db.insert(user).values(rows);
   console.log('✅ users seeded');
 }
 
@@ -125,7 +158,7 @@ async function seedRestaurants() {
       longitude: 106.701,
     },
   ];
-  await db.insert(restaurants).values(rows).onConflictDoNothing();
+  await db.insert(restaurants).values(rows);
   console.log('✅ restaurants seeded');
 }
 
@@ -174,7 +207,7 @@ async function seedMenuItems() {
       isAvailable: true,
     },
   ];
-  await db.insert(menuItems).values(rows).onConflictDoNothing();
+  await db.insert(menuItems).values(rows);
   console.log('✅ menu_items seeded');
 }
 
@@ -196,7 +229,7 @@ async function seedAppSettings() {
       description: 'Cart Redis TTL (24h). CartService Phase 2.',
     },
   ];
-  await db.insert(appSettings).values(rows).onConflictDoNothing();
+  await db.insert(appSettings).values(rows);
   console.log('✅ app_settings seeded');
 }
 
@@ -221,7 +254,7 @@ async function seedOrderingRestaurantSnapshots() {
       longitude: 106.701,
     },
   ];
-  await db.insert(orderingRestaurantSnapshots).values(rows).onConflictDoNothing();
+  await db.insert(orderingRestaurantSnapshots).values(rows);
   console.log('✅ ordering_restaurant_snapshots seeded');
 }
 
@@ -256,19 +289,7 @@ async function seedOrderingMenuItemSnapshots() {
       status: 'available' as const,
     },
   ];
-  await db
-    .insert(orderingMenuItemSnapshots)
-    .values(rows)
-    .onConflictDoUpdate({
-      target: orderingMenuItemSnapshots.menuItemId,
-      set: {
-        restaurantId: sql`excluded.restaurant_id`,
-        name: sql`excluded.name`,
-        price: sql`excluded.price`,
-        status: sql`excluded.status`,
-        lastSyncedAt: sql`now()`,
-      },
-    });
+  await db.insert(orderingMenuItemSnapshots).values(rows);
   console.log('✅ ordering_menu_item_snapshots seeded');
 }
 
@@ -276,8 +297,17 @@ async function seedOrderingMenuItemSnapshots() {
 
 async function main() {
   console.log('🌱 Starting seed...\n');
+  // Delete existing data in reverse order of insertion (respect foreign keys)
+  console.log('🗑️  Clearing old data...\\n');
+  await deleteOrderingMenuItemSnapshots();
+  await deleteOrderingRestaurantSnapshots();
+  await deleteMenuItems();
+  await deleteRestaurants();
+  await deleteAppSettings();
+  await deleteUsers();
 
-  // Order matters: users → restaurants → menu_items → ordering snapshots
+  // Insert new data
+  console.log('\\n📝 Inserting new data...\\n');  // Order matters: users → restaurants → menu_items → ordering snapshots
   await seedUsers();
   await seedRestaurants();
   await seedMenuItems();
