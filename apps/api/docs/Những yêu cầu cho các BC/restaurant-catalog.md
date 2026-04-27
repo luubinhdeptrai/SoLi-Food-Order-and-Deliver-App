@@ -2,7 +2,7 @@
 
 **Document Type:** Integration Contract  
 **Ordering Phase:** 3 — ACL / Snapshot Projectors  
-**Status:** Required before Phase 3 begins
+**Status:** ✅ IMPLEMENTED — Phase 3 complete
 
 ---
 
@@ -154,18 +154,18 @@ Until Phase 3, the snapshot tables are empty. **Decided (Phase 2):** absent snap
 
 ## Summary
 
-| What to do | Where | When |
-|------------|-------|------|
-| Add `CqrsModule` import to `MenuModule` | `menu.module.ts` | Phase 3 |
-| Inject `EventBus` in `MenuService` | `menu.service.ts` | Phase 3 |
-| Publish `MenuItemUpdatedEvent` after mutations | `menu.service.ts` | Phase 3 |
-| Add `CqrsModule` import to `RestaurantModule` | `restaurant.module.ts` | Phase 3 |
-| Inject `EventBus` in `RestaurantService` | `restaurant.service.ts` | Phase 3 |
-| Publish `RestaurantUpdatedEvent` after mutations | `restaurant.service.ts` | Phase 3 |
-| Confirm `address` field on `restaurants` table | `restaurant.schema.ts` | Phase 3 |
-| **Add `delivery_radius_km` column** | `restaurant.schema.ts` | Phase 4 |
-| **Include `deliveryRadiusKm` in `RestaurantUpdatedEvent`** | `restaurant.service.ts` | Phase 4 |
-| **Include `latitude`/`longitude` in `RestaurantUpdatedEvent`** | `restaurant.service.ts` | Phase 4 |
+| What to do | Where | When | Status |
+|------------|-------|------|--------|
+| Add `CqrsModule` import to `MenuModule` | `menu.module.ts` | Phase 3 | ✅ Done |
+| Inject `EventBus` in `MenuService` | `menu.service.ts` | Phase 3 | ✅ Done |
+| Publish `MenuItemUpdatedEvent` after mutations | `menu.service.ts` | Phase 3 | ✅ Done |
+| Add `CqrsModule` import to `RestaurantModule` | `restaurant.module.ts` | Phase 3 | ✅ Done |
+| Inject `EventBus` in `RestaurantService` | `restaurant.service.ts` | Phase 3 | ✅ Done |
+| Publish `RestaurantUpdatedEvent` after mutations | `restaurant.service.ts` | Phase 3 | ✅ Done |
+| Confirm `address` field on `restaurants` table | `restaurant.schema.ts` | Phase 3 | ✅ Done |
+| **Add `delivery_radius_km` column** | `restaurant.schema.ts` | Phase 4 | ⏳ Pending |
+| **Include `deliveryRadiusKm` in `RestaurantUpdatedEvent`** | `restaurant.service.ts` | Phase 4 | ⏳ Pending (event field added as optional) |
+| **Include `latitude`/`longitude` in `RestaurantUpdatedEvent`** | `restaurant.service.ts` | Phase 4 | ✅ Done (optional fields added) |
 
 ---
 

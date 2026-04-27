@@ -4,6 +4,7 @@ import { CartModule } from './cart/cart.module';
 import { OrderModule } from './order/order.module';
 import { OrderLifecycleModule } from './order-lifecycle/order-lifecycle.module';
 import { OrderHistoryModule } from './order-history/order-history.module';
+import { AclModule } from './acl/acl.module';
 
 /**
  * OrderingModule — the root of the Ordering bounded context.
@@ -23,6 +24,7 @@ import { OrderHistoryModule } from './order-history/order-history.module';
 @Module({
   imports: [
     CqrsModule,
+    AclModule,
     CartModule,
     OrderModule,
     OrderLifecycleModule,

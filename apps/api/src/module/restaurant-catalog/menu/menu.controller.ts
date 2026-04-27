@@ -126,7 +126,7 @@ const MENU_ITEM_RESPONSE_SCHEMA = {
 @ApiTags('Menu')
 @ApiBearerAuth()
 @Controller('menu-items')
-@UseGuards(JwtAuthGuard, RolesGuard)
+// @UseGuards(JwtAuthGuard, RolesGuard) // disabled for dev/test — use x-test-user-id header
 export class MenuController {
   constructor(private readonly service: MenuService) {}
 

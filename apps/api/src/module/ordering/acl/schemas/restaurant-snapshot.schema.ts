@@ -49,9 +49,10 @@ export const orderingRestaurantSnapshots = pgTable(
     isApproved: boolean('is_approved').notNull().default(false),
 
     // Required by OrderReadyForPickupEvent payload (Phase 6).
-    // Sourced from restaurants.address; nullable here until upstream provides it
-    // via RestaurantUpdatedEvent.
-    address: text('address'),
+    // Sourced from restaurants.address. RestaurantUpdatedEvent.address is a
+    // required string (upstream restaurants.address is also notNull), so this
+    // column is notNull. Re-run db:push if migrating an existing dev database.
+    address: text('address').notNull(),
 
     // Required for BR-3 (delivery radius check) — sourced from upstream.
     // Nullable until restaurant-catalog BC adds the column and starts publishing it.

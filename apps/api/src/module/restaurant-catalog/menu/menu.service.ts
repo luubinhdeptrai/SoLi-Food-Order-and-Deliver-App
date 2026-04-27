@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
+import { EventBus } from '@nestjs/cqrs';
 import { MenuRepository } from './menu.repository';
 import type {
   CreateMenuItemDto,
@@ -12,12 +13,14 @@ import type {
 import { MENU_ITEM_CATEGORIES } from './dto/menu.dto';
 import type { MenuItem } from '@/module/restaurant-catalog/menu/menu.schema';
 import { RestaurantService } from '@/module/restaurant-catalog/restaurant/restaurant.service';
+import { MenuItemUpdatedEvent } from '@/shared/events/menu-item-updated.event';
 
 @Injectable()
 export class MenuService {
   constructor(
     private readonly repo: MenuRepository,
     private readonly restaurantService: RestaurantService,
+    private readonly eventBus: EventBus,
   ) {}
 
   async findByRestaurant(
@@ -45,7 +48,17 @@ export class MenuService {
     if (!isAdmin && restaurant.ownerId !== requesterId) {
       throw new ForbiddenException('You do not own this restaurant');
     }
-    return this.repo.create(dto);
+    const item = await this.repo.create(dto);
+    this.eventBus.publish(
+      new MenuItemUpdatedEvent(
+        item.id,
+        item.restaurantId,
+        item.name,
+        item.price,
+        item.status,
+      ),
+    );
+    return item;
   }
 
   async update(
@@ -55,7 +68,17 @@ export class MenuService {
     dto: UpdateMenuItemDto,
   ): Promise<MenuItem> {
     await this.assertOwnership(id, requesterId, isAdmin);
-    return this.repo.update(id, dto);
+    const item = await this.repo.update(id, dto);
+    this.eventBus.publish(
+      new MenuItemUpdatedEvent(
+        item.id,
+        item.restaurantId,
+        item.name,
+        item.price,
+        item.status,
+      ),
+    );
+    return item;
   }
 
   async toggleSoldOut(
@@ -66,7 +89,17 @@ export class MenuService {
     const item = await this.assertOwnership(id, requesterId, isAdmin);
     const nextStatus =
       item.status === 'out_of_stock' ? 'available' : 'out_of_stock';
-    return this.repo.update(id, { status: nextStatus });
+    const updated = await this.repo.update(id, { status: nextStatus });
+    this.eventBus.publish(
+      new MenuItemUpdatedEvent(
+        updated.id,
+        updated.restaurantId,
+        updated.name,
+        updated.price,
+        updated.status,
+      ),
+    );
+    return updated;
   }
 
   async remove(
@@ -74,8 +107,18 @@ export class MenuService {
     requesterId: string,
     isAdmin: boolean,
   ): Promise<void> {
-    await this.assertOwnership(id, requesterId, isAdmin);
-    return this.repo.remove(id);
+    const item = await this.assertOwnership(id, requesterId, isAdmin);
+    await this.repo.remove(id);
+    // Publish with 'unavailable' so the Ordering snapshot is invalidated
+    this.eventBus.publish(
+      new MenuItemUpdatedEvent(
+        item.id,
+        item.restaurantId,
+        item.name,
+        item.price,
+        'unavailable',
+      ),
+    );
   }
 
   getCategories(): typeof MENU_ITEM_CATEGORIES {

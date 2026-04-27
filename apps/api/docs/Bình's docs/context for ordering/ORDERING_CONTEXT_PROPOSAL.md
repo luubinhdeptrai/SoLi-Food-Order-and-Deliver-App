@@ -729,7 +729,7 @@ addItem(customerId, menuItemId):
 
 ---
 
-### Phase 3 — ACL Layer (Menu Item & Restaurant Projections)
+### Phase 3 — ACL Layer (Menu Item & Restaurant Projections) **[ACL IMPLEMENTED]**
 
 > **This phase is REQUIRED.** D3-B (Local Projection) is selected — the Ordering context must not import `RestaurantModule` or `MenuModule` directly. All validation uses local PostgreSQL snapshots (D4-B).   [SYNCED with D3][SYNCED with D4]
 
@@ -737,20 +737,27 @@ addItem(customerId, menuItemId):
 
 **Scope:**
 
-**Part A — Event Contracts (Shared)**
+**Part A — Event Contracts (Shared)** **[ACL IMPLEMENTED]**
 - `MenuItemUpdatedEvent` — published by `MenuService` after any create/update/delete/status-change
 - `RestaurantUpdatedEvent` — published by `RestaurantService` after any create/update (isOpen, isApproved changes)
+  - Added optional fields: `deliveryRadiusKm?`, `latitude?`, `longitude?` for BR-3 (Phase 4+)
 
 > ⚠️ **[WARNING]** `menu.schema.ts` (confirmed in codebase) has **two** availability fields: `status` (enum: `available | unavailable | out_of_stock`) and `isAvailable` (boolean). The `MenuItemUpdatedEvent` payload below includes **both** fields but the snapshot stores only `status`. Decide and document the canonical field:
 > - **Recommendation:** Use `status` enum as the single source of truth. Drop `isAvailable` from the event payload and derive boolean availability in snapshot consumers as `status === 'available'`. Remove the dual-field ambiguity before Phase 3 implementation begins. (I agree to this recommendation, bạn cứ triển khai như giả định sẽ bỏ isAvailable đi, tui sẽ bỏ isAvailable ở restaurant-catalog sau)
+> - **[RESOLVED]** `isAvailable` removed from event payload. `status` is canonical.
 
-**Part B — Restaurant Catalog Changes (Upstream)**
-- `MenuService`: publish `MenuItemUpdatedEvent` after `create()`, `update()`, `toggleSoldOut()`
+**Part B — Restaurant Catalog Changes (Upstream)** **[ACL IMPLEMENTED]**
+- `MenuService`: publish `MenuItemUpdatedEvent` after `create()`, `update()`, `toggleSoldOut()`, `remove()` (publishes `status=unavailable` on delete)
 - `RestaurantService`: publish `RestaurantUpdatedEvent` after `create()`, `update()`, status changes
+- `CqrsModule` imported in `MenuModule` and `RestaurantModule`
 
-**Part C — Projectors in Ordering Context**
-- `MenuItemProjector` — listens to `MenuItemUpdatedEvent`, updates snapshot
-- `RestaurantSnapshotProjector` — listens to `RestaurantUpdatedEvent`, updates snapshot
+**Part C — Projectors in Ordering Context** **[ACL IMPLEMENTED]**
+- `MenuItemProjector` — `@EventsHandler(MenuItemUpdatedEvent)` — upserts `ordering_menu_item_snapshots` **[ACL IMPLEMENTED]**
+- `RestaurantSnapshotProjector` — `@EventsHandler(RestaurantUpdatedEvent)` — upserts `ordering_restaurant_snapshots` **[ACL IMPLEMENTED]**
+- `MenuItemSnapshotRepository` — `findById`, `findManyByIds`, `upsert` **[ACL IMPLEMENTED]**
+- `RestaurantSnapshotRepository` — `findById`, `upsert` **[ACL IMPLEMENTED]**
+- `AclModule` — wires projectors, repositories, `CqrsModule`, `DatabaseModule` **[ACL IMPLEMENTED]**
+- `AclController` — `GET /ordering/menu-items/:id`, `GET /ordering/restaurants/:id` (no auth) **[ACL IMPLEMENTED]**
 
 **Sequence: Event Flow for Snapshot Update**
 ```
@@ -777,9 +784,9 @@ MenuService.toggleSoldOut()
 ```
 
 **Coupling Audit (must pass before Phase 4):**
-- [ ] `order.module.ts` does NOT import `RestaurantModule` or `MenuModule`
-- [ ] `cart.module.ts` does NOT import `RestaurantModule` or `MenuModule`
-- [ ] Only shared artifact is the event class in `shared/events/`
+- [x] `order.module.ts` does NOT import `RestaurantModule` or `MenuModule`
+- [x] `cart.module.ts` does NOT import `RestaurantModule` or `MenuModule`
+- [x] Only shared artifact is the event class in `shared/events/`
 
 **Deliverable:** Snapshots are populated and stay fresh when menu/restaurant data changes.
 

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CqrsModule } from '@nestjs/cqrs';
 import { MenuController } from './menu.controller';
 import { MenuService } from './menu.service';
 import { MenuRepository } from './menu.repository';
@@ -6,7 +7,7 @@ import { DatabaseModule } from '@/drizzle/drizzle.module';
 import { RestaurantModule } from '@/module/restaurant-catalog/restaurant/restaurant.module';
 
 @Module({
-  imports: [DatabaseModule, RestaurantModule],
+  imports: [DatabaseModule, RestaurantModule, CqrsModule],
   controllers: [MenuController],
   providers: [MenuService, MenuRepository],
   exports: [MenuService],
