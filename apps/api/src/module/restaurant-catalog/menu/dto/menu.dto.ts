@@ -5,13 +5,14 @@ import {
   PartialType,
 } from '@nestjs/swagger';
 import {
-  IsString,
-  IsOptional,
-  IsNumber,
-  IsEnum,
-  IsUUID,
-  IsUrl,
   IsArray,
+  IsBoolean,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUrl,
+  IsUUID,
   Min,
   MinLength,
 } from 'class-validator';
@@ -123,6 +124,7 @@ export class UpdateMenuItemDto extends PartialType(
     example: true,
   })
   @IsOptional()
+  @IsBoolean()
   isAvailable?: boolean;
 }
 

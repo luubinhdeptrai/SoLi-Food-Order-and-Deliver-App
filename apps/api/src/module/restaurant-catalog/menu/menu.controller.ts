@@ -7,26 +7,20 @@ import {
   Param,
   Body,
   Query,
-  UseGuards,
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Roles, Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { MenuService } from './menu.service';
 import {
   CreateMenuItemDto,
   MENU_ITEM_CATEGORIES,
-  MENU_ITEM_STATUSES,
+  MenuItemResponseDto,
   QueryMenuItemDto,
   UpdateMenuItemDto,
 } from './dto/menu.dto';
-import { JwtAuthGuard } from '@/module/auth/guards/jwt-auth.guard';
-import { RolesGuard } from '@/module/auth/guards/roles.guard';
-import { Roles } from '@/module/auth/decorators/roles.decorator';
-import {
-  CurrentUser,
-  type JwtPayload,
-} from '@/module/auth/decorators/current-user.decorator';
+import { hasRole } from '@/module/auth/role.util';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -42,91 +36,9 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 
-const MENU_ITEM_RESPONSE_SCHEMA = {
-  type: 'object',
-  required: [
-    'id',
-    'restaurantId',
-    'name',
-    'price',
-    'category',
-    'status',
-    'isAvailable',
-    'createdAt',
-    'updatedAt',
-  ],
-  properties: {
-    id: {
-      type: 'string',
-      format: 'uuid',
-      example: '22222222-2222-2222-2222-222222222222',
-    },
-    restaurantId: {
-      type: 'string',
-      format: 'uuid',
-      example: '11111111-1111-1111-1111-111111111111',
-    },
-    name: {
-      type: 'string',
-      example: 'Margherita Pizza',
-    },
-    description: {
-      type: 'string',
-      nullable: true,
-      example: 'Classic tomato, basil, and mozzarella',
-    },
-    price: {
-      type: 'number',
-      minimum: 0,
-      example: 12.5,
-    },
-    sku: {
-      type: 'string',
-      nullable: true,
-      example: 'PIZZA-MARG-01',
-    },
-    category: {
-      type: 'string',
-      enum: Array.from(MENU_ITEM_CATEGORIES),
-      example: 'mains',
-    },
-    status: {
-      type: 'string',
-      enum: Array.from(MENU_ITEM_STATUSES),
-      example: 'available',
-    },
-    imageUrl: {
-      type: 'string',
-      nullable: true,
-      example: 'https://cdn.example.com/menu/margherita.jpg',
-    },
-    isAvailable: {
-      type: 'boolean',
-      example: true,
-    },
-    tags: {
-      type: 'array',
-      nullable: true,
-      items: { type: 'string' },
-      example: ['vegetarian', 'popular'],
-    },
-    createdAt: {
-      type: 'string',
-      format: 'date-time',
-      example: '2026-04-15T08:00:00.000Z',
-    },
-    updatedAt: {
-      type: 'string',
-      format: 'date-time',
-      example: '2026-04-15T08:00:00.000Z',
-    },
-  },
-};
-
 @ApiTags('Menu')
 @ApiBearerAuth()
 @Controller('menu-items')
-// @UseGuards(JwtAuthGuard, RolesGuard) // disabled for dev/test — use x-test-user-id header
 export class MenuController {
   constructor(private readonly service: MenuService) {}
 
@@ -170,10 +82,7 @@ export class MenuController {
   })
   @ApiOkResponse({
     description: 'Menu items returned successfully',
-    schema: {
-      type: 'array',
-      items: MENU_ITEM_RESPONSE_SCHEMA,
-    },
+    type: [MenuItemResponseDto],
   })
   @ApiNotFoundResponse({ description: 'Restaurant not found' })
   @ApiUnauthorizedResponse({
@@ -194,7 +103,7 @@ export class MenuController {
   })
   @ApiOkResponse({
     description: 'Menu item returned successfully',
-    schema: MENU_ITEM_RESPONSE_SCHEMA,
+    type: MenuItemResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Menu item not found' })
   @ApiUnauthorizedResponse({
@@ -205,12 +114,12 @@ export class MenuController {
   }
 
   @Post()
-  @Roles('admin', 'restaurant')
+  @Roles(['admin', 'restaurant'])
   @ApiOperation({ summary: 'Create a menu item' })
   @ApiBody({ type: CreateMenuItemDto })
   @ApiCreatedResponse({
     description: 'Menu item created successfully',
-    schema: MENU_ITEM_RESPONSE_SCHEMA,
+    type: MenuItemResponseDto,
   })
   @ApiForbiddenResponse({
     description: 'User is not owner of the restaurant',
@@ -219,16 +128,16 @@ export class MenuController {
   @ApiUnauthorizedResponse({
     description: 'Missing or invalid access token',
   })
-  create(@CurrentUser() user: JwtPayload, @Body() dto: CreateMenuItemDto) {
+  create(@Session() session: UserSession, @Body() dto: CreateMenuItemDto) {
     return this.service.create(
-      user.sub,
-      user.roles?.includes('admin') ?? false,
+      session.user.id,
+      hasRole(session.user.role, 'admin'),
       dto,
     );
   }
 
   @Patch(':id')
-  @Roles('admin', 'restaurant')
+  @Roles(['admin', 'restaurant'])
   @ApiOperation({ summary: 'Update a menu item' })
   @ApiParam({
     name: 'id',
@@ -240,7 +149,7 @@ export class MenuController {
   @ApiBody({ type: UpdateMenuItemDto })
   @ApiOkResponse({
     description: 'Menu item updated successfully',
-    schema: MENU_ITEM_RESPONSE_SCHEMA,
+    type: MenuItemResponseDto,
   })
   @ApiForbiddenResponse({
     description: 'User is not owner of the restaurant',
@@ -251,19 +160,19 @@ export class MenuController {
   })
   update(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: JwtPayload,
+    @Session() session: UserSession,
     @Body() dto: UpdateMenuItemDto,
   ) {
     return this.service.update(
       id,
-      user.sub,
-      user.roles?.includes('admin') ?? false,
+      session.user.id,
+      hasRole(session.user.role, 'admin'),
       dto,
     );
   }
 
   @Patch(':id/sold-out')
-  @Roles('admin', 'restaurant')
+  @Roles(['admin', 'restaurant'])
   @ApiOperation({ summary: 'Toggle sold out state for a menu item' })
   @ApiParam({
     name: 'id',
@@ -274,7 +183,7 @@ export class MenuController {
   })
   @ApiOkResponse({
     description: 'Menu item sold out state toggled',
-    schema: MENU_ITEM_RESPONSE_SCHEMA,
+    type: MenuItemResponseDto,
   })
   @ApiForbiddenResponse({
     description: 'User is not owner of the restaurant',
@@ -285,17 +194,17 @@ export class MenuController {
   })
   toggleSoldOut(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: JwtPayload,
+    @Session() session: UserSession,
   ) {
     return this.service.toggleSoldOut(
       id,
-      user.sub,
-      user.roles?.includes('admin') ?? false,
+      session.user.id,
+      hasRole(session.user.role, 'admin'),
     );
   }
 
   @Delete(':id')
-  @Roles('admin', 'restaurant')
+  @Roles(['admin', 'restaurant'])
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a menu item' })
   @ApiParam({
@@ -315,12 +224,12 @@ export class MenuController {
   })
   remove(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: JwtPayload,
+    @Session() session: UserSession,
   ) {
     return this.service.remove(
       id,
-      user.sub,
-      user.roles?.includes('admin') ?? false,
+      session.user.id,
+      hasRole(session.user.role, 'admin'),
     );
   }
 }

@@ -5,9 +5,10 @@ import { MenuService } from './menu.service';
 import { MenuRepository } from './menu.repository';
 import { DatabaseModule } from '@/drizzle/drizzle.module';
 import { RestaurantModule } from '@/module/restaurant-catalog/restaurant/restaurant.module';
+import { ModifiersModule } from './modifiers/modifiers.module';
 
 @Module({
-  imports: [DatabaseModule, RestaurantModule, CqrsModule],
+  imports: [DatabaseModule, RestaurantModule, ModifiersModule, CqrsModule],
   controllers: [MenuController],
   providers: [MenuService, MenuRepository],
   exports: [MenuService],

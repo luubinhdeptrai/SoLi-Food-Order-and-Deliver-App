@@ -19,8 +19,15 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1776541523540,
-      "tag": "0002_huge_stephen_strange",
+      "when": 1777217861203,
+      "tag": "0002_overconfident_silver_centurion",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777258797860,
+      "tag": "0003_chief_strong_guy",
       "breakpoints": true
     }
   ]

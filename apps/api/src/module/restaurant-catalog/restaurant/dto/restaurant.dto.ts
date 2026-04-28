@@ -64,6 +64,14 @@ export class UpdateRestaurantDto extends PartialType(CreateRestaurantDto) {
   @IsOptional()
   @IsBoolean()
   isOpen?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Approval status (admin only)',
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isApproved?: boolean;
 }
 
 export class RestaurantResponseDto {

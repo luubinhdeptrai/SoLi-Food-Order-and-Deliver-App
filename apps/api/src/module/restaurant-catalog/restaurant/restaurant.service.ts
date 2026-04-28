@@ -1,15 +1,13 @@
 import {
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { EventBus } from '@nestjs/cqrs';
 import { RestaurantRepository } from './restaurant.repository';
 import { CreateRestaurantDto, UpdateRestaurantDto } from './dto/restaurant.dto';
-import type {
-  NewRestaurant,
-  Restaurant,
-} from '@/module/restaurant-catalog/restaurant/restaurant.schema';
+import type { Restaurant } from '@/module/restaurant-catalog/restaurant/restaurant.schema';
 import { RestaurantUpdatedEvent } from '@/shared/events/restaurant-updated.event';
 
 @Injectable()
@@ -19,8 +17,8 @@ export class RestaurantService {
     private readonly eventBus: EventBus,
   ) {}
 
-  async findAll(): Promise<Restaurant[]> {
-    return this.repo.findAll();
+  async findAll(offset?: number, limit?: number): Promise<Restaurant[]> {
+    return this.repo.findAll(offset, limit);
   }
 
   async findOne(id: string): Promise<Restaurant> {
@@ -31,10 +29,7 @@ export class RestaurantService {
     return restaurant;
   }
 
-  async create(
-    ownerId: string,
-    dto: CreateRestaurantDto,
-  ): Promise<NewRestaurant> {
+  async create(ownerId: string, dto: CreateRestaurantDto): Promise<Restaurant> {
     const restaurant = await this.repo.create(ownerId, dto);
     this.eventBus.publish(
       new RestaurantUpdatedEvent(
@@ -56,7 +51,7 @@ export class RestaurantService {
     requesterId: string,
     isAdmin: boolean,
     dto: UpdateRestaurantDto,
-  ): Promise<NewRestaurant> {
+  ): Promise<Restaurant> {
     const restaurant = await this.findOne(id);
     if (!isAdmin && restaurant.ownerId !== requesterId) {
       throw new ForbiddenException('You do not own this restaurant');
@@ -98,13 +93,18 @@ export class RestaurantService {
     );
   }
 
+  async setApproved(id: string, isApproved: boolean): Promise<Restaurant> {
+    await this.findOne(id);
+    return this.repo.update(id, { isApproved });
+  }
+
   async assertOpenAndApproved(id: string): Promise<Restaurant> {
     const restaurant = await this.findOne(id);
     if (!restaurant.isApproved) {
-      throw new ForbiddenException('Restaurant is not approved');
+      throw new ConflictException('Restaurant is not approved');
     }
     if (!restaurant.isOpen) {
-      throw new ForbiddenException('Restaurant is currently closed');
+      throw new ConflictException('Restaurant is currently closed');
     }
     return restaurant;
   }

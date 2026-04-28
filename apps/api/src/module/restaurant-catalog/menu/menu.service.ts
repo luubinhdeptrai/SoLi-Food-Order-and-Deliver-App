@@ -1,7 +1,8 @@
 import {
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { EventBus } from '@nestjs/cqrs';
 import { MenuRepository } from './menu.repository';
@@ -87,6 +88,11 @@ export class MenuService {
     isAdmin: boolean,
   ): Promise<MenuItem> {
     const item = await this.assertOwnership(id, requesterId, isAdmin);
+    if (item.status === 'unavailable') {
+      throw new ConflictException(
+        'Cannot toggle sold-out on an unavailable item; mark it available first',
+      );
+    }
     const nextStatus =
       item.status === 'out_of_stock' ? 'available' : 'out_of_stock';
     const updated = await this.repo.update(id, { status: nextStatus });
@@ -119,6 +125,20 @@ export class MenuService {
         'unavailable',
       ),
     );
+  }
+
+  async assertItemAvailable(id: string): Promise<MenuItem> {
+    const item = await this.findOne(id);
+    if (!item.isAvailable) {
+      throw new ConflictException('Item is not available for ordering');
+    }
+    if (item.status === 'out_of_stock') {
+      throw new ConflictException('Item is out of stock');
+    }
+    if (item.status === 'unavailable') {
+      throw new ConflictException('Item is unavailable');
+    }
+    return item;
   }
 
   getCategories(): typeof MENU_ITEM_CATEGORIES {
