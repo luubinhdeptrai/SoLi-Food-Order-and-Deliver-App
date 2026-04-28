@@ -1,4 +1,20 @@
-import { pgTable, pgEnum, uuid, text, doublePrecision, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, uuid, text, timestamp, customType } from 'drizzle-orm/pg-core';
+
+// ---------------------------------------------------------------------------
+// Monetary column helper (M-1 fix — mirrors order.schema.ts)
+// PostgreSQL NUMERIC(12, 2) → TypeScript number via fromDriver.
+// ---------------------------------------------------------------------------
+const moneyColumn = customType<{ data: number; driverData: string }>({
+  dataType() {
+    return 'numeric(12, 2)';
+  },
+  fromDriver(value) {
+    return parseFloat(value as string);
+  },
+  toDriver(value) {
+    return String(value);
+  },
+});
 
 // ---------------------------------------------------------------------------
 // Enum
@@ -45,7 +61,7 @@ export const orderingMenuItemSnapshots = pgTable(
     menuItemId: uuid('menu_item_id').primaryKey(), // upstream ID, not a FK
     restaurantId: uuid('restaurant_id').notNull(),
     name: text('name').notNull(),
-    price: doublePrecision('price').notNull(),
+    price: moneyColumn('price').notNull(),
     status: orderingMenuItemStatusEnum('status').notNull().default('available'),
     lastSyncedAt: timestamp('last_synced_at').defaultNow().notNull(),
   },

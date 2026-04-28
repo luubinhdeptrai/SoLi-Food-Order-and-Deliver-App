@@ -2,7 +2,24 @@
 
 **Document Type:** Integration Contract  
 **Ordering Phase Dependency:** Phase 4 (Order Placement), Phase 5 (Order Lifecycle)  
-**Status:** Required before Phase 4 is considered end-to-end complete
+**Status:** ⚠️ Phase 4 IMPLEMENTED (Ordering side) — Payment BC integration pending
+
+---
+
+## Phase 4 Context
+
+The Ordering BC now publishes `OrderPlacedEvent` after every successful checkout
+(implemented in `PlaceOrderHandler`). The Payment Context must:
+
+1. **Consume `OrderPlacedEvent`** — detect VNPay orders (`paymentMethod === 'vnpay'`) and initiate the payment session.
+2. **Publish `PaymentConfirmedEvent`** — once VNPay confirms, advance the order `PENDING → PAID`.
+3. **Publish `PaymentFailedEvent`** — on failure, cancel the order `PENDING → CANCELLED`.
+
+Until the Payment BC implements these handlers, VNPay orders will remain in `PENDING` state
+and will eventually be auto-cancelled by the `OrderTimeoutTask` (Phase 5).
+
+**COD orders** do not require Payment BC involvement — they go directly
+`PENDING → CONFIRMED` when the restaurant accepts (Phase 5).
 
 ---
 

@@ -10,10 +10,12 @@
 export const IDEMPOTENCY_KEY_PREFIX = 'idempotency:order:' as const;
 
 /**
- * Fallback TTL (24 h) used when app_settings DB row is not yet seeded.
- * Phase 1 will replace this with a DB-backed lookup.
+ * Fallback TTL (5 min) used when app_settings DB row is not yet seeded.
+ * Matches the ORDER_IDEMPOTENCY_TTL_SECONDS seed value of 300s defined in
+ * Phase 1 (app_settings table). The old value of 86400 (24h) was wrong and
+ * would have blocked cart reuse for far longer than intended (M-3 fix).
  */
-export const IDEMPOTENCY_TTL_FALLBACK_SECONDS = 86_400;
+export const IDEMPOTENCY_TTL_FALLBACK_SECONDS = 300;
 
 /**
  * Cart key format: cart:<customerId>

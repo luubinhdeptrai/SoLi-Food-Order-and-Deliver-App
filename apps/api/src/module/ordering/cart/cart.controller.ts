@@ -11,6 +11,8 @@ import {
   UseGuards,
   ParseUUIDPipe,
   Res,
+  Headers,
+  BadRequestException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import {
@@ -23,13 +25,19 @@ import {
   ApiNotFoundResponse,
   ApiConflictResponse,
   ApiBadRequestResponse,
+  ApiHeader,
+  ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
+import { CommandBus } from '@nestjs/cqrs';
 import { CartService } from './cart.service';
 import {
   AddItemToCartDto,
   UpdateCartItemQuantityDto,
   CartResponseDto,
 } from './dto/cart.dto';
+import { CheckoutDto, CheckoutResponseDto } from '../order/dto/checkout.dto';
+import { PlaceOrderCommand } from '../order/commands/place-order.command';
+import type { Order } from '../order/order.schema';
 import {
   CurrentUser,
   type JwtPayload,
@@ -56,7 +64,10 @@ import type { Cart } from './cart.types';
 @UseGuards(JwtAuthGuard)
 @Controller('carts')
 export class CartController {
-  constructor(private readonly cartService: CartService) {}
+  constructor(
+    private readonly cartService: CartService,
+    private readonly commandBus: CommandBus,
+  ) {}
 
   // -------------------------------------------------------------------------
   // GET /carts/my
@@ -172,8 +183,90 @@ export class CartController {
   }
 
   // -------------------------------------------------------------------------
+  // POST /carts/my/checkout   (Phase 4 — Order Placement)
+  //
+  // Dispatches PlaceOrderCommand via CommandBus (D1-C Hybrid CQRS).
+  // The handler performs all validation, DB writes, event publishing and
+  // Redis cart cleanup — this controller only marshals the HTTP contract.
+  // -------------------------------------------------------------------------
+
+  @Post('my/checkout')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Checkout the current cart — creates an Order',
+    description:
+      'Atomically validates the cart against ACL snapshots, creates an Order, ' +
+      'publishes OrderPlacedEvent, and clears the Redis cart. ' +
+      'Supply X-Idempotency-Key to safely retry on network failure.',
+  })
+  @ApiHeader({
+    name: 'X-Idempotency-Key',
+    description:
+      'Optional client-generated UUID. If this key was already used to place an ' +
+      'order, the same order is returned without creating a duplicate. ' +
+      'Valid for ORDER_IDEMPOTENCY_TTL_SECONDS (default 5 min).',
+    required: false,
+  })
+  @ApiCreatedResponse({
+    description: 'Order placed successfully',
+    type: CheckoutResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Cart is empty or missing' })
+  @ApiConflictResponse({
+    description:
+      'Concurrent checkout in progress, or cartId already used (D5-B duplicate)',
+  })
+  @ApiUnprocessableEntityResponse({
+    description:
+      'Restaurant closed / not approved, item unavailable, or delivery out of range',
+  })
+  async checkout(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CheckoutDto,
+    @Headers('x-idempotency-key') rawIdempotencyKey?: string,
+  ): Promise<CheckoutResponseDto> {
+    // M-2 FIX: validate the idempotency key before using it as a Redis key.
+    // Reject keys that are not UUID-like (8–64 hex chars + hyphens) to prevent
+    // oversized keys and log-injection via the key value.
+    const idempotencyKey = rawIdempotencyKey?.trim() || undefined;
+    if (idempotencyKey !== undefined) {
+      if (
+        idempotencyKey.length > 64 ||
+        !/^[0-9a-fA-F-]{8,64}$/.test(idempotencyKey)
+      ) {
+        throw new BadRequestException(
+          'X-Idempotency-Key must be a UUID string (8–64 hexadecimal characters with optional hyphens).',
+        );
+      }
+    }
+
+    const command = new PlaceOrderCommand(
+      user.sub,
+      dto.deliveryAddress,
+      dto.paymentMethod,
+      dto.note,
+      idempotencyKey,
+    );
+
+    const order: Order = await this.commandBus.execute(command);
+
+    return this.toCheckoutResponse(order);
+  }
+
+  // -------------------------------------------------------------------------
   // Private helpers
   // -------------------------------------------------------------------------
+
+  private toCheckoutResponse(order: Order): CheckoutResponseDto {
+    return {
+      orderId: order.id,
+      status: order.status,
+      totalAmount: order.totalAmount,
+      paymentMethod: order.paymentMethod,
+      paymentUrl: order.paymentUrl,
+      createdAt: order.createdAt.toISOString(),
+    };
+  }
 
   private toResponse(cart: Cart): CartResponseDto {
     const items = cart.items.map((item) => ({

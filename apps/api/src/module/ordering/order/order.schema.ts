@@ -3,12 +3,33 @@ import {
   pgEnum,
   uuid,
   text,
-  doublePrecision,
   integer,
   jsonb,
   timestamp,
   unique,
+  customType,
 } from 'drizzle-orm/pg-core';
+
+// ---------------------------------------------------------------------------
+// Monetary column helper (M-1 fix)
+//
+// PostgreSQL NUMERIC(12, 2) stores exact decimal values.
+// IEEE-754 doublePrecision (float8) causes rounding errors like
+// 1.10 + 2.20 = 3.3000000000000003 which is unacceptable for financial data.
+//
+// customType maps NUMERIC → TypeScript number automatically via fromDriver.
+// ---------------------------------------------------------------------------
+const moneyColumn = customType<{ data: number; driverData: string }>({
+  dataType() {
+    return 'numeric(12, 2)';
+  },
+  fromDriver(value) {
+    return parseFloat(value as string);
+  },
+  toDriver(value) {
+    return String(value);
+  },
+});
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -90,7 +111,7 @@ export const orders = pgTable(
     cartId: uuid('cart_id').notNull(),
 
     status: orderStatusEnum('status').notNull().default('pending'),
-    totalAmount: doublePrecision('total_amount').notNull(),
+    totalAmount: moneyColumn('total_amount').notNull(),
     paymentMethod: paymentMethodEnum('payment_method').notNull(),
 
     // JSONB delivery address — DeliveryAddress shape
@@ -137,9 +158,9 @@ export const orderItems = pgTable('order_items', {
   // Cross-context reference — snapshot, NOT a FK to restaurant-catalog
   menuItemId: uuid('menu_item_id').notNull(),
   itemName: text('item_name').notNull(),       // snapshot
-  unitPrice: doublePrecision('unit_price').notNull(), // snapshot
+  unitPrice: moneyColumn('unit_price').notNull(), // snapshot
   quantity: integer('quantity').notNull(),
-  subtotal: doublePrecision('subtotal').notNull(),
+  subtotal: moneyColumn('subtotal').notNull(),
 });
 
 export type OrderItem = typeof orderItems.$inferSelect;

@@ -1,8 +1,8 @@
 # Cross-Boundary Requirements: RestaurantCatalog BC
 
 **Document Type:** Integration Contract  
-**Ordering Phase:** 3 — ACL / Snapshot Projectors  
-**Status:** ✅ IMPLEMENTED — Phase 3 complete
+**Ordering Phase:** 3 — ACL / Snapshot Projectors; 4 — Order Placement  
+**Status:** ✅ Phase 3 complete | ⚠️ Phase 4 — delivery_radius_km still pending upstream
 
 ---
 
