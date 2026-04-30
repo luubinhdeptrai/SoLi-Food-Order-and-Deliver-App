@@ -1,4 +1,5 @@
 import { Controller, Get, Query, ParseIntPipe } from '@nestjs/common';
+import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 import { SearchService } from './search.service';
 import {
   ApiBearerAuth,
@@ -17,6 +18,7 @@ export class SearchController {
   constructor(private readonly service: SearchService) {}
 
   @Get()
+  @AllowAnonymous()
   @ApiOperation({
     summary: 'Search restaurants',
     description:

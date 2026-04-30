@@ -20,7 +20,6 @@ import { DevTestUserMiddleware } from './lib/dev-test-user.middleware';
 
     AuthModule.forRoot({
       auth,
-      disableGlobalAuthGuard: true,
       bodyParser: {
         json: { limit: '2mb' },
         urlencoded: { limit: '2mb', extended: true },

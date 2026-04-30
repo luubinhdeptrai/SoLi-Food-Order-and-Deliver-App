@@ -28,6 +28,7 @@ import {
   type NewOrderItem,
   type NewOrderStatusLog,
   type DeliveryAddress,
+  type OrderModifier,
 } from '../order.schema';
 import type { Cart, CartItem } from '../../cart/cart.types';
 import type { OrderingMenuItemSnapshot } from '../../acl/schemas/menu-item-snapshot.schema';
@@ -189,6 +190,16 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     this.assertAllItemsAreAvailable(cart!.items, menuItemSnapshots, cart!.restaurantId);
 
     // -------------------------------------------------------------------------
+    // Step 5b — Re-validate modifier constraints at checkout (Case 12 fix)
+    //
+    // Cart was valid when items were added; modifier groups can change after that
+    // (options removed, isAvailable flipped, minSelections raised by merchant).
+    // Re-checks against the ACL snapshot to guarantee constraints hold at order time.
+    // -------------------------------------------------------------------------
+    const snapshotMapForModifiers = this.buildMenuItemSnapshotMap(menuItemSnapshots);
+    this.assertModifierConstraintsAtCheckout(cart!.items, snapshotMapForModifiers);
+
+    // -------------------------------------------------------------------------
     // Step 6 — BR-3: Delivery radius check (best-effort — skipped if no coords)
     // -------------------------------------------------------------------------
     this.assertDeliveryRadiusIfApplicable(restaurantSnapshot!, deliveryAddress);
@@ -199,10 +210,9 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     // The cart carries the price at add-time; ACL carries the latest known price.
     // Both are snapshots — we prefer the ACL snapshot for freshness.
     // -------------------------------------------------------------------------
-    const snapshotMap = this.buildMenuItemSnapshotMap(menuItemSnapshots);
     const snapshotedItems = this.buildOrderItemsFromSnapshots(
       cart!.items,
-      snapshotMap,
+      snapshotMapForModifiers,
     );
 
     // -------------------------------------------------------------------------
@@ -358,6 +368,73 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
   }
 
   /**
+   * Case 12 fix — Re-validate modifier constraints at checkout against the ACL snapshot.
+   *
+   * The cart was valid when items were added. Between add-time and checkout:
+   *  - A merchant may have removed a modifier group or option.
+   *  - A merchant may have marked an option isAvailable=false.
+   *  - A merchant may have raised minSelections on a required group.
+   *
+   * This method re-checks all three conditions so the Order aggregate is
+   * never persisted with stale or invalid modifier data.
+   *
+   * Called AFTER assertAllItemsAreAvailable (which guarantees snapshot exists)
+   * and BEFORE buildOrderItemsFromSnapshots (which reads option prices from snapshot).
+   */
+  private assertModifierConstraintsAtCheckout(
+    cartItems: CartItem[],
+    snapshotMap: Map<string, OrderingMenuItemSnapshot>,
+  ): void {
+    for (const cartItem of cartItems) {
+      const snapshot = snapshotMap.get(cartItem.menuItemId)!;
+      const groupMap = new Map(snapshot.modifiers.map((g) => [g.groupId, g]));
+      const countByGroup = new Map<string, number>();
+
+      // Validate each selected modifier option still exists and is available.
+      for (const sel of cartItem.selectedModifiers) {
+        const group = groupMap.get(sel.groupId);
+        if (!group) {
+          throw new UnprocessableEntityException(
+            `Modifier group "${sel.groupName}" no longer exists on "${cartItem.itemName}". ` +
+              `Please update your cart and try again.`,
+          );
+        }
+        const opt = group.options.find((o) => o.optionId === sel.optionId);
+        if (!opt) {
+          throw new UnprocessableEntityException(
+            `Modifier option "${sel.optionName}" no longer exists. ` +
+              `Please update your cart and try again.`,
+          );
+        }
+        if (!opt.isAvailable) {
+          throw new UnprocessableEntityException(
+            `Modifier option "${sel.optionName}" is no longer available. ` +
+              `Please update your cart and try again.`,
+          );
+        }
+        countByGroup.set(sel.groupId, (countByGroup.get(sel.groupId) ?? 0) + 1);
+      }
+
+      // Validate minSelections/maxSelections for each group.
+      for (const group of snapshot.modifiers) {
+        const count = countByGroup.get(group.groupId) ?? 0;
+        if (count < group.minSelections) {
+          throw new UnprocessableEntityException(
+            `Modifier group "${group.groupName}" now requires at least ${group.minSelections} ` +
+              `selection(s) for "${cartItem.itemName}". Please update your cart and try again.`,
+          );
+        }
+        if (group.maxSelections > 0 && count > group.maxSelections) {
+          throw new UnprocessableEntityException(
+            `Modifier group "${group.groupName}" now allows at most ${group.maxSelections} ` +
+              `selection(s) for "${cartItem.itemName}". Please update your cart and try again.`,
+          );
+        }
+      }
+    }
+  }
+
+  /**
    * BR-3 — Delivery radius check.
    *
    * Skipped gracefully when:
@@ -421,20 +498,59 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
   private buildOrderItemsFromSnapshots(
     cartItems: CartItem[],
     snapshotMap: Map<string, OrderingMenuItemSnapshot>,
-  ): Array<{ menuItemId: string; itemName: string; unitPrice: number; quantity: number; subtotal: number }> {
+  ): Array<{
+    menuItemId: string;
+    itemName: string;
+    unitPrice: number;
+    modifiersPrice: number;
+    quantity: number;
+    subtotal: number;
+    modifiers: OrderModifier[];
+  }> {
     return cartItems.map((cartItem) => {
-      const snapshot = snapshotMap.get(cartItem.menuItemId);
-      // Snapshot existence validated in assertAllItemsAreAvailable — safe to assert here.
-      const unitPrice = snapshot!.price;
-      const itemName = snapshot!.name;
-      const subtotal = unitPrice * cartItem.quantity;
+      const snapshot = snapshotMap.get(cartItem.menuItemId)!;
+      // ACL snapshot price is the authoritative base price (not cart add-time price).
+      const unitPrice = snapshot.price;
+
+      // Re-resolve modifier prices from the ACL snapshot (Case 13 fix).
+      // Handles merchant price edits that occurred after the item was added to the cart.
+      // assertModifierConstraintsAtCheckout above already guarantees all selected
+      // options still exist and are available — safe to fall back to cart price if
+      // a group/option is somehow absent (belt-and-suspenders).
+      const groupOptionPriceMap = new Map<string, number>(
+        snapshot.modifiers.flatMap((g) =>
+          g.options.map((o) => [`${g.groupId}:${o.optionId}`, o.price] as [string, number]),
+        ),
+      );
+
+      const modifiersPrice = cartItem.selectedModifiers.reduce((sum, sel) => {
+        const price =
+          groupOptionPriceMap.get(`${sel.groupId}:${sel.optionId}`) ?? sel.price;
+        return sum + price;
+      }, 0);
+
+      // Snapshot modifier selections for the immutable order record (Case 14 fix).
+      const modifiers: OrderModifier[] = cartItem.selectedModifiers.map((sel) => ({
+        groupId: sel.groupId,
+        groupName: sel.groupName,
+        optionId: sel.optionId,
+        optionName: sel.optionName,
+        price:
+          groupOptionPriceMap.get(`${sel.groupId}:${sel.optionId}`) ?? sel.price,
+      }));
+
+      const subtotal = parseFloat(
+        ((unitPrice + modifiersPrice) * cartItem.quantity).toFixed(2),
+      );
 
       return {
         menuItemId: cartItem.menuItemId,
-        itemName,
+        itemName: snapshot.name,
         unitPrice,
+        modifiersPrice,
         quantity: cartItem.quantity,
         subtotal,
+        modifiers,
       };
     });
   }
@@ -463,8 +579,10 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
       menuItemId: string;
       itemName: string;
       unitPrice: number;
+      modifiersPrice: number;
       quantity: number;
       subtotal: number;
+      modifiers: OrderModifier[];
     }>;
   }): Promise<Order> {
     const {
@@ -507,8 +625,10 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
           menuItemId: item.menuItemId,
           itemName: item.itemName,
           unitPrice: item.unitPrice,
+          modifiersPrice: item.modifiersPrice,   // Case 13 fix — kept separate from unitPrice
           quantity: item.quantity,
           subtotal: item.subtotal,
+          modifiers: item.modifiers,             // Case 14 fix — ACL-re-resolved at checkout
         }));
 
         await tx.insert(orderItems).values(newOrderItems);

@@ -12,7 +12,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { Roles, Session, type UserSession } from '@thallesp/nestjs-better-auth';
+import { AllowAnonymous, Roles, Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { RestaurantService } from './restaurant.service';
 import { hasRole } from '@/module/auth/role.util';
 import {
@@ -42,6 +42,7 @@ export class RestaurantController {
   constructor(private readonly service: RestaurantService) {}
 
   @Get()
+  @AllowAnonymous()
   @ApiOperation({
     summary: 'List restaurants',
     description: 'Returns paginated restaurants ordered by creation date.',
@@ -58,6 +59,7 @@ export class RestaurantController {
   }
 
   @Get(':id')
+  @AllowAnonymous()
   @ApiOperation({
     summary: 'Get restaurant details',
     description: 'Returns one restaurant by its UUID.',

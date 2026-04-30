@@ -1,13 +1,19 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Inject, Injectable } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import {
   menuItems,
+  menuCategories,
   type MenuItem,
+  type MenuCategory,
+  type NewMenuCategory,
 } from '@/module/restaurant-catalog/menu/menu.schema';
 import type {
   CreateMenuItemDto,
-  MenuItemCategory,
   UpdateMenuItemDto,
+  CreateMenuCategoryDto,
+  UpdateMenuCategoryDto,
 } from './dto/menu.dto';
 import { DB_CONNECTION } from '@/drizzle/drizzle.constants';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -19,13 +25,17 @@ export class MenuRepository {
     @Inject(DB_CONNECTION) readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
+  // -------------------------------------------------------------------------
+  // Menu Items
+  // -------------------------------------------------------------------------
+
   async findByRestaurant(
     restaurantId: string,
-    category?: MenuItemCategory,
+    categoryId?: string,
   ): Promise<MenuItem[]> {
     const conditions = [eq(menuItems.restaurantId, restaurantId)];
-    if (category) {
-      conditions.push(eq(menuItems.category, category));
+    if (categoryId) {
+      conditions.push(eq(menuItems.categoryId, categoryId));
     }
 
     return await this.db
@@ -60,5 +70,55 @@ export class MenuRepository {
 
   async remove(id: string): Promise<void> {
     await this.db.delete(menuItems).where(eq(menuItems.id, id));
+  }
+
+  // -------------------------------------------------------------------------
+  // Menu Categories
+  // -------------------------------------------------------------------------
+
+  async findCategoriesByRestaurant(
+    restaurantId: string,
+  ): Promise<MenuCategory[]> {
+    return this.db
+      .select()
+      .from(menuCategories)
+      .where(eq(menuCategories.restaurantId, restaurantId))
+      .orderBy(menuCategories.displayOrder);
+  }
+
+  async findCategoryById(id: string): Promise<MenuCategory | null> {
+    const result = await this.db
+      .select()
+      .from(menuCategories)
+      .where(eq(menuCategories.id, id))
+      .limit(1);
+    return result[0] ?? null;
+  }
+
+  async createCategory(dto: CreateMenuCategoryDto): Promise<MenuCategory> {
+    const data: NewMenuCategory = {
+      restaurantId: dto.restaurantId,
+      name: dto.name,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      displayOrder: dto.displayOrder ?? 0,
+    };
+    const [row] = await this.db.insert(menuCategories).values(data).returning();
+    return row;
+  }
+
+  async updateCategory(
+    id: string,
+    dto: UpdateMenuCategoryDto,
+  ): Promise<MenuCategory> {
+    const [row] = await this.db
+      .update(menuCategories)
+      .set({ ...dto, updatedAt: new Date() })
+      .where(eq(menuCategories.id, id))
+      .returning();
+    return row;
+  }
+
+  async removeCategory(id: string): Promise<void> {
+    await this.db.delete(menuCategories).where(eq(menuCategories.id, id));
   }
 }

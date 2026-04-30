@@ -8,7 +8,6 @@ import {
   Param,
   HttpCode,
   HttpStatus,
-  UseGuards,
   ParseUUIDPipe,
   Res,
   Headers,
@@ -33,35 +32,32 @@ import { CartService } from './cart.service';
 import {
   AddItemToCartDto,
   UpdateCartItemQuantityDto,
+  UpdateCartItemModifiersDto,
   CartResponseDto,
 } from './dto/cart.dto';
 import { CheckoutDto, CheckoutResponseDto } from '../order/dto/checkout.dto';
 import { PlaceOrderCommand } from '../order/commands/place-order.command';
 import type { Order } from '../order/order.schema';
-import {
-  CurrentUser,
-  type JwtPayload,
-} from '@/module/auth/decorators/current-user.decorator';
-import { JwtAuthGuard } from '@/module/auth/guards/jwt-auth.guard';
+import { Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import type { Cart } from './cart.types';
 
 /**
  * CartController — REST surface for the customer's active cart.
  *
- * All endpoints are protected by JwtAuthGuard. The customerId is derived
- * from the JWT `sub` claim via @CurrentUser() so customers can only
+ * All endpoints require an active session (better-auth cookie/bearer).
+ * The customerId is derived from session.user.id so customers can only
  * read/mutate their own cart.
  *
  * Routes:
- *  GET    /carts/my                   → get active cart (null when empty)
- *  POST   /carts/my/items             → add / merge item
- *  PATCH  /carts/my/items/:menuItemId → update quantity (0 = remove)
- *  DELETE /carts/my/items/:menuItemId → remove specific item
- *  DELETE /carts/my                   → clear entire cart
+ *  GET    /carts/my                               → get active cart (null when empty)
+ *  POST   /carts/my/items                         → add / merge item
+ *  PATCH  /carts/my/items/:cartItemId             → update quantity only (0 = remove)
+ *  PATCH  /carts/my/items/:cartItemId/modifiers   → replace modifier selections only
+ *  DELETE /carts/my/items/:cartItemId             → remove specific line item
+ *  DELETE /carts/my                               → clear entire cart
  */
 @ApiTags('Ordering - Cart')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('carts')
 export class CartController {
   constructor(
@@ -80,9 +76,9 @@ export class CartController {
     type: CartResponseDto,
   })
   async getMyCart(
-    @CurrentUser() user: JwtPayload,
+    @Session() session: UserSession,
   ): Promise<CartResponseDto | null> {
-    const cart = await this.cartService.getCart(user.sub);
+    const cart = await this.cartService.getCart(session.user.id);
     return cart ? this.toResponse(cart) : null;
   }
 
@@ -105,37 +101,43 @@ export class CartController {
     description: 'Validation failure or quantity overflow',
   })
   async addItem(
-    @CurrentUser() user: JwtPayload,
+    @Session() session: UserSession,
     @Body() dto: AddItemToCartDto,
   ): Promise<CartResponseDto> {
-    const cart = await this.cartService.addItem(user.sub, dto);
+    const cart = await this.cartService.addItem(session.user.id, dto);
     return this.toResponse(cart);
   }
 
   // -------------------------------------------------------------------------
-  // PATCH /carts/my/items/:menuItemId
+  // PATCH /carts/my/items/:cartItemId
+  // Quantity update only — modifiers are NEVER touched here (Case 15 + 4.2 fix).
   // -------------------------------------------------------------------------
 
-  @Patch('my/items/:menuItemId')
+  @Patch('my/items/:cartItemId')
   @ApiOperation({
-    summary: 'Update item quantity (quantity=0 removes the item)',
+    summary: 'Update item quantity only (quantity=0 removes the item)',
+    description:
+      'Updates the quantity of a specific cart line item.  ' +
+      'cartItemId (not menuItemId) is used so that multiple lines sharing the same ' +
+      'menuItemId (different modifier combinations) can be targeted independently.  ' +
+      'This endpoint NEVER modifies selectedModifiers.',
   })
   @ApiOkResponse({
     description: 'Updated cart',
     type: CartResponseDto,
   })
   @ApiNoContentResponse({ description: 'Cart is now empty after the update' })
-  @ApiNotFoundResponse({ description: 'Cart or item not found' })
+  @ApiNotFoundResponse({ description: 'Cart or cart item not found' })
   @ApiBadRequestResponse({ description: 'Invalid quantity' })
   async updateItemQuantity(
-    @CurrentUser() user: JwtPayload,
-    @Param('menuItemId', ParseUUIDPipe) menuItemId: string,
+    @Session() session: UserSession,
+    @Param('cartItemId', ParseUUIDPipe) cartItemId: string,
     @Body() dto: UpdateCartItemQuantityDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<CartResponseDto | null> {
     const cart = await this.cartService.updateItemQuantity(
-      user.sub,
-      menuItemId,
+      session.user.id,
+      cartItemId,
       dto,
     );
     if (!cart) {
@@ -146,23 +148,61 @@ export class CartController {
   }
 
   // -------------------------------------------------------------------------
-  // DELETE /carts/my/items/:menuItemId
+  // PATCH /carts/my/items/:cartItemId/modifiers
+  // Modifier update only — quantity is NEVER touched here (Section 4.2 + Case 3 fix).
+  // Replace semantics: the full desired modifier state is sent; server replaces entirely.
   // -------------------------------------------------------------------------
 
-  @Delete('my/items/:menuItemId')
-  @ApiOperation({ summary: 'Remove a specific item from the cart' })
+  @Patch('my/items/:cartItemId/modifiers')
+  @ApiOperation({
+    summary: 'Replace modifier selections on a cart line item',
+    description:
+      'Replaces the selectedModifiers of a specific cart line item with the resolved ' +
+      'result of selectedOptions.  Replace semantics: send the full desired modifier state.  ' +
+      'Sending [] clears all modifiers (valid only when no group requires minSelections > 0).  ' +
+      'quantity is NEVER modified by this endpoint.',
+  })
+  @ApiOkResponse({
+    description: 'Updated cart with new modifier selections',
+    type: CartResponseDto,
+  })
+  @ApiNotFoundResponse({ description: 'Cart or cart item not found' })
+  @ApiBadRequestResponse({
+    description: 'Modifier validation failure (invalid groupId/optionId, min/max violation, unavailable option)',
+  })
+  async updateItemModifiers(
+    @Session() session: UserSession,
+    @Param('cartItemId', ParseUUIDPipe) cartItemId: string,
+    @Body() dto: UpdateCartItemModifiersDto,
+  ): Promise<CartResponseDto> {
+    const cart = await this.cartService.updateItemModifiers(
+      session.user.id,
+      cartItemId,
+      dto,
+    );
+    return this.toResponse(cart);
+  }
+
+  // -------------------------------------------------------------------------
+  // DELETE /carts/my/items/:cartItemId
+  // Uses cartItemId so that multiple lines sharing the same menuItemId can be
+  // targeted independently (Case 15 fix).
+  // -------------------------------------------------------------------------
+
+  @Delete('my/items/:cartItemId')
+  @ApiOperation({ summary: 'Remove a specific cart line item' })
   @ApiOkResponse({
     description: 'Updated cart after removal',
     type: CartResponseDto,
   })
   @ApiNoContentResponse({ description: 'Cart is now empty after removal' })
-  @ApiNotFoundResponse({ description: 'Cart or item not found' })
+  @ApiNotFoundResponse({ description: 'Cart or cart item not found' })
   async removeItem(
-    @CurrentUser() user: JwtPayload,
-    @Param('menuItemId', ParseUUIDPipe) menuItemId: string,
+    @Session() session: UserSession,
+    @Param('cartItemId', ParseUUIDPipe) cartItemId: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<CartResponseDto | null> {
-    const cart = await this.cartService.removeItem(user.sub, menuItemId);
+    const cart = await this.cartService.removeItem(session.user.id, cartItemId);
     if (!cart) {
       res.status(HttpStatus.NO_CONTENT);
       return null;
@@ -178,8 +218,8 @@ export class CartController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Clear (delete) the entire cart' })
   @ApiNoContentResponse({ description: 'Cart cleared successfully' })
-  async clearCart(@CurrentUser() user: JwtPayload): Promise<void> {
-    await this.cartService.clearCart(user.sub);
+  async clearCart(@Session() session: UserSession): Promise<void> {
+    await this.cartService.clearCart(session.user.id);
   }
 
   // -------------------------------------------------------------------------
@@ -221,7 +261,7 @@ export class CartController {
       'Restaurant closed / not approved, item unavailable, or delivery out of range',
   })
   async checkout(
-    @CurrentUser() user: JwtPayload,
+    @Session() session: UserSession,
     @Body() dto: CheckoutDto,
     @Headers('x-idempotency-key') rawIdempotencyKey?: string,
   ): Promise<CheckoutResponseDto> {
@@ -241,7 +281,7 @@ export class CartController {
     }
 
     const command = new PlaceOrderCommand(
-      user.sub,
+      session.user.id,
       dto.deliveryAddress,
       dto.paymentMethod,
       dto.note,
@@ -269,18 +309,33 @@ export class CartController {
   }
 
   private toResponse(cart: Cart): CartResponseDto {
-    const items = cart.items.map((item) => ({
-      menuItemId: item.menuItemId,
-      itemName: item.itemName,
-      unitPrice: item.unitPrice,
-      quantity: item.quantity,
-      subtotal: parseFloat((item.unitPrice * item.quantity).toFixed(2)),
-    }));
-
+    const items = cart.items.map((item) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const modifiersTotal = (item.selectedModifiers ?? []).reduce(
+        (sum, m) => sum + m.price,
+        0,
+      );
+      return {
+        cartItemId: item.cartItemId,
+        menuItemId: item.menuItemId,
+        itemName: item.itemName,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+        subtotal: parseFloat(
+          ((item.unitPrice + modifiersTotal) * item.quantity).toFixed(2),
+        ),
+        selectedModifiers: item.selectedModifiers.map((m) => ({
+          groupId: m.groupId,
+          groupName: m.groupName,
+          optionId: m.optionId,
+          optionName: m.optionName,
+          price: m.price,
+        })),
+      };
+    });
     const totalAmount = parseFloat(
-      items.reduce((sum, i) => sum + i.subtotal, 0).toFixed(2),
+      items.reduce((sum, it) => sum + it.subtotal, 0).toFixed(2),
     );
-
     return {
       cartId: cart.cartId,
       customerId: cart.customerId,
@@ -288,8 +343,8 @@ export class CartController {
       restaurantName: cart.restaurantName,
       items,
       totalAmount,
-      createdAt: String(cart.createdAt),
-      updatedAt: String(cart.updatedAt),
+      createdAt: cart.createdAt,
+      updatedAt: cart.updatedAt,
     };
   }
 }

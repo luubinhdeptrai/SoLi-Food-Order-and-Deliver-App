@@ -10,7 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { Roles, Session, type UserSession } from '@thallesp/nestjs-better-auth';
+import { AllowAnonymous, Roles, Session, type UserSession } from '@thallesp/nestjs-better-auth';
 import { ZonesService } from './zones.service';
 import { hasRole } from '@/module/auth/role.util';
 import {
@@ -35,6 +35,7 @@ export class ZonesController {
   constructor(private readonly service: ZonesService) {}
 
   @Get()
+  @AllowAnonymous()
   @ApiOperation({
     summary: 'List delivery zones',
     description: 'Returns all delivery zones for a restaurant.',

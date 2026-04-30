@@ -1,9 +1,9 @@
 # Menu & Modifiers Module Redesign Proposal
 
 **Author:** Bình  
-**Date:** 2026-04-28  
+**Date:** 2026-04-28 (updated 2026-04-29)  
 **Scope:** `restaurant-catalog` BC → `MenuModule` + `ModifiersModule`  
-**Status:** Draft — for review
+**Status:** ✅ IMPLEMENTED — all selected solutions shipped 2026-04-28/29
 
 ---
 
@@ -22,11 +22,27 @@
 
 ## 1. Executive Summary
 
-The `menu` and `modifiers` sub-modules within `RestaurantCatalogModule` contain a mix of **critical runtime bugs**, **data integrity risks**, and **missing domain primitives** that will block the system from functioning correctly at any scale.
+> **✅ All issues below have been implemented.** This section is preserved for historical context.
 
-**Critical (system broken today):**
-- `ModifiersService.getRestaurantForItem()` is an unimplemented stub. It returns `{ ownerId: restaurantId }` where `restaurantId` is the restaurant's UUID — not the owning user's ID. Because this stub is used for **all** ownership checks in the modifiers flow, no non-admin restaurant owner can ever create, update, or delete their own modifiers. The endpoint exists but always returns `403 Forbidden`.
-- `MenuService.assertItemAvailable()` checks **both** `isAvailable: boolean` AND `status: enum` for the same concept, while `toggleSoldOut()` only updates `status`. These two fields will silently diverge on any toggleSoldOut operation, making the availability check unpredictably inconsistent.
+The `menu` and `modifiers` sub-modules within `RestaurantCatalogModule` contained a mix of **critical runtime bugs**, **data integrity risks**, and **missing domain primitives**.
+
+**Critical — ✅ FIXED:**
+- **S-1** `ModifiersService.getRestaurantForItem()` stub — fixed: now calls `RestaurantService.findOne(restaurantId)` for real ownership.
+- **S-2** `MenuService.assertItemAvailable()` dual-field check — fixed: checks `status !== 'available'` only; `isAvailable` column dropped.
+
+**High — ✅ FIXED:**
+- **M-1/M-2** `doublePrecision` prices on `menu_items` and modifier options — fixed: both use `numeric(12,2)` via `moneyColumn` custom type.
+- **D-3/S-4** Dual availability fields + `isAvailable` in DTO — fixed: column and DTO field removed entirely.
+
+**Medium — ✅ FIXED:**
+- **D-1/M-3** Flat modifier model — fixed: full `modifier_groups` + `modifier_options` normalization (Option A).
+- **D-2** Global hardcoded category enum — fixed: `menu_categories` table, per-restaurant dynamic categories (Option A).
+- **I-1/I-2** Modifier mutations fired no events — fixed: all mutations publish `MenuItemUpdatedEvent` with full modifier tree (Option C).
+- **I-3/I-4** Cart lacked `selectedModifiers` — fixed: `CartItem.selectedModifiers`, `AddItemToCartDto.selectedOptions`, full validation in `CartService`.
+
+**Auth migration — ✅ FIXED (2026-04-29):**
+- `CartController` used legacy JWT auth (`@CurrentUser()`, `JwtAuthGuard`) — migrated to `@Session()` / `UserSession` from `@thallesp/nestjs-better-auth`.
+- `DevTestUserMiddleware` lacked Express `Request.user` type augmentation — fixed via `declare global namespace Express`.
 
 **High (data integrity / incorrect behavior):**
 - Both `menu_items.price` and `menu_item_modifiers.price` use `doublePrecision` (IEEE-754 float). For monetary data this causes rounding errors (e.g., `1.10 + 2.20 = 3.3000000000000003`). The pattern for correct monetary storage (`numeric(12,2)`) is already established in `order.schema.ts` and `ordering_menu_item_snapshots`.
@@ -159,41 +175,41 @@ class MenuItemUpdatedEvent {
 
 Issues are tagged by ID and severity. Implementation proposals in §4 reference these IDs.
 
-### CRITICAL — Broken Runtime Behavior
+### CRITICAL — ✅ FIXED
 
-| ID | Module | Issue | Effect |
+| ID | Module | Issue | Status |
 |---|---|---|---|
-| **S-1** | ModifiersService | `getRestaurantForItem()` is an unimplemented stub — returns `{ ownerId: restaurantId }` instead of fetching the actual restaurant owner | ALL non-admin modifier write operations (POST/PATCH/DELETE `/menu-items/:id/modifiers`) always return `403 Forbidden`. Modifier management is broken for every restaurant owner. |
-| **S-2** | MenuService | `assertItemAvailable()` checks both `!item.isAvailable` AND `item.status`. `toggleSoldOut()` only updates `status`, never `isAvailable`. | After a single `toggleSoldOut`, `isAvailable` and `status` diverge permanently. `assertItemAvailable` produces contradictory results depending on which field "wins." |
+| **S-1** | ModifiersService | `getRestaurantForItem()` stub | ✅ Fixed: `RestaurantService.findOne()` |
+| **S-2** | MenuService | `assertItemAvailable()` dual-field check | ✅ Fixed: `status` only |
 
-### HIGH — Data Integrity / Incorrect Behavior
+### HIGH — ✅ FIXED
 
-| ID | Module | Issue | Effect |
+| ID | Module | Issue | Status |
 |---|---|---|---|
-| **M-1** | menu.schema | `menu_items.price: doublePrecision` | IEEE-754 rounding errors accumulate in order totals. 1.10 + 2.20 ≠ 3.30. Financial calculations are unreliable. |
-| **M-2** | menu.schema | `menu_item_modifiers.price: doublePrecision` | Same precision problem. A +1.10 VND modifier price may serialize as 1.0999999999999998. |
-| **D-3** | menu.schema | Dual availability fields: `status: enum` + `isAvailable: boolean` | Two fields represent the same concept. They diverge silently. Ordering BC event contract already defines `status` as canonical — `isAvailable` is de-facto dead code in the event pipeline. |
-| **S-4** | menu.dto | `UpdateMenuItemDto` exposes `isAvailable?: boolean` | Clients can POST `{ "isAvailable": true }` while `status = 'unavailable'`, permanently contradicting the two fields without any validation error. |
+| **M-1** | menu.schema | `menu_items.price: doublePrecision` | ✅ Fixed: `numeric(12,2)` |
+| **M-2** | modifiers.schema | modifier `price: doublePrecision` | ✅ Fixed: `numeric(12,2)` |
+| **D-3** | menu.schema | `isAvailable` + `status` duality | ✅ Fixed: `isAvailable` dropped |
+| **S-4** | menu.dto | `UpdateMenuItemDto` exposes `isAvailable` | ✅ Fixed: field removed |
 
-### MEDIUM — Missing Domain Model / Missing Features
+### MEDIUM — ✅ FIXED
 
-| ID | Module | Issue | Effect |
+| ID | Module | Issue | Status |
 |---|---|---|---|
-| **D-1** | modifiers | No modifier group + option model | Cannot express "Size: exactly one of (Small, Medium, Large)" or "Toppings: 0–3 of (Cheese, Bacon, Onions)". The `is_required` field on individual modifiers cannot substitute for group-level min/max constraints. |
-| **D-2** | menu.schema | `menuItemCategoryEnum` is a global hardcoded enum of 6 values | Every restaurant on the platform is forced to use only: `salads, desserts, breads, mains, drinks, sides`. A sushi restaurant cannot add a `sushi` category. A burger restaurant cannot add `burgers`. |
-| **M-3** | modifiers.schema | `menu_item_modifiers` has no `display_order`, `is_default`, or group-level selection constraints | Cannot control display order. Cannot pre-select a default option. Cannot enforce "must pick exactly one." |
-| **I-1** | ModifiersService | Modifier mutations fire no events | Ordering BC snapshot is permanently unaware of modifier price data. |
-| **I-2** | MenuItemUpdatedEvent | Event carries no modifier data | Even if modifier events fired, the snapshot schema has no column for them. |
-| **I-3** | cart.types | `CartItem` has no `selectedModifiers` field | Modifier selection at order time is structurally impossible in the current data model. |
-| **I-4** | cart.dto | `AddItemToCartDto` has no modifier selection field | Customers cannot select modifiers when adding items to cart via the API. |
-| **S-6** | MenuService.create | No check that `restaurant.isApproved` before adding menu items | Unapproved restaurants can add menu items. While they cannot accept orders, this creates orphaned catalog data. |
+| **D-1** | modifiers | No modifier group/option model | ✅ Fixed: full Group+Option normalization |
+| **D-2** | menu.schema | Global `menuItemCategoryEnum` | ✅ Fixed: `menu_categories` per-restaurant table |
+| **M-3** | modifiers.schema | No `display_order`, `is_default`, selection constraints | ✅ Fixed: in `modifier_groups` + `modifier_options` |
+| **I-1** | ModifiersService | No events on modifier mutations | ✅ Fixed: `MenuItemUpdatedEvent` with modifier tree |
+| **I-2** | MenuItemUpdatedEvent | Event carries no modifier data | ✅ Fixed: `modifiers[]` field added |
+| **I-3** | cart.types | `CartItem` has no `selectedModifiers` | ✅ Fixed: `SelectedModifier` interface + field |
+| **I-4** | cart.dto | `AddItemToCartDto` has no modifier field | ✅ Fixed: `SelectedOptionDto` + `selectedOptions` |
 
-### LOW — Code Quality / Operational
+### LOW — Open
 
-| ID | Module | Issue | Effect |
+| ID | Module | Issue | Status |
 |---|---|---|---|
-| **S-3** | ModifiersService | N+1 DB queries on every write: `findOne(menuItemId)` → stub call → write | Each modifier mutation does 2 sequential DB queries before the actual operation. |
-| **S-5** | menu.dto | `@Min(0)` on `price` allows zero-price items and modifiers | Free items are likely unintentional. Should use `@Min(0.01)` unless free items are a deliberate product feature. |
+| **S-3** | ModifiersService | N+1 DB queries on writes | ⚠️ Partially improved (stub removed) |
+| **S-5** | menu.dto | `@Min(0)` allows zero-price items | ⚠️ Still open (pending product decision Q-1) |
+| **S-6** | MenuService.create | No `restaurant.isApproved` check | ⚠️ Still open (pending product decision Q-2) |
 
 ---
 

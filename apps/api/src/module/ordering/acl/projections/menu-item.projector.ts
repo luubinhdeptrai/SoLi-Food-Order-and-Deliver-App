@@ -14,9 +14,10 @@ import { MenuItemSnapshotRepository } from '../repositories/menu-item-snapshot.r
  *  - Idempotent: ON CONFLICT (menu_item_id) DO UPDATE — safe to replay events.
  *  - No auth, no guards — projectors run inside the process event bus.
  *  - `lastSyncedAt` is reset on every upsert to track freshness.
+ *  - `modifiers` JSONB column is updated with the full modifier tree from event.
  *  - DB errors are logged at ERROR level and re-thrown for observability.
  *
- * Phase: 3 — ACL Layer
+ * Phase: 3 — ACL Layer (updated with modifiers support)
  * Architecture decision: D3-B + D4-B (PostgreSQL snapshots, no runtime imports).
  */
 @Injectable()
@@ -29,10 +30,10 @@ export class MenuItemProjector implements IEventHandler<MenuItemUpdatedEvent> {
   ) {}
 
   async handle(event: MenuItemUpdatedEvent): Promise<void> {
-    const { menuItemId, restaurantId, name, price, status } = event;
+    const { menuItemId, restaurantId, name, price, status, modifiers } = event;
 
     this.logger.debug(
-      `Upserting menu item snapshot: ${menuItemId} (status=${status})`,
+      `Upserting menu item snapshot: ${menuItemId} (status=${status}, modifierGroups=${modifiers.length})`,
     );
 
     try {
@@ -42,6 +43,7 @@ export class MenuItemProjector implements IEventHandler<MenuItemUpdatedEvent> {
         name,
         price,
         status,
+        modifiers,
         lastSyncedAt: new Date(),
       });
       this.logger.log(`Menu item snapshot upserted: ${menuItemId}`);

@@ -6,8 +6,8 @@ import {
 } from '@nestjs/swagger';
 import {
   IsArray,
-  IsBoolean,
   IsEnum,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
@@ -17,23 +17,66 @@ import {
   MinLength,
 } from 'class-validator';
 
-export const MENU_ITEM_CATEGORIES = [
-  'salads',
-  'desserts',
-  'breads',
-  'mains',
-  'drinks',
-  'sides',
-] as const;
-
 export const MENU_ITEM_STATUSES = [
   'available',
   'unavailable',
   'out_of_stock',
 ] as const;
 
-export type MenuItemCategory = (typeof MENU_ITEM_CATEGORIES)[number];
 export type MenuItemStatus = (typeof MENU_ITEM_STATUSES)[number];
+
+// ---------------------------------------------------------------------------
+// MenuCategory DTOs (per-restaurant categories replacing global enum)
+// ---------------------------------------------------------------------------
+
+export class CreateMenuCategoryDto {
+  @ApiProperty({
+    format: 'uuid',
+    description: 'Restaurant that owns this category',
+    example: '11111111-1111-1111-1111-111111111111',
+  })
+  @IsUUID()
+  restaurantId!: string;
+
+  @ApiProperty({ description: 'Category display name', example: 'Burgers' })
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @ApiPropertyOptional({ description: 'Sort order', example: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+}
+
+export class UpdateMenuCategoryDto extends PartialType(
+  OmitType(CreateMenuCategoryDto, ['restaurantId'] as const),
+) {}
+
+export class MenuCategoryResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  restaurantId!: string;
+
+  @ApiProperty({ example: 'Burgers' })
+  name!: string;
+
+  @ApiProperty({ example: 0 })
+  displayOrder!: number;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt!: Date;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  updatedAt!: Date;
+}
+
+// ---------------------------------------------------------------------------
+// MenuItem DTOs
+// ---------------------------------------------------------------------------
 
 export class CreateMenuItemDto {
   @ApiProperty({
@@ -56,20 +99,20 @@ export class CreateMenuItemDto {
   @ApiProperty({
     description: 'Price of the item in store currency',
     example: 12.5,
-    minimum: 0,
+    minimum: 0.01,
   })
   @IsNumber()
-  @Min(0)
+  @Min(0.01)
   price!: number;
 
-  @ApiProperty({
-    description: 'Category used for menu grouping',
-    enum: MENU_ITEM_CATEGORIES,
-    enumName: 'MenuItemCategory',
-    example: 'mains',
+  @ApiPropertyOptional({
+    description: 'UUID of the per-restaurant category this item belongs to',
+    format: 'uuid',
+    example: '44444444-4444-4444-4444-444444444444',
   })
-  @IsEnum(MENU_ITEM_CATEGORIES)
-  category!: MenuItemCategory;
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
 
   @ApiPropertyOptional({
     description: 'Short item description shown to customers',
@@ -118,14 +161,6 @@ export class UpdateMenuItemDto extends PartialType(
   @IsOptional()
   @IsEnum(MENU_ITEM_STATUSES)
   status?: MenuItemStatus;
-
-  @ApiPropertyOptional({
-    description: 'Whether customers can currently order this item',
-    example: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  isAvailable?: boolean;
 }
 
 export class QueryMenuItemDto {
@@ -138,14 +173,13 @@ export class QueryMenuItemDto {
   restaurantId!: string;
 
   @ApiPropertyOptional({
-    description: 'Optional category filter',
-    enum: MENU_ITEM_CATEGORIES,
-    enumName: 'MenuItemCategory',
-    example: 'drinks',
+    description: 'Optional category filter by category UUID',
+    format: 'uuid',
+    example: '44444444-4444-4444-4444-444444444444',
   })
   @IsOptional()
-  @IsEnum(MENU_ITEM_CATEGORIES)
-  category?: MenuItemCategory;
+  @IsUUID()
+  categoryId?: string;
 }
 
 export class MenuItemResponseDto {
@@ -173,12 +207,11 @@ export class MenuItemResponseDto {
   @ApiPropertyOptional({ example: 'PIZZA-MARG-01' })
   sku?: string | null;
 
-  @ApiProperty({
-    enum: MENU_ITEM_CATEGORIES,
-    enumName: 'MenuItemCategory',
-    example: 'mains',
+  @ApiPropertyOptional({
+    format: 'uuid',
+    example: '44444444-4444-4444-4444-444444444444',
   })
-  category!: MenuItemCategory;
+  categoryId?: string | null;
 
   @ApiProperty({
     enum: MENU_ITEM_STATUSES,
@@ -192,26 +225,15 @@ export class MenuItemResponseDto {
   })
   imageUrl?: string | null;
 
-  @ApiProperty({ example: true })
-  isAvailable!: boolean;
-
   @ApiPropertyOptional({
     type: [String],
     example: ['vegetarian', 'popular'],
   })
   tags?: string[] | null;
 
-  @ApiProperty({
-    type: String,
-    format: 'date-time',
-    example: '2026-04-15T08:00:00.000Z',
-  })
+  @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;
 
-  @ApiProperty({
-    type: String,
-    format: 'date-time',
-    example: '2026-04-15T08:00:00.000Z',
-  })
+  @ApiProperty({ type: String, format: 'date-time' })
   updatedAt!: Date;
 }

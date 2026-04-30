@@ -58,6 +58,23 @@ export const paymentMethodEnum = pgEnum('order_payment_method', [
   'vnpay',
 ]);
 
+// ---------------------------------------------------------------------------
+// Modifier snapshot type (stored in order_items.modifiers JSONB)
+// ---------------------------------------------------------------------------
+
+/**
+ * A single modifier option snapshotted at checkout time.
+ * Re-resolved from ACL snapshot — NOT copied from cart add-time data.
+ * Prices reflect what was authoritative in the ACL at moment of order placement.
+ */
+export interface OrderModifier {
+  groupId: string;
+  groupName: string;
+  optionId: string;
+  optionName: string;
+  price: number;
+}
+
 /**
  * Actor that triggered a state transition.
  * 'system' is used for automated actions (timeout cron, PaymentContext event).
@@ -157,10 +174,25 @@ export const orderItems = pgTable('order_items', {
 
   // Cross-context reference — snapshot, NOT a FK to restaurant-catalog
   menuItemId: uuid('menu_item_id').notNull(),
-  itemName: text('item_name').notNull(),       // snapshot
-  unitPrice: moneyColumn('unit_price').notNull(), // snapshot
+  itemName: text('item_name').notNull(),         // snapshot
+  unitPrice: moneyColumn('unit_price').notNull(), // base price snapshot (modifiers excluded)
+  /**
+   * Sum of all selected modifier option prices, re-resolved from ACL snapshot at checkout.
+   * Stored separately so receipts, refunds, and payout splits can distinguish base vs modifier cost.
+   * subtotal = (unitPrice + modifiersPrice) × quantity
+   */
+  modifiersPrice: moneyColumn('modifiers_price').notNull().default(0),
   quantity: integer('quantity').notNull(),
   subtotal: moneyColumn('subtotal').notNull(),
+  /**
+   * Modifier selections snapshotted at checkout time.
+   * Re-resolved from the ACL snapshot — NOT copied from the cart's add-time data.
+   * This is the authoritative record of what the customer actually ordered.
+   */
+  modifiers: jsonb('modifiers')
+    .$type<OrderModifier[]>()
+    .notNull()
+    .default([]),
 });
 
 export type OrderItem = typeof orderItems.$inferSelect;

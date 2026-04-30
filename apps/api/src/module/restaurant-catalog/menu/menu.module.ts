@@ -5,12 +5,16 @@ import { MenuService } from './menu.service';
 import { MenuRepository } from './menu.repository';
 import { DatabaseModule } from '@/drizzle/drizzle.module';
 import { RestaurantModule } from '@/module/restaurant-catalog/restaurant/restaurant.module';
-import { ModifiersModule } from './modifiers/modifiers.module';
 
+/**
+ * MenuModule — owns menu_items, menu_categories.
+ * ModifiersModule is imported at RestaurantCatalogModule level to avoid
+ * the circular dependency (ModifiersModule imports MenuModule for MenuRepository).
+ */
 @Module({
-  imports: [DatabaseModule, RestaurantModule, ModifiersModule, CqrsModule],
+  imports: [DatabaseModule, RestaurantModule, CqrsModule],
   controllers: [MenuController],
   providers: [MenuService, MenuRepository],
-  exports: [MenuService],
+  exports: [MenuService, MenuRepository],
 })
 export class MenuModule {}

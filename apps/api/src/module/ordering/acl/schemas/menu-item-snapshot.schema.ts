@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, uuid, text, timestamp, customType } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, uuid, text, timestamp, customType, jsonb } from 'drizzle-orm/pg-core';
 
 // ---------------------------------------------------------------------------
 // Monetary column helper (M-1 fix — mirrors order.schema.ts)
@@ -49,10 +49,12 @@ export const orderingMenuItemStatusEnum = pgEnum('ordering_menu_item_status', [
  *    the latest known values and are re-snapshotted into order_items at checkout.
  *  - status uses a BC-local enum; canonical field is `status` (not `isAvailable`).
  *    See ORDERING_CONTEXT_PROPOSAL §3 and Phase 3 ACL design.
+ *  - modifiers stores the full modifier group+option tree as JSONB (Fix I-2).
+ *    Structure: MenuItemModifierSnapshot[] from shared/events/menu-item-updated.event.ts
  *  - lastSyncedAt is set whenever the projector handles a MenuItemUpdatedEvent.
  *
  * Populated by: MenuItemProjector (Phase 3) via MenuItemUpdatedEvent.
- * Consumed by:  CartService (Phase 2) — addItem price/name lookup.
+ * Consumed by:  CartService (Phase 2) — addItem price/name lookup + modifier validation.
  *               PlaceOrderHandler (Phase 4) — re-validate availability at checkout.
  */
 export const orderingMenuItemSnapshots = pgTable(
@@ -63,6 +65,8 @@ export const orderingMenuItemSnapshots = pgTable(
     name: text('name').notNull(),
     price: moneyColumn('price').notNull(),
     status: orderingMenuItemStatusEnum('status').notNull().default('available'),
+    /** Full modifier group+option tree. Empty array when item has no modifiers. */
+    modifiers: jsonb('modifiers').$type<import('@/shared/events/menu-item-updated.event').MenuItemModifierSnapshot[]>().notNull().default([]),
     lastSyncedAt: timestamp('last_synced_at').defaultNow().notNull(),
   },
 );

@@ -2,66 +2,125 @@ import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
-  menuItemModifiers,
-  type MenuItemModifier,
+  modifierGroups,
+  modifierOptions,
+  type ModifierGroup,
+  type NewModifierGroup,
+  type ModifierOption,
+  type NewModifierOption,
 } from '@/module/restaurant-catalog/menu/menu.schema';
 import { DB_CONNECTION } from '@/drizzle/drizzle.constants';
 import * as schema from '@/drizzle/schema';
-import type { CreateMenuItemModifierDto, UpdateMenuItemModifierDto } from './modifiers.dto';
+import type {
+  CreateModifierGroupDto,
+  UpdateModifierGroupDto,
+  CreateModifierOptionDto,
+  UpdateModifierOptionDto,
+} from './modifiers.dto';
+
+// ---------------------------------------------------------------------------
+// ModifierGroupRepository
+// ---------------------------------------------------------------------------
 
 @Injectable()
-export class ModifiersRepository {
+export class ModifierGroupRepository {
   constructor(
     @Inject(DB_CONNECTION) readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
-  async findByMenuItem(menuItemId: string): Promise<MenuItemModifier[]> {
+  async findByMenuItem(menuItemId: string): Promise<ModifierGroup[]> {
     return this.db
       .select()
-      .from(menuItemModifiers)
-      .where(eq(menuItemModifiers.menuItemId, menuItemId))
-      .orderBy(menuItemModifiers.createdAt);
+      .from(modifierGroups)
+      .where(eq(modifierGroups.menuItemId, menuItemId))
+      .orderBy(modifierGroups.displayOrder);
   }
 
-  async findById(id: string): Promise<MenuItemModifier | null> {
+  async findById(id: string): Promise<ModifierGroup | null> {
     const result = await this.db
       .select()
-      .from(menuItemModifiers)
-      .where(eq(menuItemModifiers.id, id))
+      .from(modifierGroups)
+      .where(eq(modifierGroups.id, id))
       .limit(1);
     return result[0] ?? null;
   }
 
-  async create(
-    menuItemId: string,
-    dto: CreateMenuItemModifierDto,
-  ): Promise<MenuItemModifier> {
-    const [row] = await this.db
-      .insert(menuItemModifiers)
-      .values({
-        menuItemId,
-        name: dto.name,
-        description: dto.description,
-        price: dto.price,
-        isRequired: dto.isRequired ?? false,
-      })
-      .returning();
+  async create(menuItemId: string, dto: CreateModifierGroupDto): Promise<ModifierGroup> {
+    const data: NewModifierGroup = {
+      menuItemId,
+      name: dto.name,
+      minSelections: dto.minSelections ?? 0,
+      maxSelections: dto.maxSelections ?? 1,
+      displayOrder: dto.displayOrder ?? 0,
+    };
+    const [row] = await this.db.insert(modifierGroups).values(data).returning();
     return row;
   }
 
-  async update(
-    id: string,
-    dto: UpdateMenuItemModifierDto,
-  ): Promise<MenuItemModifier> {
+  async update(id: string, dto: UpdateModifierGroupDto): Promise<ModifierGroup> {
     const [row] = await this.db
-      .update(menuItemModifiers)
+      .update(modifierGroups)
       .set({ ...dto, updatedAt: new Date() })
-      .where(eq(menuItemModifiers.id, id))
+      .where(eq(modifierGroups.id, id))
       .returning();
     return row;
   }
 
   async remove(id: string): Promise<void> {
-    await this.db.delete(menuItemModifiers).where(eq(menuItemModifiers.id, id));
+    await this.db.delete(modifierGroups).where(eq(modifierGroups.id, id));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ModifierOptionRepository
+// ---------------------------------------------------------------------------
+
+@Injectable()
+export class ModifierOptionRepository {
+  constructor(
+    @Inject(DB_CONNECTION) readonly db: NodePgDatabase<typeof schema>,
+  ) {}
+
+  async findByGroup(groupId: string): Promise<ModifierOption[]> {
+    return this.db
+      .select()
+      .from(modifierOptions)
+      .where(eq(modifierOptions.groupId, groupId))
+      .orderBy(modifierOptions.displayOrder);
+  }
+
+  async findById(id: string): Promise<ModifierOption | null> {
+    const result = await this.db
+      .select()
+      .from(modifierOptions)
+      .where(eq(modifierOptions.id, id))
+      .limit(1);
+    return result[0] ?? null;
+  }
+
+  async create(groupId: string, dto: CreateModifierOptionDto): Promise<ModifierOption> {
+    const data: NewModifierOption = {
+      groupId,
+      name: dto.name,
+      price: dto.price ?? 0,
+      isDefault: dto.isDefault ?? false,
+      displayOrder: dto.displayOrder ?? 0,
+      isAvailable: dto.isAvailable ?? true,
+    };
+    const [row] = await this.db.insert(modifierOptions).values(data).returning();
+    return row;
+  }
+
+  async update(id: string, dto: UpdateModifierOptionDto): Promise<ModifierOption> {
+    const [row] = await this.db
+      .update(modifierOptions)
+      .set({ ...dto, updatedAt: new Date() })
+      .where(eq(modifierOptions.id, id))
+      .returning();
+    return row;
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.db.delete(modifierOptions).where(eq(modifierOptions.id, id));
   }
 }

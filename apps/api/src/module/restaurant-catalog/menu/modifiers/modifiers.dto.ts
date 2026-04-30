@@ -1,90 +1,154 @@
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsNumber, IsBoolean, MinLength, Min } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional, PartialType, OmitType } from '@nestjs/swagger';
+import {
+  IsBoolean,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  MinLength,
+} from 'class-validator';
 
-export class CreateMenuItemModifierDto {
-  @ApiProperty({
-    description: 'Modifier name',
-    minLength: 1,
-    example: 'Large',
-  })
+// ---------------------------------------------------------------------------
+// Modifier Group DTOs
+// ---------------------------------------------------------------------------
+
+export class CreateModifierGroupDto {
+  @ApiProperty({ description: 'Group label shown to customer', example: 'Size' })
   @IsString()
-  @MinLength(1, { message: 'Name must be at least 1 character' })
+  @MinLength(1)
   name!: string;
 
   @ApiPropertyOptional({
-    description: 'Modifier description',
-    example: 'Increase size to large',
+    description: 'Minimum number of options customer must select (0 = optional)',
+    example: 1,
+    default: 0,
   })
   @IsOptional()
-  @IsString()
-  description?: string;
-
-  @ApiProperty({
-    description: 'Price adjustment for this modifier',
-    minimum: 0,
-    example: 2.5,
-  })
-  @IsNumber()
+  @IsInt()
   @Min(0)
-  price!: number;
+  minSelections?: number;
 
   @ApiPropertyOptional({
-    description: 'Whether this modifier is required',
+    description: 'Maximum number of options customer can select',
+    example: 1,
+    default: 1,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxSelections?: number;
+
+  @ApiPropertyOptional({ description: 'UI sort order', example: 0, default: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+}
+
+export class UpdateModifierGroupDto extends PartialType(CreateModifierGroupDto) {}
+
+export class ModifierGroupResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  menuItemId!: string;
+
+  @ApiProperty({ example: 'Size' })
+  name!: string;
+
+  @ApiProperty({ example: 1 })
+  minSelections!: number;
+
+  @ApiProperty({ example: 1 })
+  maxSelections!: number;
+
+  @ApiProperty({ example: 0 })
+  displayOrder!: number;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt!: Date;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  updatedAt!: Date;
+
+  @ApiProperty({ type: () => [ModifierOptionResponseDto] })
+  options!: ModifierOptionResponseDto[];
+}
+
+// ---------------------------------------------------------------------------
+// Modifier Option DTOs
+// ---------------------------------------------------------------------------
+
+export class CreateModifierOptionDto {
+  @ApiProperty({ description: 'Option label shown to customer', example: 'Large' })
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @ApiPropertyOptional({
+    description: 'Additional price for this option',
+    example: 5.0,
+    default: 0,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  price?: number;
+
+  @ApiPropertyOptional({
+    description: 'Pre-select this option in the UI',
     example: false,
+    default: false,
   })
   @IsOptional()
   @IsBoolean()
-  isRequired?: boolean;
-}
+  isDefault?: boolean;
 
-export class UpdateMenuItemModifierDto extends PartialType(
-  CreateMenuItemModifierDto,
-) {}
-
-export class MenuItemModifierResponseDto {
-  @ApiProperty({
-    format: 'uuid',
-    example: '33333333-3333-3333-3333-333333333333',
-  })
-  id!: string;
-
-  @ApiProperty({
-    format: 'uuid',
-    example: '22222222-2222-2222-2222-222222222222',
-  })
-  menuItemId!: string;
-
-  @ApiProperty({
-    example: 'Large',
-  })
-  name!: string;
+  @ApiPropertyOptional({ description: 'UI sort order', example: 0, default: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
 
   @ApiPropertyOptional({
-    example: 'Increase size to large',
+    description: 'Whether this option is currently orderable',
+    example: true,
+    default: true,
   })
-  description?: string | null;
+  @IsOptional()
+  @IsBoolean()
+  isAvailable?: boolean;
+}
 
-  @ApiProperty({
-    example: 2.5,
-  })
+export class UpdateModifierOptionDto extends PartialType(CreateModifierOptionDto) {}
+
+export class ModifierOptionResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  groupId!: string;
+
+  @ApiProperty({ example: 'Large' })
+  name!: string;
+
+  @ApiProperty({ example: 5.0 })
   price!: number;
 
-  @ApiProperty({
-    example: false,
-  })
-  isRequired!: boolean;
+  @ApiProperty({ example: false })
+  isDefault!: boolean;
 
-  @ApiProperty({
-    type: String,
-    format: 'date-time',
-    example: '2026-04-27T10:00:00.000Z',
-  })
+  @ApiProperty({ example: 0 })
+  displayOrder!: number;
+
+  @ApiProperty({ example: true })
+  isAvailable!: boolean;
+
+  @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;
 
-  @ApiProperty({
-    type: String,
-    format: 'date-time',
-    example: '2026-04-27T10:00:00.000Z',
-  })
+  @ApiProperty({ type: String, format: 'date-time' })
   updatedAt!: Date;
 }

@@ -46,7 +46,7 @@ import { user } from '../../module/auth/auth.schema';
 
 // Restaurant catalog
 import { restaurants } from '../../module/restaurant-catalog/restaurant/restaurant.schema';
-import { menuItems } from '../../module/restaurant-catalog/menu/menu.schema';
+import { menuItems, menuCategories } from '../../module/restaurant-catalog/menu/menu.schema';
 
 // Ordering — common
 import { appSettings } from '../../module/ordering/common/app-settings.schema';
@@ -67,6 +67,11 @@ const IDS = {
   // Restaurants
   restaurant1: 'fe8b2648-2260-4bc5-9acd-d88972148c78', // open + approved
   restaurant2: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', // closed
+
+  // Menu categories — Sunset Bistro (restaurant1)
+  categoryMains:    'aaaa0001-0000-4000-8000-000000000001',
+  categorySalads:   'aaaa0002-0000-4000-8000-000000000002',
+  categoryDesserts: 'aaaa0003-0000-4000-8000-000000000003',
 
   // Menu items — Sunset Bistro (restaurant1)
   menuItem1: '4dc7cdfa-5a54-402f-b1a8-2d47de146081', // Margherita Pizza
@@ -93,6 +98,11 @@ async function deleteOrderingRestaurantSnapshots() {
 async function deleteMenuItems() {
   await db.delete(menuItems);
   console.log('🗑️  menu_items cleared');
+}
+
+async function deleteMenuCategories() {
+  await db.delete(menuCategories);
+  console.log('🗑️  menu_categories cleared');
 }
 
 async function deleteRestaurants() {
@@ -162,6 +172,31 @@ async function seedRestaurants() {
   console.log('✅ restaurants seeded');
 }
 
+async function seedMenuCategories() {
+  const rows = [
+    {
+      id: IDS.categoryMains,
+      restaurantId: IDS.restaurant1,
+      name: 'Mains',
+      displayOrder: 1,
+    },
+    {
+      id: IDS.categorySalads,
+      restaurantId: IDS.restaurant1,
+      name: 'Salads',
+      displayOrder: 2,
+    },
+    {
+      id: IDS.categoryDesserts,
+      restaurantId: IDS.restaurant1,
+      name: 'Desserts',
+      displayOrder: 3,
+    },
+  ];
+  await db.insert(menuCategories).values(rows);
+  console.log('✅ menu_categories seeded');
+}
+
 async function seedMenuItems() {
   const rows = [
     // Sunset Bistro
@@ -171,9 +206,8 @@ async function seedMenuItems() {
       name: 'Margherita Pizza',
       description: 'Classic tomato, basil, and mozzarella.',
       price: 12.5,
-      category: 'mains' as const,
+      categoryId: IDS.categoryMains,
       status: 'available' as const,
-      isAvailable: true,
     },
     {
       id: IDS.menuItem2,
@@ -181,9 +215,8 @@ async function seedMenuItems() {
       name: 'Caesar Salad',
       description: 'Crisp romaine, parmesan, house-made Caesar dressing.',
       price: 9.0,
-      category: 'salads' as const,
+      categoryId: IDS.categorySalads,
       status: 'available' as const,
-      isAvailable: true,
     },
     {
       id: IDS.menuItem3,
@@ -191,9 +224,8 @@ async function seedMenuItems() {
       name: 'Tiramisu',
       description: 'Espresso-soaked ladyfingers, mascarpone cream.',
       price: 6.5,
-      category: 'desserts' as const,
+      categoryId: IDS.categoryDesserts,
       status: 'available' as const,
-      isAvailable: true,
     },
     // Closed Kitchen
     {
@@ -202,9 +234,8 @@ async function seedMenuItems() {
       name: 'Classic Burger',
       description: 'Beef patty, lettuce, tomato, cheese.',
       price: 11.0,
-      category: 'mains' as const,
+      categoryId: null,
       status: 'available' as const,
-      isAvailable: true,
     },
   ];
   await db.insert(menuItems).values(rows);
@@ -298,18 +329,21 @@ async function seedOrderingMenuItemSnapshots() {
 async function main() {
   console.log('🌱 Starting seed...\n');
   // Delete existing data in reverse order of insertion (respect foreign keys)
-  console.log('🗑️  Clearing old data...\\n');
+  console.log('🗑️  Clearing old data...\n');
   await deleteOrderingMenuItemSnapshots();
   await deleteOrderingRestaurantSnapshots();
   await deleteMenuItems();
+  await deleteMenuCategories();
   await deleteRestaurants();
   await deleteAppSettings();
   await deleteUsers();
 
   // Insert new data
-  console.log('\\n📝 Inserting new data...\\n');  // Order matters: users → restaurants → menu_items → ordering snapshots
+  console.log('\n📝 Inserting new data...\n');
+  // Order matters: users → restaurants → categories → menu_items → ordering snapshots
   await seedUsers();
   await seedRestaurants();
+  await seedMenuCategories();
   await seedMenuItems();
   await seedAppSettings();
   await seedOrderingRestaurantSnapshots();

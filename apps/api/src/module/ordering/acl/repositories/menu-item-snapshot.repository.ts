@@ -19,6 +19,7 @@ import {
  * Phase 2 note: findById is used by CartService for optional price/name
  * cross-validation; when the snapshot is absent the DTO values are trusted.
  * Phase 3 adds: findManyByIds (checkout multi-item validation) + upsert.
+ * Modifier support: modifiers JSONB column is upserted alongside other fields.
  */
 @Injectable()
 export class MenuItemSnapshotRepository {
@@ -61,6 +62,7 @@ export class MenuItemSnapshotRepository {
           name: data.name,
           price: data.price,
           status: data.status,
+          modifiers: data.modifiers ?? [],
           lastSyncedAt: data.lastSyncedAt ?? new Date(),
         },
       });

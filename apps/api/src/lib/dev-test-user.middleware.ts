@@ -1,6 +1,22 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 
+// Augment Express Request so req.user is typeable in dev/test middleware.
+// Production code uses @Session() from @thallesp/nestjs-better-auth.
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface User {
+      sub: string;
+      email: string;
+      roles: string[];
+    }
+    interface Request {
+      user?: User;
+    }
+  }
+}
+
 /**
  * DEV / TEST ONLY — never use in production.
  *
