@@ -30,13 +30,13 @@ export class CreateModifierGroupDto {
   minSelections?: number;
 
   @ApiPropertyOptional({
-    description: 'Maximum number of options customer can select',
+    description: 'Maximum number of options customer can select (0 = no upper limit)',
     example: 1,
     default: 1,
   })
   @IsOptional()
   @IsInt()
-  @Min(1)
+  @Min(0)
   maxSelections?: number;
 
   @ApiPropertyOptional({ description: 'UI sort order', example: 0, default: 0 })

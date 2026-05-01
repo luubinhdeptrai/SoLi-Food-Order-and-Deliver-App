@@ -23,11 +23,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types';
-import {
-  createTestApp,
-  teardownTestApp,
-  TEST_OWNER_ID,
-} from '../setup/app-factory';
+import { createTestApp, teardownTestApp } from '../setup/app-factory';
 import {
   resetDb,
   seedBaseRestaurant,
@@ -35,10 +31,12 @@ import {
 } from '../setup/db-setup';
 import { getSnapshot } from '../helpers/db';
 import {
+  setAuthManager,
   noAuthHeaders,
   otherUserHeaders,
   ownerHeaders,
 } from '../helpers/auth';
+import { TestAuthManager } from '../helpers/test-auth';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -49,8 +47,18 @@ describe('Menu Item CRUD (E2E)', () => {
   beforeAll(async () => {
     app = await createTestApp();
     http = request(app.getHttpServer());
+
+    // 1. Clear all test data (users, snapshots, restaurants)
     await resetDb();
-    await seedBaseRestaurant();
+
+    // 2. Sign up test users and obtain real Bearer tokens
+    const testAuth = new TestAuthManager();
+    await testAuth.initialize(http);
+    setAuthManager(testAuth);
+
+    // 3. Seed the test restaurant with the owner's real UUID so that
+    //    restaurant.ownerId === session.user.id for ownership checks
+    await seedBaseRestaurant(testAuth.ownerUserId);
   });
 
   afterAll(async () => {
@@ -286,6 +294,10 @@ describe('Menu Item CRUD (E2E)', () => {
       expect(createRes.status).toBe(201);
       plainItemId = createRes.body.id as string;
 
+      // Allow 100 ms for the async event handler (MenuItemProjector) to
+      // complete its DB write before reading the snapshot.
+      await new Promise((r) => setTimeout(r, 100));
+
       const snapshot = await getSnapshot(plainItemId);
       expect(snapshot).not.toBeNull();
       expect(snapshot!.modifiers).toEqual([]);
@@ -297,6 +309,10 @@ describe('Menu Item CRUD (E2E)', () => {
         .set(ownerHeaders())
         .send({ price: 10.99 });
       expect(patchRes.status).toBe(200);
+
+      // Allow 100 ms for the async event handler (MenuItemProjector) to
+      // complete its DB write before reading the snapshot.
+      await new Promise((r) => setTimeout(r, 100));
 
       const snapshot = await getSnapshot(plainItemId);
       expect(snapshot).not.toBeNull();

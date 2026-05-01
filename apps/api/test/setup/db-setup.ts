@@ -12,27 +12,36 @@
  *   ordering_menu_item_snapshots (no FK — cross-BC)
  *   restaurants (cascade-deletes: delivery_zones, menu_categories, menu_items,
  *                modifier_groups, modifier_options)
+ *   user rows for TEST_OWNER_EMAIL / TEST_OTHER_EMAIL
+ *     (cascade-deletes: sessions, accounts)
  */
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { inArray } from 'drizzle-orm';
 import * as schema from '../../src/drizzle/schema';
 import { restaurants } from '../../src/module/restaurant-catalog/restaurant/restaurant.schema';
 import { orderingMenuItemSnapshots } from '../../src/module/ordering/acl/schemas/menu-item-snapshot.schema';
+import { user } from '../../src/module/auth/auth.schema';
+
+// ─── Test user credentials ────────────────────────────────────────────────────
+//
+// Defined here (not in test-auth.ts) to avoid a circular import:
+//   db-setup  ← test-auth (imports getTestDb)
+// If the emails lived in test-auth, db-setup importing them would create a cycle.
+
+/** Email of the test owner account created by TestAuthManager. */
+export const TEST_OWNER_EMAIL = 'e2e-owner@test.soli';
+
+/** Email of the non-owner test account created by TestAuthManager. */
+export const TEST_OTHER_EMAIL = 'e2e-other@test.soli';
+
+/** Both test-user emails — used by resetUsers() to target only test rows. */
+export const TEST_USER_EMAILS = [TEST_OWNER_EMAIL, TEST_OTHER_EMAIL] as const;
 
 // ─── Fixed test UUIDs ─────────────────────────────────────────────────────────
-//
-// Using v4-format UUIDs that are visually distinct and recognisable in logs.
-// These are intentionally different from seed.ts UUIDs to prevent collisions
-// when running tests against the same DB as a dev environment.
 
-/** Owner of TEST_RESTAURANT.  Used as default session.user.id by MockAuthGuard. */
-export const TEST_OWNER_ID = '11111111-1111-4111-8111-111111111111';
-
-/** A second user who does NOT own TEST_RESTAURANT (used in 403 tests). */
-export const TEST_OTHER_USER_ID = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
-
-/** Restaurant owned by TEST_OWNER_ID. */
+/** Restaurant used across all E2E suites. ownerId is set dynamically at runtime. */
 export const TEST_RESTAURANT_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
 // ─── Drizzle connection ───────────────────────────────────────────────────────
@@ -54,34 +63,51 @@ export function getTestDb(): NodePgDatabase<typeof schema> {
 // ─── Reset helpers ────────────────────────────────────────────────────────────
 
 /**
- * Wipes all data that E2E tests write.
+ * Removes only the two known test-user rows (by email).
+ * Cascade-deletes their sessions and accounts automatically.
  *
- * Deleting restaurants cascades to:
- *   delivery_zones, menu_categories, menu_items, modifier_groups, modifier_options
+ * Deliberately targets by email rather than deleting ALL users so this helper
+ * is safe to run against a shared dev database that may have real accounts.
+ */
+export async function resetUsers(): Promise<void> {
+  const db = getTestDb();
+  await db.delete(user).where(inArray(user.email, TEST_USER_EMAILS));
+}
+
+/**
+ * Wipes all data written by E2E tests.
  *
- * ordering_menu_item_snapshots has no FK so it is deleted first.
+ * Order:
+ *   1. ordering_menu_item_snapshots — no FK, must go before restaurant cascade
+ *   2. restaurants — cascade-deletes: menu_items, modifier_groups, modifier_options
+ *   3. test users  — cascade-deletes: sessions, accounts
+ *      (restaurants.ownerId has no FK constraint so order vs restaurants is flexible)
  */
 export async function resetDb(): Promise<void> {
   const db = getTestDb();
   await db.delete(orderingMenuItemSnapshots);
   await db.delete(restaurants);
+  await resetUsers();
 }
 
 // ─── Seed helpers ─────────────────────────────────────────────────────────────
 
 /**
- * Seeds the minimum data required by every test suite:
- *   • One restaurant owned by TEST_OWNER_ID
+ * Seeds the minimum data required by every test suite: one test restaurant.
+ *
+ * @param ownerId - The real user UUID from TestAuthManager.ownerUserId.
+ *   This must equal session.user.id for the signed-in owner so that
+ *   restaurant.ownerId === session.user.id and ownership checks pass.
  *
  * Menu items, modifier groups, and options are created inside each test
- * (or in beforeAll blocks) via the real HTTP API so events fire properly
+ * (or in nested beforeAll blocks) via the real HTTP API so domain events fire
  * and the ordering snapshot stays in sync.
  */
-export async function seedBaseRestaurant(): Promise<void> {
+export async function seedBaseRestaurant(ownerId: string): Promise<void> {
   const db = getTestDb();
   await db.insert(restaurants).values({
     id: TEST_RESTAURANT_ID,
-    ownerId: TEST_OWNER_ID,
+    ownerId,                   // ← dynamic UUID from TestAuthManager
     name: 'E2E Test Restaurant',
     description: 'Seeded for automated E2E tests',
     address: '1 Test Street, Ho Chi Minh City',

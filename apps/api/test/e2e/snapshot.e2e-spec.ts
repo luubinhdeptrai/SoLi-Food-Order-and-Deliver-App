@@ -34,7 +34,8 @@ import {
   TEST_RESTAURANT_ID,
 } from '../setup/db-setup';
 import { getSnapshot } from '../helpers/db';
-import { noAuthHeaders, ownerHeaders } from '../helpers/auth';
+import { setAuthManager, noAuthHeaders, ownerHeaders } from '../helpers/auth';
+import { TestAuthManager } from '../helpers/test-auth';
 import type { MenuItemModifierSnapshot } from '../../src/shared/events/menu-item-updated.event';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -52,8 +53,17 @@ describe('Ordering Snapshot — Modifier Preservation (E2E)', () => {
   beforeAll(async () => {
     app = await createTestApp();
     http = request(app.getHttpServer());
+
+    // 1. Clear all test data (users, snapshots, restaurants)
     await resetDb();
-    await seedBaseRestaurant();
+
+    // 2. Sign up test users and obtain real Bearer tokens
+    const testAuth = new TestAuthManager();
+    await testAuth.initialize(http);
+    setAuthManager(testAuth);
+
+    // 3. Seed the test restaurant with the owner's real UUID
+    await seedBaseRestaurant(testAuth.ownerUserId);
 
     // ── Build the complete menu item via the API so every event fires ──────
 
@@ -207,6 +217,10 @@ describe('Ordering Snapshot — Modifier Preservation (E2E)', () => {
         .patch(`/api/menu-items/${menuItemId}`)
         .set(ownerHeaders())
         .send({ name: 'Timestamp Test Burger' });
+
+      // Allow 100 ms for the async event handler (MenuItemProjector) to
+      // complete its DB write before reading the snapshot.
+      await new Promise((r) => setTimeout(r, 100));
 
       const after = await getSnapshot(menuItemId);
       expect(after!.lastSyncedAt.getTime()).toBeGreaterThan(beforeTs);

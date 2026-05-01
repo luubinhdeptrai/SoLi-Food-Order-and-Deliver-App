@@ -10,6 +10,7 @@ export class AppController {
     private readonly redisService: RedisService,
   ) {}
 
+  @AllowAnonymous()
   @Get()
   getHello(): string {
     return this.appService.getHello();

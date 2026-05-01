@@ -45,10 +45,12 @@ import {
 } from '../setup/db-setup';
 import { getSnapshot } from '../helpers/db';
 import {
+  setAuthManager,
   noAuthHeaders,
   otherUserHeaders,
   ownerHeaders,
 } from '../helpers/auth';
+import { TestAuthManager } from '../helpers/test-auth';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -62,8 +64,17 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
   beforeAll(async () => {
     app = await createTestApp();
     http = request(app.getHttpServer());
+
+    // 1. Clear all test data (users, snapshots, restaurants)
     await resetDb();
-    await seedBaseRestaurant();
+
+    // 2. Sign up test users and obtain real Bearer tokens
+    const testAuth = new TestAuthManager();
+    await testAuth.initialize(http);
+    setAuthManager(testAuth);
+
+    // 3. Seed the test restaurant with the owner's real UUID
+    await seedBaseRestaurant(testAuth.ownerUserId);
 
     // Create the menu item used throughout this spec
     const itemRes = await http
@@ -391,6 +402,10 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
         .send({ name: 'Empty Group', minSelections: 0, maxSelections: 1 });
       expect(gRes.status).toBe(201);
       const emptyGroupId = gRes.body.id as string;
+
+      // Allow 100 ms for the async event handler (MenuItemProjector) to
+      // complete its DB write before reading the snapshot.
+      await new Promise((r) => setTimeout(r, 100));
 
       const snapshot = await getSnapshot(menuItemId);
       expect(snapshot).not.toBeNull();

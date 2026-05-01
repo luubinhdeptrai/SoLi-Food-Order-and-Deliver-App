@@ -1,29 +1,25 @@
 /**
  * app-factory.ts
  *
- * Creates a real NestJS application with real authentication.
- * Tests use Bearer tokens instead of mock headers.
+ * Creates a real NestJS application for E2E tests.
+ * Uses the full AppModule — all guards, pipes, and modules are real.
+ * Authentication uses real Bearer tokens from the Better Auth service
+ * (see test/helpers/test-auth.ts for how tokens are obtained).
  */
 
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-/** UUID of the default "restaurant owner" actor used in most tests. */
-export const TEST_OWNER_ID = '11111111-1111-4111-8111-111111111111';
-
-/** UUID of a second user who does NOT own the test restaurant (for 403 tests). */
-export const TEST_OTHER_USER_ID = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
-
 // ─── App factory ──────────────────────────────────────────────────────────────
 
 /**
  * Creates a fully initialised NestJS test application.
- * Call this once in beforeAll(); close with teardownTestApp() in afterAll().
+ * Call once in beforeAll(); shut down with teardownTestApp() in afterAll().
  *
- * Uses real authentication via Bearer tokens from the Better Auth service.
+ * Mirrors the production setup from main.ts:
+ *   • ValidationPipe(transform: true, whitelist: true)
+ *   • Global prefix 'api'
  */
 export async function createTestApp(): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({
@@ -32,7 +28,6 @@ export async function createTestApp(): Promise<INestApplication> {
 
   const app = moduleRef.createNestApplication();
 
-  // Mirror production setup from main.ts
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
   app.setGlobalPrefix('api');
 
