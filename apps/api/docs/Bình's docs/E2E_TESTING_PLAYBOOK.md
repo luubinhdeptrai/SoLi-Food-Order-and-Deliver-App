@@ -2,6 +2,8 @@
 
 > **Audience**: Backend engineers and AI coding agents working on new modules (cart, ordering, delivery, etc.).
 > **Purpose**: A single, self-contained reference that explains *how* E2E tests are structured, *why* decisions were made, and *how to extend* this setup to any new module — without re-reading the entire codebase.
+>
+> **Last verified against codebase**: All 52 tests passing (4 suites). Auth system fully dynamic — no hardcoded tokens.
 
 ---
 
@@ -56,7 +58,7 @@ For this project, E2E tests are *mandatory* because:
 apps/api/
 ├── test/
 │   ├── jest-e2e.json            # Jest configuration for E2E
-│   ├── app.e2e-spec.ts          # Smoke test for root endpoint
+│   ├── app.e2e-spec.ts          # Smoke test for root endpoint (GET /)
 │   │
 │   ├── e2e/                     # One spec per feature domain
 │   │   ├── menu.e2e-spec.ts
@@ -64,12 +66,13 @@ apps/api/
 │   │   └── snapshot.e2e-spec.ts
 │   │
 │   ├── helpers/                 # Shared test utilities
-│   │   ├── auth.ts              # Header factories (ownerHeaders, noAuthHeaders)
+│   │   ├── auth.ts              # Header factories (ownerHeaders, otherUserHeaders, noAuthHeaders)
+│   │   ├── test-auth.ts         # TestAuthManager — dynamic sign-up + role grant
 │   │   └── db.ts                # Direct DB query helpers (getSnapshot, etc.)
 │   │
 │   └── setup/
 │       ├── app-factory.ts       # Boots NestJS app; mirrors main.ts setup
-│       ├── db-setup.ts          # DB connection, reset, and seed utilities
+│       ├── db-setup.ts          # DB connection, reset, seed utilities, email constants
 │       └── env-setup.ts         # Loads .env.test (or .env) before Jest runs
 ```
 
@@ -231,63 +234,135 @@ The test script in `package.json` must include the experimental flag:
 
 ### Authentication Stack
 
-The app uses `@thallesp/nestjs-better-auth` v2.5.3 with the `bearer` plugin. Every guarded endpoint calls `auth.api.getSession()` internally, which validates the Bearer JWT against the Better Auth service.
+The app uses `@thallesp/nestjs-better-auth` v2.5.3 with the `bearer` plugin enabled. Every guarded endpoint calls `auth.api.getSession()` internally, which validates the Bearer token and re-reads the current `user` row from the DB on every request.
 
-### How Tokens Are Used in Tests
+**Key property**: Because sessions are DB-backed (not JWT-stateless), a role change takes effect on the _next_ request without requiring a new sign-in.
 
-Tests use **real Bearer tokens** from a live login session. There is no mock auth guard — attempts to override the guard via `overrideProvider(APP_GUARD)` or `overrideModule(AuthModule)` fail silently because of how the library registers its guard.
+### Token Acquisition — `TestAuthManager`
+
+**There are no hardcoded tokens.** Tokens are obtained dynamically at the start of each test suite via `test/helpers/test-auth.ts`.
 
 ```typescript
-// test/helpers/auth.ts
-const BEARER_TOKEN = 'daloudQTcguMbPPnZNWziXsBLPuh5wD0';
+// test/helpers/test-auth.ts
+export class TestAuthManager {
+  get ownerToken(): string { ... }   // throws if not initialized
+  get otherToken(): string { ... }
+  get ownerUserId(): string { ... }  // real UUID assigned by Better Auth
 
-export function ownerHeaders(): TestHeaders {
-  return { 'Authorization': `Bearer ${BEARER_TOKEN}` };
-}
-
-export function restaurantRoleHeaders(): TestHeaders {
-  return { 'Authorization': `Bearer ${BEARER_TOKEN}` };
-}
-
-export function otherUserHeaders(): TestHeaders {
-  return { 'Authorization': `Bearer ${BEARER_TOKEN}` };  // Same user — see note below
-}
-
-export function noAuthHeaders(): TestHeaders {
-  return {};  // Empty → 401 Unauthorized
+  async initialize(http: ReturnType<typeof request<App>>): Promise<void> {
+    // 1. Sign up both users in parallel via POST /api/auth/sign-up/email
+    // 2. Directly update user.role = 'restaurant' via Drizzle for both users
+  }
 }
 ```
 
-### ⚠️ Single Token Limitation
+**Sign-up endpoint**: `POST /api/auth/sign-up/email`
+```json
+// Request body
+{ "email": "e2e-owner@test.soli", "password": "TestAuth1234!", "name": "E2E Owner" }
 
-Currently all `ownerHeaders()`, `restaurantRoleHeaders()`, and `otherUserHeaders()` use the **same token** (the same logged-in user). This means:
+// Response (Better Auth + bearer() plugin)
+{ "token": "<session-token>", "user": { "id": "<uuid>", ... } }
+```
 
-- ✅ **401 tests work**: `noAuthHeaders()` (empty object) correctly triggers 401.
-- ❌ **403 ownership tests do NOT work**: Because the real user owns all test restaurants, `otherUserHeaders()` returns 200/201 instead of 403.
+The `token` field is a Better Auth **session token** (opaque string, not a JWT). Used as `Authorization: Bearer <token>`. No expiry concern within a single test run.
 
-**To enable 403 tests**, a second user's token is needed:
-1. Register a second account via `POST /api/auth/sign-up`
-2. Login and obtain that token via `POST /api/auth/sign-in/email`
-3. Update `otherUserHeaders()` to return the second token
+### Why Two Users?
 
-### Role-Based Testing
+| User | Role | Restaurant ownership | Expected result |
+|------|------|---------------------|-----------------|
+| `e2e-owner@test.soli` | `restaurant` | `user.id === restaurant.ownerId` | 200/201 on writes |
+| `e2e-other@test.soli` | `restaurant` | `user.id ≠ restaurant.ownerId` | 403 on ownership-protected writes |
 
-The app has roles: `admin`, `restaurant`, `shipper`, `user` (default). The current token is a `restaurant` role user who owns `TEST_RESTAURANT_ID`. Endpoints guarded with `@Roles(['restaurant'])` will pass with this token.
+Both users need the `restaurant` role to **reach** the ownership check. Without the role, the request would get a 403 from the role guard — not from the ownership check — making 403 ownership tests semantically wrong. Role is granted via direct Drizzle UPDATE after sign-up:
+
+```typescript
+await db.update(user).set({ role: 'restaurant' }).where(inArray(user.id, userIds));
+```
+
+### Test Email Constants
+
+Defined in `test/setup/db-setup.ts` (NOT in `test-auth.ts`) to prevent a circular import:
+
+```typescript
+// db-setup.ts imports getTestDb; test-auth.ts imports from db-setup
+// If emails lived in test-auth.ts, db-setup importing them → circular
+export const TEST_OWNER_EMAIL   = 'e2e-owner@test.soli';
+export const TEST_OTHER_EMAIL   = 'e2e-other@test.soli';
+export const TEST_USER_EMAILS   = [TEST_OWNER_EMAIL, TEST_OTHER_EMAIL] as const;
+```
+
+Password lives only in `test-auth.ts`: `export const TEST_PASSWORD = 'TestAuth1234!'`.
+
+### Header Factories — `test/helpers/auth.ts`
+
+```typescript
+let _manager: TestAuthManager | null = null;
+
+// Called once in beforeAll() after testAuth.initialize()
+export function setAuthManager(mgr: TestAuthManager): void { _manager = mgr; }
+
+// Authenticated owner — passes @Roles guard AND ownership check → 200/201
+export function ownerHeaders(): TestHeaders {
+  return { Authorization: `Bearer ${_manager!.ownerToken}` };
+}
+
+// Authenticated non-owner — passes @Roles guard, FAILS ownership check → 403
+export function otherUserHeaders(): TestHeaders {
+  return { Authorization: `Bearer ${_manager!.otherToken}` };
+}
+
+// Alias for ownerHeaders() — emphasises role rather than ownership
+export function restaurantRoleHeaders(): TestHeaders { return ownerHeaders(); }
+
+// No Authorization header → triggers 401
+export function noAuthHeaders(): TestHeaders { return {}; }
+```
+
+`_manager` starts as `null` in every spec file (Jest module isolation). If any header factory is called before `setAuthManager()`, it throws a descriptive error.
+
+### The Full `beforeAll` Pattern (All Specs)
+
+```typescript
+beforeAll(async () => {
+  app = await createTestApp();
+  http = request(app.getHttpServer());
+
+  // 1. Wipe DB — deletes test users (by email), snapshots, restaurants
+  await resetDb();
+
+  // 2. Sign up fresh users, get real tokens, grant 'restaurant' role
+  const testAuth = new TestAuthManager();
+  await testAuth.initialize(http);
+
+  // 3. Wire the module-level _manager in auth.ts
+  setAuthManager(testAuth);
+
+  // 4. Seed the restaurant with the owner's REAL UUID
+  //    restaurant.ownerId must equal session.user.id for ownership checks to work
+  await seedBaseRestaurant(testAuth.ownerUserId);
+
+  // 5. (spec-dependent) Create additional entities via HTTP
+  //    e.g. menu items, modifier groups
+});
+```
 
 ### Attaching Headers with Supertest
 
 ```typescript
-// Always use .set() — not .auth() — to attach headers
+// Guarded write — authenticated owner
 const res = await http
   .post('/api/menu-items')
-  .set(ownerHeaders())           // { Authorization: 'Bearer ...' }
-  .send({ name: 'Pizza', price: 10 });
+  .set(ownerHeaders())           // { Authorization: 'Bearer <token>' }
+  .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Pizza', price: 10 });
 
-// For public endpoints, pass noAuthHeaders() explicitly
+// Public read — no auth required
 const res = await http
-  .get(`/api/menu-items?restaurantId=${id}`)
-  .set(noAuthHeaders());         // {} — no header at all
+  .get(`/api/menu-items?restaurantId=${TEST_RESTAURANT_ID}`)
+  .set(noAuthHeaders());         // {} — no header set at all
 ```
+
+Always use `.set()` — never `.auth()` — to attach headers.
 
 ---
 
@@ -301,20 +376,22 @@ Creating via the API ensures that all domain events fire, projections update, an
 
 **Exception**: The parent restaurant is inserted directly because:
 1. It has no projection side-effects relevant to menu tests.
-2. It requires an `ownerId` that must match the authenticated user's real user ID — which we don't know at test time without a real auth call.
+2. It requires an `ownerId` that must equal the authenticated user's real user ID — only known after `TestAuthManager.initialize()`.
 
 ### Fixed UUIDs
 
-All seed constants use recognisable fixed UUIDs to make logs readable:
+Only the restaurant uses a fixed UUID. User UUIDs are assigned dynamically by Better Auth at sign-up time.
 
 ```typescript
 // test/setup/db-setup.ts
-export const TEST_OWNER_ID       = '11111111-1111-4111-8111-111111111111';
-export const TEST_OTHER_USER_ID  = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+// Restaurant ID is fixed — used in URL paths throughout all test suites
 export const TEST_RESTAURANT_ID  = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+
+// User IDs are NOT fixed — obtained at runtime from TestAuthManager.ownerUserId
+// TEST_OWNER_ID and TEST_OTHER_USER_ID no longer exist
 ```
 
-These are intentionally different from `src/drizzle/seeds/seed.ts` values to prevent collisions when tests run against the same DB as development.
+`TEST_RESTAURANT_ID` is intentionally different from `src/drizzle/seeds/seed.ts` values to prevent collisions when tests run against the same DB as development.
 
 ### Seeding Flow (Per Suite)
 
@@ -325,13 +402,18 @@ beforeAll(async () => {
   app = await createTestApp();
   http = request(app.getHttpServer());
 
-  // 1. Wipe the test DB
+  // 1. Wipe DB (snapshots + restaurants + test users)
   await resetDb();
 
-  // 2. Insert the base restaurant directly (bypasses HTTP)
-  await seedBaseRestaurant();
+  // 2. Sign up fresh users, get tokens, grant 'restaurant' role
+  const testAuth = new TestAuthManager();
+  await testAuth.initialize(http);
+  setAuthManager(testAuth);
 
-  // 3. Create module-specific entities via HTTP (fires domain events)
+  // 3. Insert the base restaurant using the owner's REAL UUID
+  await seedBaseRestaurant(testAuth.ownerUserId);
+
+  // 4. Create module-specific entities via HTTP (fires domain events)
   const itemRes = await http
     .post('/api/menu-items')
     .set(ownerHeaders())
@@ -346,24 +428,27 @@ beforeAll(async () => {
 // test/setup/db-setup.ts
 export async function resetDb(): Promise<void> {
   const db = getTestDb();
-  // 1. Delete snapshots first (no FK, cross-BC table)
+  // 1. ordering_menu_item_snapshots — no FK, must go before restaurant cascade
   await db.delete(orderingMenuItemSnapshots);
-  // 2. Delete restaurants (cascade-deletes menu_items, modifier_groups, modifier_options)
+  // 2. restaurants — cascade-deletes menu_items, modifier_groups, modifier_options
   await db.delete(restaurants);
+  // 3. test users (by email) — cascade-deletes their sessions + accounts
+  await resetUsers();  // deletes rows WHERE email IN (TEST_OWNER_EMAIL, TEST_OTHER_EMAIL)
 }
 ```
 
-The cascade on `restaurants` handles the entire restaurant catalog graph. New modules that add tables with FKs to other BCs must be added to `resetDb()` explicitly.
+Targeting users by email (not `DELETE ALL`) makes `resetDb()` safe to run against a shared dev database that may have real accounts.
 
-### `seedBaseRestaurant()`
+### `seedBaseRestaurant(ownerId: string)`
 
 ```typescript
-export async function seedBaseRestaurant(): Promise<void> {
+export async function seedBaseRestaurant(ownerId: string): Promise<void> {
   const db = getTestDb();
   await db.insert(restaurants).values({
     id: TEST_RESTAURANT_ID,
-    ownerId: TEST_OWNER_ID,    // Must match the real user's ID in Better Auth
+    ownerId,                   // ← dynamic UUID from TestAuthManager.ownerUserId
     name: 'E2E Test Restaurant',
+    description: 'Seeded for automated E2E tests',
     address: '1 Test Street, Ho Chi Minh City',
     phone: '+84-000-000-0000',
     isOpen: true,
@@ -372,7 +457,7 @@ export async function seedBaseRestaurant(): Promise<void> {
 }
 ```
 
-**Important**: `ownerId: TEST_OWNER_ID` must match the `userId` the Bearer token resolves to. If the real user's ID is different from `TEST_OWNER_ID`, ownership checks (`403`) will fail or incorrectly pass.
+**Critical**: `ownerId` must equal `session.user.id` for the signed-in owner. This is guaranteed by passing `testAuth.ownerUserId` (the UUID that Better Auth assigned during sign-up). If they differ, ownership checks produce wrong results (403 where 200 is expected, or vice versa).
 
 ---
 
@@ -698,6 +783,62 @@ expect(sizeGroup).toBeDefined();
 
 ---
 
+### ❌ Pitfall 8: Single Hardcoded Token Made 403 Tests Impossible
+
+**What happened**: `ownerHeaders()`, `otherUserHeaders()`, and `restaurantRoleHeaders()` all returned the same hardcoded token (`BEARER_TOKEN = 'daloudQTcguMbPPnZNWziXsBLPuh5wD0'`). Ownership-check 403 tests returned 201 instead of 403.
+
+**Root cause**: A single token resolves to one user. That user owned the test restaurant. `otherUserHeaders()` was semantically identical to `ownerHeaders()`, so the ownership check always passed.
+
+**Fix**: Replaced with `TestAuthManager` — two real users signed up dynamically, both granted `restaurant` role, restaurant seeded with the owner's real UUID. See Section 4 for full details.
+
+**Key lesson**: For ownership-check 403 tests to work, you need:
+1. Two separate users with different user IDs
+2. Both must have the role required by the guard (so both reach the ownership check)
+3. The test restaurant's `ownerId` must be set to the owner's actual UUID (not a hardcoded constant)
+
+---
+
+### ❌ Pitfall 9: Async Event Handler Causes Race Condition in Snapshot Assertions
+
+**What happened**: Tests that read the snapshot immediately after an HTTP mutation (within the same `it()` block) found `null` or stale data.
+
+**Root cause**: `EventBus.publish()` in NestJS CQRS is synchronous — the event is dispatched — but the `@EventsHandler` decorator registers an **async** handler. `await` on the service call only awaits up to the `eventBus.publish()` call, not the handler's DB write.
+
+Affected tests: those that call `getSnapshot()` in the **same `it()` block** as the mutation.
+
+**Fix**: Add a small delay after the mutation to let the projector complete:
+
+```typescript
+// After any mutation that triggers MenuItemProjector:
+await new Promise((r) => setTimeout(r, 100));
+
+const snapshot = await getSnapshot(menuItemId);
+```
+
+**When you do NOT need the delay**: Snapshot assertions in a **separate `it()` block** from the mutation — Jest runs `it()` blocks sequentially; the mutation's `it()` fully completes (including async side-effects that Node has time to flush) before the next `it()` starts.
+
+**Affected files** (delay applied): `menu.e2e-spec.ts` section 6, `modifiers.e2e-spec.ts` section 5.3, `snapshot.e2e-spec.ts` `lastSyncedAt` invariant test.
+
+---
+
+### ❌ Pitfall 10: `@Min(1)` on `maxSelections` Rejected `max=0`
+
+**What happened**: Test `5.2a — min=0, max=0 is accepted (optional group)` returned 400 instead of 201.
+
+**Root cause**: `CreateModifierGroupDto` had `@Min(1)` on `maxSelections`. The order-placement handler already handles `maxSelections=0` as "no upper limit" (condition: `if (group.maxSelections > 0 && count > group.maxSelections)`). The DTO constraint was inconsistent with the domain logic.
+
+**Fix**: Changed `@Min(1)` → `@Min(0)` on `maxSelections` in `modifiers.dto.ts`.
+
+---
+
+### ❌ Pitfall 11: `GET /` Returned 401 in `app.e2e-spec.ts`
+
+**What happened**: The NestJS root endpoint `GET /` returned 401 because the Better Auth guard was applied globally and the route lacked `@AllowAnonymous()`.
+
+**Fix**: Added `@AllowAnonymous()` decorator to `AppController.getHello()`.
+
+---
+
 ## 10. How to Extend for Other Modules
 
 ### General Recipe
@@ -717,8 +858,13 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { createTestApp, teardownTestApp } from '../setup/app-factory';
-import { resetDb, seedBaseRestaurant, TEST_RESTAURANT_ID } from '../setup/db-setup';
-import { ownerHeaders, noAuthHeaders } from '../helpers/auth';
+import {
+  resetDb, seedBaseRestaurant, TEST_RESTAURANT_ID,
+} from '../setup/db-setup';
+import {
+  setAuthManager, ownerHeaders, otherUserHeaders, noAuthHeaders,
+} from '../helpers/auth';
+import { TestAuthManager } from '../helpers/test-auth';
 
 describe('<Module> (E2E)', () => {
   let app: INestApplication<App>;
@@ -728,7 +874,10 @@ describe('<Module> (E2E)', () => {
     app = await createTestApp();
     http = request(app.getHttpServer());
     await resetDb();
-    await seedBaseRestaurant();
+    const testAuth = new TestAuthManager();
+    await testAuth.initialize(http);
+    setAuthManager(testAuth);
+    await seedBaseRestaurant(testAuth.ownerUserId);
     // ... seed module-specific entities via HTTP
   });
 
@@ -749,9 +898,10 @@ If the new module writes to tables not currently deleted by `resetDb()`, add del
 export async function resetDb(): Promise<void> {
   const db = getTestDb();
   await db.delete(orderingMenuItemSnapshots);
-  await db.delete(cartItems);           // ← add new tables here
+  await db.delete(cartItems);           // ← add new tables here (child first)
   await db.delete(carts);
   await db.delete(restaurants);         // cascade-deletes menu items
+  await resetUsers();                   // deletes by email — safe on shared DB
 }
 ```
 
@@ -773,7 +923,7 @@ export async function getCart(cartId: string) {
 **Dependencies**: Menu items must exist before cart items can be added.
 
 **Seeding flow**:
-1. `resetDb()` → `seedBaseRestaurant()`
+1. `resetDb()` → `TestAuthManager.initialize()` → `setAuthManager()` → `seedBaseRestaurant(ownerUserId)`
 2. Create menu item via `POST /api/menu-items`
 3. Create modifier group + options via `POST .../modifier-groups` and `POST .../options`
 4. Then test cart operations
@@ -858,7 +1008,10 @@ order (seed via HTTP from cart)
 | `createTestApp()` | `test/setup/app-factory.ts` | Boot NestJS app |
 | `teardownTestApp()` | `test/setup/app-factory.ts` | Shut down cleanly |
 | `resetDb()` | `test/setup/db-setup.ts` | Wipe all test data |
-| `seedBaseRestaurant()` | `test/setup/db-setup.ts` | Insert test restaurant |
+| `seedBaseRestaurant(ownerId)` | `test/setup/db-setup.ts` | Insert test restaurant with dynamic owner UUID |
+| `TestAuthManager` | `test/helpers/test-auth.ts` | Sign up users, get tokens, grant roles |
+| `setAuthManager(mgr)` | `test/helpers/auth.ts` | Wire token manager before first header call |
+| `otherUserHeaders()` | `test/helpers/auth.ts` | Non-owner auth header for 403 tests |
 
 Add new helpers to `test/helpers/db.ts` when you need to assert DB state not exposed by any API. Keep HTTP-level assertions inside the spec files.
 
