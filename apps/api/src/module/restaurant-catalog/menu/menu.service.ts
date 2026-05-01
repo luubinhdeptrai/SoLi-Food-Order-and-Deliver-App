@@ -75,7 +75,8 @@ export class MenuService {
   ): Promise<MenuItem> {
     await this.assertOwnership(id, requesterId, isAdmin);
     const item = await this.repo.update(id, dto);
-    this.publishMenuItemEvent(item, []);
+    // null = no modifier data in this event; projector will preserve existing snapshot modifiers
+    this.publishMenuItemEvent(item, null);
     return item;
   }
 
@@ -93,7 +94,8 @@ export class MenuService {
     const nextStatus =
       item.status === 'out_of_stock' ? 'available' : 'out_of_stock';
     const updated = await this.repo.update(id, { status: nextStatus });
-    this.publishMenuItemEvent(updated, []);
+    // null = no modifier data in this event; projector will preserve existing snapshot modifiers
+    this.publishMenuItemEvent(updated, null);
     return updated;
   }
 
@@ -199,7 +201,7 @@ export class MenuService {
    */
   publishMenuItemEvent(
     item: MenuItem,
-    modifiers: MenuItemModifierSnapshot[],
+    modifiers: MenuItemModifierSnapshot[] | null,
   ): void {
     this.eventBus.publish(
       new MenuItemUpdatedEvent(

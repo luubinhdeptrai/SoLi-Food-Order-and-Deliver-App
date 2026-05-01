@@ -68,6 +68,62 @@ export class ModifiersController {
     return this.service.findGroupsByMenuItem(menuItemId);
   }
 
+  @Get(':groupId')
+  @AllowAnonymous()
+  @ApiOperation({
+    summary: 'Get a single modifier group (with options)',
+    description: 'Returns one modifier group and its embedded options by groupId.',
+  })
+  @ApiParam({ name: 'menuItemId', format: 'uuid' })
+  @ApiParam({ name: 'groupId', format: 'uuid' })
+  @ApiOkResponse({ type: ModifierGroupResponseDto })
+  @ApiNotFoundResponse({ description: 'Modifier group not found' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+  findOneGroup(
+    @Param('menuItemId', ParseUUIDPipe) menuItemId: string,
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+  ) {
+    return this.service.findGroupWithOptions(groupId, menuItemId);
+  }
+
+  @Get(':groupId/options')
+  @AllowAnonymous()
+  @ApiOperation({
+    summary: 'List options in a modifier group',
+    description: 'Returns all options belonging to a specific modifier group.',
+  })
+  @ApiParam({ name: 'menuItemId', format: 'uuid' })
+  @ApiParam({ name: 'groupId', format: 'uuid' })
+  @ApiOkResponse({ type: [ModifierOptionResponseDto] })
+  @ApiNotFoundResponse({ description: 'Modifier group not found' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+  findOptionsByGroup(
+    @Param('menuItemId', ParseUUIDPipe) menuItemId: string,
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+  ) {
+    return this.service.findOptionsByGroup(groupId, menuItemId);
+  }
+
+  @Get(':groupId/options/:optionId')
+  @AllowAnonymous()
+  @ApiOperation({
+    summary: 'Get a single modifier option',
+    description: 'Returns one specific modifier option by optionId.',
+  })
+  @ApiParam({ name: 'menuItemId', format: 'uuid' })
+  @ApiParam({ name: 'groupId', format: 'uuid' })
+  @ApiParam({ name: 'optionId', format: 'uuid' })
+  @ApiOkResponse({ type: ModifierOptionResponseDto })
+  @ApiNotFoundResponse({ description: 'Modifier option or group not found' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
+  findOneOption(
+    @Param('menuItemId', ParseUUIDPipe) menuItemId: string,
+    @Param('groupId', ParseUUIDPipe) groupId: string,
+    @Param('optionId', ParseUUIDPipe) optionId: string,
+  ) {
+    return this.service.findOption(optionId, groupId);
+  }
+
   @Post()
   @Roles(['admin', 'restaurant'])
   @ApiOperation({ summary: 'Create a modifier group for a menu item' })

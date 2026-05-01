@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   modifierGroups,
@@ -118,6 +118,26 @@ export class ModifierOptionRepository {
       .where(eq(modifierOptions.id, id))
       .returning();
     return row;
+  }
+
+  /**
+   * Fetches all options whose parent group belongs to the given menu item.
+   * Uses a 2-query approach (groups → options via inArray) to avoid N+1 while
+   * keeping the return type cleanly typed as ModifierOption[].
+   * Called by ModifiersService.buildGroupsWithOptions.
+   */
+  async findAllByMenuItem(menuItemId: string): Promise<ModifierOption[]> {
+    const groups = await this.db
+      .select({ id: modifierGroups.id })
+      .from(modifierGroups)
+      .where(eq(modifierGroups.menuItemId, menuItemId));
+    if (groups.length === 0) return [];
+    const groupIds = groups.map((g) => g.id);
+    return this.db
+      .select()
+      .from(modifierOptions)
+      .where(inArray(modifierOptions.groupId, groupIds))
+      .orderBy(modifierOptions.displayOrder);
   }
 
   async remove(id: string): Promise<void> {

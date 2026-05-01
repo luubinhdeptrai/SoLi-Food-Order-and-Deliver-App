@@ -8,6 +8,17 @@ import {
   type NewOrderingMenuItemSnapshot,
   type OrderingMenuItemSnapshot,
 } from '../schemas/menu-item-snapshot.schema';
+import type { MenuItemModifierSnapshot } from '@/shared/events/menu-item-updated.event';
+
+/**
+ * Upsert payload — extends the schema insert type to allow `modifiers: null`.
+ *  null      → event carries no modifier data; skip updating the modifiers column.
+ *  []        → item has no modifier groups (or was deleted); clear the column.
+ *  [...]     → replace snapshot modifiers with this new tree.
+ */
+type UpsertMenuItemSnapshotData = Omit<NewOrderingMenuItemSnapshot, 'modifiers'> & {
+  modifiers?: MenuItemModifierSnapshot[] | null;
+};
 
 /**
  * MenuItemSnapshotRepository
@@ -51,10 +62,16 @@ export class MenuItemSnapshotRepository {
       .where(inArray(orderingMenuItemSnapshots.menuItemId, menuItemIds));
   }
 
-  async upsert(data: NewOrderingMenuItemSnapshot): Promise<void> {
+  async upsert(data: UpsertMenuItemSnapshotData): Promise<void> {
+    // For INSERT (new row): default modifiers to [] when the event carries null.
+    const insertValues = {
+      ...data,
+      modifiers: data.modifiers ?? [],
+    } as NewOrderingMenuItemSnapshot;
+
     await this.db
       .insert(orderingMenuItemSnapshots)
-      .values(data)
+      .values(insertValues)
       .onConflictDoUpdate({
         target: orderingMenuItemSnapshots.menuItemId,
         set: {
@@ -62,7 +79,10 @@ export class MenuItemSnapshotRepository {
           name: data.name,
           price: data.price,
           status: data.status,
-          modifiers: data.modifiers ?? [],
+          // null → skip updating modifiers (preserves existing snapshot data).
+          // [] or [...] → write the explicit value.
+          ...(data.modifiers !== null &&
+            data.modifiers !== undefined && { modifiers: data.modifiers }),
           lastSyncedAt: data.lastSyncedAt ?? new Date(),
         },
       });

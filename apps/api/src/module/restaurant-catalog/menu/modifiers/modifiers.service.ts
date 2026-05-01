@@ -56,6 +56,25 @@ export class ModifiersService {
     return option;
   }
 
+  /**
+   * Returns a single modifier group with its options embedded.
+   * Used by GET /:groupId controller endpoint.
+   */
+  async findGroupWithOptions(groupId: string, menuItemId: string): Promise<ModifierGroupResponseDto> {
+    const group = await this.findGroup(groupId, menuItemId); // validates group belongs to item
+    const options = await this.optionRepo.findByGroup(groupId);
+    return { ...group, options };
+  }
+
+  /**
+   * Returns all options belonging to a modifier group.
+   * Used by GET /:groupId/options controller endpoint.
+   */
+  async findOptionsByGroup(groupId: string, menuItemId: string): Promise<ModifierOption[]> {
+    await this.findGroup(groupId, menuItemId); // validates group belongs to menu item
+    return this.optionRepo.findByGroup(groupId);
+  }
+
   // -------------------------------------------------------------------------
   // Modifier Groups
   // -------------------------------------------------------------------------
@@ -80,8 +99,12 @@ export class ModifiersService {
     isAdmin: boolean,
     dto: UpdateModifierGroupDto,
   ): Promise<ModifierGroup> {
-    await this.findGroup(groupId, menuItemId); // existence check
+    const existing = await this.findGroup(groupId, menuItemId); // existence check + fetch current values
     await this.assertMenuItemOwnership(menuItemId, requesterId, isAdmin);
+    // Merge DTO values with existing record before validation (PartialType — either field may be absent)
+    const resolvedMin = dto.minSelections ?? existing.minSelections;
+    const resolvedMax = dto.maxSelections ?? existing.maxSelections;
+    this.validateMinMax(resolvedMin, resolvedMax);
     const group = await this.groupRepo.update(groupId, dto);
     await this.publishMenuItemEvent(menuItemId);
     return group;
@@ -206,13 +229,24 @@ export class ModifiersService {
     this.menuService.publishMenuItemEvent(item, snapshot);
   }
 
+  /**
+   * Fetches all groups + options for a menu item in 2 DB round-trips (was N+1).
+   * Groups are fetched first; then all options are fetched in a single inArray
+   * query and grouped in memory by groupId.
+   */
   private async buildGroupsWithOptions(menuItemId: string): Promise<ModifierGroupResponseDto[]> {
     const groups = await this.groupRepo.findByMenuItem(menuItemId);
-    const result: ModifierGroupResponseDto[] = [];
-    for (const group of groups) {
-      const options = await this.optionRepo.findByGroup(group.id);
-      result.push({ ...group, options });
+    if (groups.length === 0) return [];
+    const allOptions = await this.optionRepo.findAllByMenuItem(menuItemId);
+    const optionsByGroupId = new Map<string, ModifierOption[]>();
+    for (const option of allOptions) {
+      const list = optionsByGroupId.get(option.groupId) ?? [];
+      list.push(option);
+      optionsByGroupId.set(option.groupId, list);
     }
-    return result;
+    return groups.map((group) => ({
+      ...group,
+      options: optionsByGroupId.get(group.id) ?? [],
+    }));
   }
 }

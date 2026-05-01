@@ -47,8 +47,10 @@ export class MenuItemUpdatedEvent {
     public readonly status: 'available' | 'unavailable' | 'out_of_stock',
     /**
      * Full modifier group+option tree at event time.
-     * Empty array when no modifier change triggered the event.
+     *  null  = this event carries no modifier data; projector MUST NOT update the modifiers column.
+     *  []    = item genuinely has no modifier groups (e.g. was just created, or was deleted with status='unavailable').
+     *  [...] = full current modifier tree at event time.
      */
-    public readonly modifiers: MenuItemModifierSnapshot[],
+    public readonly modifiers: MenuItemModifierSnapshot[] | null,
   ) {}
 }

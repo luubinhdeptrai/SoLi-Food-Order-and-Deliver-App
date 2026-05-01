@@ -33,7 +33,7 @@ export class MenuItemProjector implements IEventHandler<MenuItemUpdatedEvent> {
     const { menuItemId, restaurantId, name, price, status, modifiers } = event;
 
     this.logger.debug(
-      `Upserting menu item snapshot: ${menuItemId} (status=${status}, modifierGroups=${modifiers.length})`,
+      `Upserting menu item snapshot: ${menuItemId} (status=${status}, modifierGroups=${modifiers?.length ?? 'unchanged'})`,
     );
 
     try {
