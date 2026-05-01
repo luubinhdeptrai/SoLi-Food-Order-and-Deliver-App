@@ -30,12 +30,18 @@ export class SearchRepository {
 
     if (filters.lat !== undefined && filters.lon !== undefined) {
       const radiusKm = filters.radiusKm || 5;
-      const radiusDegrees = radiusKm / 111;
       conditions.push(
         sql`(${restaurants.latitude} IS NOT NULL AND ${restaurants.longitude} IS NOT NULL)`,
       );
+      // Haversine formula — accurate great-circle distance regardless of latitude.
+      // Replaces the previous Euclidean degree-based approximation which was inaccurate
+      // at Vietnam latitudes (~10–21°N) and did not account for longitude compression.
       conditions.push(
-        sql`SQRT(POWER(${restaurants.latitude} - ${filters.lat}, 2) + POWER(${restaurants.longitude} - ${filters.lon}, 2)) <= ${radiusDegrees}`,
+        sql`(2 * 6371 * ASIN(SQRT(
+          POWER(SIN(RADIANS(${restaurants.latitude} - ${filters.lat}) / 2), 2) +
+          COS(RADIANS(${filters.lat})) * COS(RADIANS(${restaurants.latitude})) *
+          POWER(SIN(RADIANS(${restaurants.longitude} - ${filters.lon}) / 2), 2)
+        ))) <= ${radiusKm}`,
       );
     }
 

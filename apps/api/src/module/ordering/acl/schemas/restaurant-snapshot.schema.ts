@@ -54,8 +54,12 @@ export const orderingRestaurantSnapshots = pgTable(
     // column is notNull. Re-run db:push if migrating an existing dev database.
     address: text('address').notNull(),
 
-    // Required for BR-3 (delivery radius check) — sourced from upstream.
-    // Nullable until restaurant-catalog BC adds the column and starts publishing it.
+    /**
+     * @deprecated Since dynamic delivery zones were introduced (Phase 4 / delivery-zones-haversine-proposal).
+     * The single-radius model is replaced by the `delivery_zones` table in restaurant-catalog BC.
+     * `PlaceOrderHandler` now queries `delivery_zones` directly for BR-3 enforcement.
+     * This column is kept as nullable to avoid a breaking migration; it is no longer populated.
+     */
     deliveryRadiusKm: real('delivery_radius_km'),
 
     // Sourced from restaurants.latitude / restaurants.longitude.

@@ -1,11 +1,33 @@
 import {
   boolean,
+  customType,
   doublePrecision,
   pgTable,
+  real,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
+
+/**
+ * zoneFeeColumn — NUMERIC(10, 2) stored as a TypeScript `number`.
+ *
+ * Drizzle's built-in `numeric()` maps to `string` in TypeScript (to avoid
+ * floating-point loss). We use `customType` so that TS treats it as `number`
+ * while the DB column remains `NUMERIC(10, 2)` for exact decimal arithmetic.
+ * This mirrors the `moneyColumn` pattern in order.schema.ts.
+ */
+const zoneFeeColumn = customType<{ data: number; driverData: string }>({
+  dataType() {
+    return 'numeric(10, 2)';
+  },
+  fromDriver(value) {
+    return parseFloat(value as string);
+  },
+  toDriver(value) {
+    return String(value);
+  },
+});
 
 export const restaurants = pgTable('restaurants', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -32,8 +54,11 @@ export const deliveryZones = pgTable('delivery_zones', {
     .references(() => restaurants.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   radiusKm: doublePrecision('radius_km').notNull(),
-  deliveryFee: doublePrecision('delivery_fee').notNull().default(0),
-  estimatedMinutes: doublePrecision('estimated_minutes').notNull().default(30),
+  baseFee: zoneFeeColumn('base_fee').notNull().default(0),
+  perKmRate: zoneFeeColumn('per_km_rate').notNull().default(0),
+  avgSpeedKmh: real('avg_speed_kmh').notNull().default(30),
+  prepTimeMinutes: real('prep_time_minutes').notNull().default(15),
+  bufferMinutes: real('buffer_minutes').notNull().default(5),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

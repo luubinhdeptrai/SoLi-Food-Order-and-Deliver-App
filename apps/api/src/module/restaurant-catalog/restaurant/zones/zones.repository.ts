@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   deliveryZones,
@@ -32,6 +32,26 @@ export class ZonesRepository {
     return result[0] ?? null;
   }
 
+  /**
+   * Returns all active zones for a restaurant ordered by radius ascending.
+   * Used by estimateDelivery — the first zone whose radiusKm >= distanceKm is
+   * the eligible zone.
+   */
+  async findActiveByRestaurantOrderedByRadius(
+    restaurantId: string,
+  ): Promise<DeliveryZone[]> {
+    return this.db
+      .select()
+      .from(deliveryZones)
+      .where(
+        and(
+          eq(deliveryZones.restaurantId, restaurantId),
+          eq(deliveryZones.isActive, true),
+        ),
+      )
+      .orderBy(asc(deliveryZones.radiusKm));
+  }
+
   async create(
     restaurantId: string,
     dto: CreateDeliveryZoneDto,
@@ -42,17 +62,39 @@ export class ZonesRepository {
         restaurantId,
         name: dto.name,
         radiusKm: dto.radiusKm,
-        deliveryFee: dto.deliveryFee ?? 0,
-        estimatedMinutes: dto.estimatedMinutes ?? 30,
+        baseFee: dto.baseFee,
+        perKmRate: dto.perKmRate,
+        avgSpeedKmh: dto.avgSpeedKmh ?? 30,
+        prepTimeMinutes: dto.prepTimeMinutes ?? 15,
+        bufferMinutes: dto.bufferMinutes ?? 5,
       })
       .returning();
     return row;
   }
 
   async update(id: string, dto: UpdateDeliveryZoneDto): Promise<DeliveryZone> {
+    // Explicit per-field mapping avoids spreading undefined DTO fields into .set().
+    // Drizzle treats undefined as "skip this column" but that is undocumented behaviour;
+    // an explicit patch object is safer and self-documenting.
+    const patch: Partial<typeof deliveryZones.$inferInsert> = {
+      ...(dto.name !== undefined && { name: dto.name }),
+      ...(dto.radiusKm !== undefined && { radiusKm: dto.radiusKm }),
+      ...(dto.baseFee !== undefined && { baseFee: dto.baseFee }),
+      ...(dto.perKmRate !== undefined && { perKmRate: dto.perKmRate }),
+      ...(dto.avgSpeedKmh !== undefined && { avgSpeedKmh: dto.avgSpeedKmh }),
+      ...(dto.prepTimeMinutes !== undefined && {
+        prepTimeMinutes: dto.prepTimeMinutes,
+      }),
+      ...(dto.bufferMinutes !== undefined && {
+        bufferMinutes: dto.bufferMinutes,
+      }),
+      ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+      updatedAt: new Date(),
+    };
+
     const [row] = await this.db
       .update(deliveryZones)
-      .set({ ...dto, updatedAt: new Date() })
+      .set(patch)
       .where(eq(deliveryZones.id, id))
       .returning();
     return row;
@@ -62,3 +104,4 @@ export class ZonesRepository {
     await this.db.delete(deliveryZones).where(eq(deliveryZones.id, id));
   }
 }
+

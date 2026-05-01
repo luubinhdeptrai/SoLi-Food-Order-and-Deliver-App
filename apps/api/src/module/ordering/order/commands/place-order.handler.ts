@@ -8,7 +8,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { CommandHandler, ICommandHandler, EventBus } from '@nestjs/cqrs';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DB_CONNECTION } from '@/drizzle/drizzle.constants';
 import * as schema from '@/drizzle/schema';
@@ -42,6 +42,18 @@ import {
 } from '../../common/ordering.constants';
 import { APP_SETTING_KEYS } from '../../common/app-settings.schema';
 import { randomUUID } from 'crypto';
+import { GeoService } from '@/lib/geo/geo.service';
+import { deliveryZones } from '@/drizzle/schema';
+
+/**
+ * Local projection of a delivery zone — contains only the fields needed for
+ * the delivery-zone eligibility check. Using a local interface instead of
+ * importing DeliveryZone from restaurant-catalog keeps D3-B (no cross-BC
+ * type imports) intact.
+ */
+interface DeliveryZoneInfo {
+  radiusKm: number;
+}
 
 // ---------------------------------------------------------------------------
 // Business-rule constants
@@ -92,6 +104,7 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     private readonly appSettingsService: AppSettingsService,
     private readonly redis: RedisService,
     private readonly eventBus: EventBus,
+    private readonly geo: GeoService,
   ) {}
 
   async execute(command: PlaceOrderCommand): Promise<Order> {
@@ -200,9 +213,19 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     this.assertModifierConstraintsAtCheckout(cart!.items, snapshotMapForModifiers);
 
     // -------------------------------------------------------------------------
-    // Step 6 — BR-3: Delivery radius check (best-effort — skipped if no coords)
+    // Step 6 — BR-3: Delivery zone check (best-effort — skipped if no coords)
+    // Load active delivery zones and verify the customer is within at least one.
     // -------------------------------------------------------------------------
-    this.assertDeliveryRadiusIfApplicable(restaurantSnapshot!, deliveryAddress);
+    const activeZones = await this.db
+      .select({ radiusKm: deliveryZones.radiusKm })
+      .from(deliveryZones)
+      .where(
+        and(
+          eq(deliveryZones.restaurantId, cart!.restaurantId),
+          eq(deliveryZones.isActive, true),
+        ),
+      );
+    this.assertDeliveryZoneIfApplicable(restaurantSnapshot!, deliveryAddress, activeZones);
 
     // -------------------------------------------------------------------------
     // Step 7 — Snapshot prices from ACL into order_items
@@ -435,52 +458,60 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
   }
 
   /**
-   * BR-3 — Delivery radius check.
+   * Best-effort delivery-zone enforcement (BR-3).
    *
-   * Skipped gracefully when:
-   *  - The restaurant snapshot has no coordinates (upstream has not provided lat/lng yet).
-   *  - The restaurant snapshot has no deliveryRadiusKm (upstream has not added this column yet).
-   *  - The delivery address has no coordinates (customer did not provide GPS coords).
+   * Soft guard: if the restaurant snapshot or delivery address is missing
+   * coordinates, the check is skipped with a warning so orders placed before
+   * location data is configured still succeed.
    *
-   * When all values are present, computes Haversine distance and rejects if out of range.
-   *
-   * ⚠️  UPSTREAM MISSING: `deliveryRadiusKm` and restaurant `latitude/longitude` are nullable
-   *     in `ordering_restaurant_snapshots` until the RestaurantCatalog BC adds those columns.
-   *     See: docs/Những yêu cầu cho các BC/restaurant-catalog.md
+   * When all coordinates are present, uses GeoService.calculateDistanceKm
+   * (Haversine) and rejects if the customer is outside every active zone.
    */
-  private assertDeliveryRadiusIfApplicable(
+  private assertDeliveryZoneIfApplicable(
     restaurantSnapshot: OrderingRestaurantSnapshot,
     deliveryAddress: DeliveryAddress,
+    activeZones: DeliveryZoneInfo[],
   ): void {
-    const {
-      deliveryRadiusKm,
-      latitude: restaurantLat,
-      longitude: restaurantLng,
-    } = restaurantSnapshot;
+    const { latitude: restaurantLat, longitude: restaurantLng } = restaurantSnapshot;
     const { latitude: addressLat, longitude: addressLng } = deliveryAddress;
 
-    // Skip check if any required coordinate or radius is absent.
+    // Skip if either side is missing coordinates.
     if (
-      deliveryRadiusKm == null ||
       restaurantLat == null ||
       restaurantLng == null ||
       addressLat == null ||
       addressLng == null
     ) {
+      this.logger.warn(
+        `BR-3 delivery-zone check skipped for restaurantId=${restaurantSnapshot.restaurantId}: ` +
+          'missing coordinates.',
+      );
       return;
     }
 
-    const distanceKm = this.haversineDistanceKm(
-      restaurantLat,
-      restaurantLng,
-      addressLat,
-      addressLng,
+    // Skip if no active zones are configured — restaurant may not have set them up yet.
+    if (activeZones.length === 0) {
+      this.logger.warn(
+        `BR-3 delivery-zone check skipped for restaurantId=${restaurantSnapshot.restaurantId}: ` +
+          'no active delivery zones.',
+      );
+      return;
+    }
+
+    const distanceKm = this.geo.calculateDistanceKm(
+      { latitude: restaurantLat, longitude: restaurantLng },
+      { latitude: addressLat, longitude: addressLng },
     );
 
-    if (distanceKm > deliveryRadiusKm) {
+    // Sort a copy so we never mutate the caller's array.
+    const sortedZones = [...activeZones].sort((a, b) => a.radiusKm - b.radiusKm);
+    const eligibleZone = sortedZones.find((z) => z.radiusKm >= distanceKm);
+
+    if (!eligibleZone) {
+      const maxRadius = sortedZones[sortedZones.length - 1].radiusKm;
       throw new UnprocessableEntityException(
         `Delivery address is ${distanceKm.toFixed(1)} km from the restaurant, ` +
-          `which exceeds the ${deliveryRadiusKm} km delivery radius.`,
+          `which exceeds the maximum delivery zone radius of ${maxRadius} km.`,
       );
     }
   }
@@ -754,29 +785,5 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     return result[0] ?? null;
   }
 
-  /**
-   * Haversine formula — returns great-circle distance in kilometres.
-   * Precision is sufficient for delivery-radius checks (±0.1 km error at short range).
-   */
-  private haversineDistanceKm(
-    lat1: number,
-    lng1: number,
-    lat2: number,
-    lng2: number,
-  ): number {
-    const EARTH_RADIUS_KM = 6_371;
-    const toRad = (deg: number) => (deg * Math.PI) / 180;
-
-    const deltaLat = toRad(lat2 - lat1);
-    const deltaLng = toRad(lng2 - lng1);
-    const sinHalfLat = Math.sin(deltaLat / 2);
-    const sinHalfLng = Math.sin(deltaLng / 2);
-
-    const a =
-      sinHalfLat * sinHalfLat +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * sinHalfLng * sinHalfLng;
-
-    const centralAngle = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return EARTH_RADIUS_KM * centralAngle;
-  }
 }
+

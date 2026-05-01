@@ -325,7 +325,7 @@ The `/ 111` conversion is a rough approximation that degrades at non-equatorial 
 
 `menuItemCategoryEnum` replaced with a `menu_categories` table. Categories are per-restaurant, fully dynamic. `menu_items.categoryId` is a FK to this table.
 
-### 6.8 No operating hours
+### 6.8 No operating hours (TẠM THỜI BỎ QUA VÌ THẤY CHƯA CẦN THIẾT)
 
 `isOpen` is a manual boolean. No schedule table — restaurants must be opened/closed manually every day.
 

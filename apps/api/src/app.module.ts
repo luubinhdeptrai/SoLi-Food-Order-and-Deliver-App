@@ -9,12 +9,14 @@ import { RestaurantCatalogModule } from './module/restaurant-catalog/restaurant-
 import { RedisModule } from './lib/redis/redis.module';
 import { OrderingModule } from './module/ordering/ordering.module';
 import { DevTestUserMiddleware } from './lib/dev-test-user.middleware';
+import { GeoModule } from './lib/geo/geo.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     DatabaseModule,
     RedisModule,
+    GeoModule,
     RestaurantCatalogModule,
     OrderingModule,
 
