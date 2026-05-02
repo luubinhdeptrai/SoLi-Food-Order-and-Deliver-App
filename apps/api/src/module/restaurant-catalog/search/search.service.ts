@@ -5,12 +5,6 @@ import {
   type UnifiedSearchResult,
 } from './search.repository';
 
-// ---------------------------------------------------------------------------
-// Pagination constants
-// ---------------------------------------------------------------------------
-const DEFAULT_PAGE_SIZE = 20;
-const MAX_PAGE_SIZE = 100;
-
 @Injectable()
 export class SearchService {
   constructor(private readonly repo: SearchRepository) {}
@@ -19,6 +13,10 @@ export class SearchService {
    * Entry point for the unified search endpoint. Validates that lat and lon
    * are always provided together (providing only one would silently degrade
    * to a non-geo search without any warning to the caller).
+   *
+   * Pagination sanitisation (clamping, defaults) is intentionally delegated
+   * to SearchRepository — the repository owns those constants as the single
+   * source of truth.
    */
   async search(
     q?: string,
@@ -37,8 +35,6 @@ export class SearchService {
       );
     }
 
-    const safeLimit = Math.min(limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
-
     const filters: SearchFilters = {
       q,
       category,
@@ -48,7 +44,7 @@ export class SearchService {
       lon,
       radiusKm,
       offset,
-      limit: safeLimit,
+      limit,
     };
 
     return this.repo.search(filters);

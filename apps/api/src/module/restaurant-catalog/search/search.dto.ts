@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { RestaurantSearchResultDto } from '../restaurant/dto/restaurant.dto';
 
 // ---------------------------------------------------------------------------
 // RestaurantSummaryDto
@@ -124,10 +125,11 @@ export class UnifiedSearchTotalsDto {
 /**
  * Unified SERP response — mirrors the structure used by GrabFood / ShopeeFood:
  *
- * - `restaurants`: restaurants whose name, cuisineType, or category matched,
- *   OR that carry items matching the query (when `item` param is used).
- * - `items`: available menu items whose name or tags matched, each paired with
- *   their parent restaurant so the UI can link directly to the dish.
+ * - `restaurants`: restaurants whose name, cuisineType, description, or carried
+ *   menu items matched the `q` search term, or that match the `cuisineType` /
+ *   `category` / `tag` filters.
+ * - `items`: available menu items whose name, tags, or category matched, each
+ *   paired with their parent restaurant so the UI can link directly to the dish.
  * - `total`: full-count values for both sections (not capped by pagination).
  *
  * Both sections use the same `offset`/`limit` pagination params independently.
@@ -136,10 +138,10 @@ export class UnifiedSearchResponseDto {
   @ApiProperty({
     description:
       'Restaurants matching the search criteria (no ownerId / isApproved exposed)',
+    type: () => RestaurantSearchResultDto,
     isArray: true,
-    type: Object,
   })
-  restaurants!: object[];
+  restaurants!: RestaurantSearchResultDto[];
 
   @ApiProperty({ type: [ItemSearchRowDto] })
   items!: ItemSearchRowDto[];

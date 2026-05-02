@@ -257,6 +257,14 @@ export class RestaurantSearchResultDto {
   })
   distanceKm?: number | null;
 
+  @ApiPropertyOptional({
+    description:
+      'Relevance score computed by the ranking engine (higher = better match). ' +
+      'Present only when a `q` search term is provided; omitted or 0 otherwise.',
+    example: 9,
+  })
+  score?: number;
+
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;
 

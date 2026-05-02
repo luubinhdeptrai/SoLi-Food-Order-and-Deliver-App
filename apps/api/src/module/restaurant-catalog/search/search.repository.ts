@@ -82,7 +82,7 @@ export interface UnifiedSearchResult {
 @Injectable()
 export class SearchRepository {
   constructor(
-    @Inject(DB_CONNECTION) readonly db: NodePgDatabase<typeof schema>,
+    @Inject(DB_CONNECTION) private readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
   // -------------------------------------------------------------------------
@@ -99,7 +99,10 @@ export class SearchRepository {
       filters.limit ?? DEFAULT_PAGE_SIZE,
       MAX_PAGE_SIZE,
     );
-    const safeOffset = filters.offset ?? 0;
+    // Guard against negative offset — PostgreSQL rejects OFFSET < 0 with a
+    // hard error. Clamp to 0 so an accidental negative value degrades
+    // gracefully to "first page" instead of a 500.
+    const safeOffset = Math.max(0, filters.offset ?? 0);
     const radiusKm = filters.radiusKm ?? 5;
 
     const [restaurantResult, itemResult] = await Promise.all([
@@ -188,7 +191,7 @@ export class SearchRepository {
     // applied to the already-ranked result set.
     const scoreExpr: SQL<unknown> = filters.q
       ? (() => {
-          const q = filters.q!;
+          const q = filters.q;
           return sql<number>`(
             CASE WHEN unaccent(${restaurants.name}) ILIKE unaccent(${q})
                  THEN ${R_SCORE_NAME_EXACT} ELSE 0 END
@@ -318,7 +321,7 @@ export class SearchRepository {
     // ── Item relevance score ──────────────────────────────────────────────
     const scoreExpr: SQL<unknown> = filters.q
       ? (() => {
-          const q = filters.q!;
+          const q = filters.q;
           return sql<number>`(
             CASE WHEN unaccent(${menuItems.name}) ILIKE unaccent(${q})
                  THEN ${I_SCORE_NAME_EXACT} ELSE 0 END
