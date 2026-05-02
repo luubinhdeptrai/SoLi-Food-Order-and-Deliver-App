@@ -27,7 +27,9 @@ export class RestaurantRepository {
     @Inject(DB_CONNECTION) readonly db: NodePgDatabase<typeof schema>,
   ) {}
 
-  async findAll(opts: FindAllOptions = {}): Promise<PaginatedResult<Restaurant>> {
+  async findAll(
+    opts: FindAllOptions = {},
+  ): Promise<PaginatedResult<Restaurant>> {
     const { offset, limit, approvedOnly } = opts;
 
     // Build the WHERE conditions based on options.
@@ -36,16 +38,15 @@ export class RestaurantRepository {
 
     // Run count and data queries in parallel for efficiency.
     const [countResult, rows] = await Promise.all([
-      this.db
-        .select({ total: count() })
-        .from(restaurants)
-        .where(whereClause),
+      this.db.select({ total: count() }).from(restaurants).where(whereClause),
       this.db
         .select()
         .from(restaurants)
         .where(whereClause)
         .orderBy(restaurants.createdAt)
         .offset(offset ?? 0)
+        // limit is always supplied by RestaurantService (DEFAULT_PAGE_SIZE / MAX_PAGE_SIZE),
+        // but we fall back to 20 here so the repository remains usable in isolation.
         .limit(limit ?? 20),
     ]);
 
@@ -72,7 +73,14 @@ export class RestaurantRepository {
     return row;
   }
 
-  async update(id: string, dto: UpdateRestaurantDto): Promise<Restaurant> {
+  /**
+   * Returns `undefined` when no row with the given `id` exists.
+   * Callers are responsible for handling the not-found case.
+   */
+  async update(
+    id: string,
+    dto: UpdateRestaurantDto,
+  ): Promise<Restaurant | undefined> {
     const [row] = await this.db
       .update(restaurants)
       .set({ ...dto, updatedAt: new Date() })
@@ -85,4 +93,3 @@ export class RestaurantRepository {
     await this.db.delete(restaurants).where(eq(restaurants.id, id));
   }
 }
-

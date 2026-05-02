@@ -41,7 +41,8 @@ export class MenuItemSnapshotResponseDto {
   name!: string;
 
   @ApiProperty({
-    description: 'Unit price at the time of last sync (frozen into order_items at checkout)',
+    description:
+      'Unit price at the time of last sync (frozen into order_items at checkout)',
     example: 12.5,
   })
   price!: number;
@@ -56,7 +57,8 @@ export class MenuItemSnapshotResponseDto {
   status!: AclMenuItemStatus;
 
   @ApiProperty({
-    description: 'Timestamp of the last MenuItemUpdatedEvent that updated this row',
+    description:
+      'Timestamp of the last MenuItemUpdatedEvent that updated this row',
     type: String,
     format: 'date-time',
     example: '2026-04-28T07:00:00.000Z',
@@ -131,7 +133,8 @@ export class RestaurantSnapshotResponseDto {
   longitude!: number | null;
 
   @ApiProperty({
-    description: 'Timestamp of the last RestaurantUpdatedEvent that updated this row',
+    description:
+      'Timestamp of the last RestaurantUpdatedEvent that updated this row',
     type: String,
     format: 'date-time',
     example: '2026-04-28T07:00:00.000Z',

@@ -23,9 +23,7 @@ import { RestaurantSnapshotRepository } from '../repositories/restaurant-snapsho
  */
 @Injectable()
 @EventsHandler(RestaurantUpdatedEvent)
-export class RestaurantSnapshotProjector
-  implements IEventHandler<RestaurantUpdatedEvent>
-{
+export class RestaurantSnapshotProjector implements IEventHandler<RestaurantUpdatedEvent> {
   private readonly logger = new Logger(RestaurantSnapshotProjector.name);
 
   constructor(

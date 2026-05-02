@@ -65,7 +65,10 @@ export class SearchRepository {
   ) {}
 
   async search(filters: SearchFilters): Promise<SearchResult> {
-    const safeLimit = Math.min(filters.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+    const safeLimit = Math.min(
+      filters.limit ?? DEFAULT_PAGE_SIZE,
+      MAX_PAGE_SIZE,
+    );
     const safeOffset = filters.offset ?? 0;
     const radiusKm = filters.radiusKm ?? 5;
 
@@ -139,10 +142,7 @@ export class SearchRepository {
     // -----------------------------------------------------------------------
 
     const [countResult, rows] = await Promise.all([
-      this.db
-        .select({ total: count() })
-        .from(restaurants)
-        .where(whereClause),
+      this.db.select({ total: count() }).from(restaurants).where(whereClause),
       this.db
         .select({
           // Public fields only — no ownerId or isApproved (Issue #19).
@@ -179,4 +179,3 @@ export class SearchRepository {
     };
   }
 }
-

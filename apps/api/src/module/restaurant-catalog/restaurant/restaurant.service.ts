@@ -5,7 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EventBus } from '@nestjs/cqrs';
-import { RestaurantRepository, type PaginatedResult } from './restaurant.repository';
+import {
+  RestaurantRepository,
+  type PaginatedResult,
+} from './restaurant.repository';
 import { CreateRestaurantDto, UpdateRestaurantDto } from './dto/restaurant.dto';
 import type { Restaurant } from '@/module/restaurant-catalog/restaurant/restaurant.schema';
 import { RestaurantUpdatedEvent } from '@/shared/events/restaurant-updated.event';
@@ -58,6 +61,9 @@ export class RestaurantService {
       throw new ForbiddenException('You do not own this restaurant');
     }
     const updated = await this.repo.update(id, dto);
+    // Defensive guard: repo.update() returns undefined if the row was deleted
+    // between the findOne() check above and this write (rare race condition).
+    if (!updated) throw new NotFoundException(`Restaurant ${id} not found`);
     this.publishRestaurantEvent(updated);
     return updated;
   }
@@ -82,9 +88,9 @@ export class RestaurantService {
   }
 
   async setApproved(id: string, isApproved: boolean): Promise<Restaurant> {
-    // `findOne` is called implicitly by `update` after the DB write.
-    // We use the returned record (not a pre-fetch) so the event always
-    // reflects the persisted state and avoids a race condition (Issue #2).
+    // Skip a pre-fetch so the event always reflects the actually-persisted state.
+    // If the restaurant does not exist, repo.update() returns undefined and we
+    // throw NotFoundException below (Issue #2).
     const updated = await this.repo.update(id, { isApproved });
     if (!updated) {
       throw new NotFoundException(`Restaurant ${id} not found`);
@@ -117,7 +123,7 @@ export class RestaurantService {
   private publishRestaurantEvent(restaurant: Restaurant): void {
     this.eventBus.publish(
       new RestaurantUpdatedEvent(
-        restaurant.id!,
+        restaurant.id,
         restaurant.name,
         restaurant.isOpen ?? false,
         restaurant.isApproved ?? false,
@@ -129,4 +135,3 @@ export class RestaurantService {
     );
   }
 }
-

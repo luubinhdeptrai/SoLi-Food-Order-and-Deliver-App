@@ -272,4 +272,3 @@ export class RestaurantSearchResponseDto {
   @ApiProperty({ example: 10 })
   total!: number;
 }
-

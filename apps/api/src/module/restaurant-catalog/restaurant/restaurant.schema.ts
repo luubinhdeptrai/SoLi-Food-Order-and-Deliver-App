@@ -23,7 +23,7 @@ const zoneFeeColumn = customType<{ data: number; driverData: string }>({
     return 'numeric(10, 2)';
   },
   fromDriver(value) {
-    return parseFloat(value as string);
+    return parseFloat(value);
   },
   toDriver(value) {
     return String(value);
