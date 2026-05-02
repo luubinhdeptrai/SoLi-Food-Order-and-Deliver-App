@@ -37,21 +37,8 @@ export class SearchController {
     required: false,
     description:
       'General search term (accent-insensitive). ' +
-      'Matched against restaurant names (restaurant section) and menu item names (items section).',
+      'Matched against restaurant names, cuisine, description AND menu item names, tags, and categories.',
     example: 'banh mi',
-  })
-  @ApiQuery({
-    name: 'name',
-    required: false,
-    description: 'Targeted restaurant name filter (accent-insensitive)',
-    example: 'Sunset Bistro',
-  })
-  @ApiQuery({
-    name: 'item',
-    required: false,
-    description:
-      'Menu item name filter (accent-insensitive). Shows restaurants that carry the item + the items themselves.',
-    example: 'bánh mì',
   })
   @ApiQuery({
     name: 'category',
@@ -114,8 +101,6 @@ export class SearchController {
   })
   search(
     @Query('q') q?: string,
-    @Query('name') name?: string,
-    @Query('item') item?: string,
     @Query('category') category?: string,
     @Query('cuisineType') cuisineType?: string,
     @Query('tag') tag?: string,
@@ -128,8 +113,6 @@ export class SearchController {
   ) {
     return this.service.search(
       q,
-      name,
-      item,
       category,
       cuisineType,
       tag,

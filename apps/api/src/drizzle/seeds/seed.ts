@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Master seed script — seeds all tables with fixed UUIDs for development & testing.
  *
  * Run:  pnpm db:seed
@@ -58,6 +58,8 @@ import {
 import {
   menuItems,
   menuCategories,
+  modifierGroups,
+  modifierOptions,
 } from '../../module/restaurant-catalog/menu/menu.schema';
 import { appSettings } from '../../module/ordering/common/app-settings.schema';
 import { orderingRestaurantSnapshots } from '../../module/ordering/acl/schemas/restaurant-snapshot.schema';
@@ -146,6 +148,149 @@ const IDS = {
   r5Sashimi: 'dd000031-0000-4000-8000-000000000031', // Sashimi Cá Ngừ
   r5BanhMi: 'dd000032-0000-4000-8000-000000000032', // Bánh Mì Cá Hồi ← "banh mi" (cross-restaurant)
   r5TraXanh: 'dd000033-0000-4000-8000-000000000033', // Trà Xanh Nhật Bản
+
+  // ── Modifier Groups ────────────────────────────────────────────────────────
+  // R1 Phở Bắc
+  grpR1Pho1Size: 'ee000001-0000-4000-8000-000000000001', // Phở Bò — Kích cỡ
+  grpR1Pho1Topping: 'ee000002-0000-4000-8000-000000000002', // Phở Bò — Topping thêm
+  grpR1Pho2Size: 'ee000003-0000-4000-8000-000000000003', // Phở Gà — Kích cỡ
+  grpR1BunBoSpicy: 'ee000004-0000-4000-8000-000000000004', // Bún Bò Huế — Độ cay
+  grpR1BunBoTopping: 'ee000005-0000-4000-8000-000000000005', // Bún Bò Huế — Topping thêm
+  grpR1BanhCuonExtra: 'ee000006-0000-4000-8000-000000000006', // Bánh Cuốn — Phần thêm
+  grpR1TraDaSugar: 'ee000007-0000-4000-8000-000000000007', // Trà Đá — Đường
+  // R2 Bếp Đóng Cửa
+  grpR2BurgerSauce: 'ee000008-0000-4000-8000-000000000008', // Classic Burger — Sốt
+  // R3 Cơm Tấm Sài Gòn
+  grpR3ComTam1Rice: 'ee000009-0000-4000-8000-000000000009', // Cơm Tấm Sườn Nướng — Cỡ cơm
+  grpR3ComTam1Side: 'ee000010-0000-4000-8000-000000000010', // Cơm Tấm Sườn Nướng — Phần thêm
+  grpR3ComTam2Side: 'ee000011-0000-4000-8000-000000000011', // Cơm Tấm Bì Chả — Phần thêm
+  grpR3BanhMiSauce: 'ee000012-0000-4000-8000-000000000012', // Bánh Mì Thịt Nướng — Sốt
+  grpR3BanhMiVeg: 'ee000013-0000-4000-8000-000000000013', // Bánh Mì Thịt Nướng — Rau
+  grpR3ComChayProtein: 'ee000014-0000-4000-8000-000000000014', // Cơm Chay — Protein
+  grpR3NuocNgotType: 'ee000015-0000-4000-8000-000000000015', // Nước Ngọt — Loại
+  // R4 Seoul BBQ
+  grpR4BbqMeat: 'ee000016-0000-4000-8000-000000000016', // Thịt Nướng — Loại thịt
+  grpR4BbqPortion: 'ee000017-0000-4000-8000-000000000017', // Thịt Nướng — Phần ăn
+  grpR4KimchiSpicy: 'ee000018-0000-4000-8000-000000000018', // Kimchi Jjigae — Độ cay
+  grpR4BibimbapProtein: 'ee000019-0000-4000-8000-000000000019', // Bibimbap — Loại protein
+  grpR4TraSuaSugar: 'ee000020-0000-4000-8000-000000000020', // Trà Sữa — Mức đường
+  grpR4TraSuaIce: 'ee000021-0000-4000-8000-000000000021', // Trà Sữa — Lượng đá
+  grpR4TraSuaTopping: 'ee000022-0000-4000-8000-000000000022', // Trà Sữa — Topping
+  // R5 Sushi Hana
+  grpR5SushiPortion: 'ee000023-0000-4000-8000-000000000023', // Sushi Cá Hồi — Số lượng miếng
+  grpR5SashimiPortion: 'ee000024-0000-4000-8000-000000000024', // Sashimi Cá Ngừ — Số lượng lát
+  grpR5BanhMiTemp: 'ee000025-0000-4000-8000-000000000025', // Bánh Mì Cá Hồi — Nhiệt độ
+  grpR5TraXanhTemp: 'ee000026-0000-4000-8000-000000000026', // Trà Xanh — Nhiệt độ
+  grpR5TraXanhStrength: 'ee000027-0000-4000-8000-000000000027', // Trà Xanh — Nồng độ matcha
+
+  // ── Modifier Options ───────────────────────────────────────────────────────
+  // grpR1Pho1Size
+  optR1Pho1SizeS: 'ff000001-0000-4000-8000-000000000001', // Tô nhỏ
+  optR1Pho1SizeM: 'ff000002-0000-4000-8000-000000000002', // Tô vừa
+  optR1Pho1SizeL: 'ff000003-0000-4000-8000-000000000003', // Tô lớn
+  // grpR1Pho1Topping
+  optR1Pho1TopTai: 'ff000004-0000-4000-8000-000000000004', // Thêm tái
+  optR1Pho1TopNam: 'ff000005-0000-4000-8000-000000000005', // Thêm nạm
+  optR1Pho1TopGan: 'ff000006-0000-4000-8000-000000000006', // Thêm gân
+  optR1Pho1TopSach: 'ff000007-0000-4000-8000-000000000007', // Thêm sách
+  // grpR1Pho2Size
+  optR1Pho2SizeS: 'ff000008-0000-4000-8000-000000000008', // Tô nhỏ
+  optR1Pho2SizeM: 'ff000009-0000-4000-8000-000000000009', // Tô vừa
+  optR1Pho2SizeL: 'ff000010-0000-4000-8000-000000000010', // Tô lớn
+  // grpR1BunBoSpicy
+  optR1BunBoSpicy0: 'ff000011-0000-4000-8000-000000000011', // Không cay
+  optR1BunBoSpicyM: 'ff000012-0000-4000-8000-000000000012', // Cay vừa
+  optR1BunBoSpicyH: 'ff000013-0000-4000-8000-000000000013', // Cay nhiều
+  // grpR1BunBoTopping
+  optR1BunBoTopCua: 'ff000014-0000-4000-8000-000000000014', // Thêm chả cua
+  optR1BunBoTopHeo: 'ff000015-0000-4000-8000-000000000015', // Thêm chả heo
+  // grpR1BanhCuonExtra
+  optR1BanhCuonExtraLua: 'ff000016-0000-4000-8000-000000000016', // Thêm chả lụa
+  optR1BanhCuonExtraEgg: 'ff000017-0000-4000-8000-000000000017', // Trứng ốp la
+  optR1BanhCuonExtraCua: 'ff000018-0000-4000-8000-000000000018', // Chả cua
+  // grpR1TraDaSugar
+  optR1TraDaSugar0: 'ff000019-0000-4000-8000-000000000019', // Không đường
+  optR1TraDaSugarLow: 'ff000020-0000-4000-8000-000000000020', // Ít đường
+  optR1TraDaSugarNorm: 'ff000021-0000-4000-8000-000000000021', // Bình thường
+  // grpR2BurgerSauce
+  optR2BurgerSauceOrig: 'ff000022-0000-4000-8000-000000000022', // Bình thường
+  optR2BurgerSauceBbq: 'ff000023-0000-4000-8000-000000000023', // BBQ
+  optR2BurgerSauceMayo: 'ff000024-0000-4000-8000-000000000024', // Mayo
+  // grpR3ComTam1Rice
+  optR3ComTam1RiceS: 'ff000025-0000-4000-8000-000000000025', // Ít cơm
+  optR3ComTam1RiceN: 'ff000026-0000-4000-8000-000000000026', // Bình thường
+  optR3ComTam1RiceL: 'ff000027-0000-4000-8000-000000000027', // Nhiều cơm
+  // grpR3ComTam1Side
+  optR3ComTam1SidePickle: 'ff000028-0000-4000-8000-000000000028', // Đồ chua
+  optR3ComTam1SideEgg: 'ff000029-0000-4000-8000-000000000029', // Trứng ốp la
+  optR3ComTam1SideBi: 'ff000030-0000-4000-8000-000000000030', // Thêm bì
+  // grpR3ComTam2Side
+  optR3ComTam2SidePickle: 'ff000031-0000-4000-8000-000000000031', // Đồ chua
+  optR3ComTam2SideEgg: 'ff000032-0000-4000-8000-000000000032', // Trứng ốp la
+  optR3ComTam2SideBi: 'ff000033-0000-4000-8000-000000000033', // Thêm bì
+  // grpR3BanhMiSauce
+  optR3BanhMiSauceChili: 'ff000034-0000-4000-8000-000000000034', // Tương ớt
+  optR3BanhMiSauceBlack: 'ff000035-0000-4000-8000-000000000035', // Tương đen
+  optR3BanhMiSauceNone: 'ff000036-0000-4000-8000-000000000036', // Không sốt
+  // grpR3BanhMiVeg
+  optR3BanhMiVegCuke: 'ff000037-0000-4000-8000-000000000037', // Dưa leo
+  optR3BanhMiVegPickle: 'ff000038-0000-4000-8000-000000000038', // Đồ chua
+  optR3BanhMiVegHerb: 'ff000039-0000-4000-8000-000000000039', // Rau mùi
+  optR3BanhMiVegNone: 'ff000040-0000-4000-8000-000000000040', // Không rau
+  // grpR3ComChayProtein
+  optR3ComChayTofu: 'ff000041-0000-4000-8000-000000000041', // Đậu phụ
+  optR3ComChayMushroom: 'ff000042-0000-4000-8000-000000000042', // Nấm xào
+  // grpR3NuocNgotType
+  optR3NuocNgotCola: 'ff000043-0000-4000-8000-000000000043', // Coca-Cola
+  optR3NuocNgotSprite: 'ff000044-0000-4000-8000-000000000044', // Sprite
+  optR3NuocNgot7up: 'ff000045-0000-4000-8000-000000000045', // 7Up
+  // grpR4BbqMeat
+  optR4BbqMeatBaChi: 'ff000046-0000-4000-8000-000000000046', // Ba chỉ heo
+  optR4BbqMeatCoHeo: 'ff000047-0000-4000-8000-000000000047', // Cổ heo
+  optR4BbqMeatBoBaroi: 'ff000048-0000-4000-8000-000000000048', // Bò ba rọi
+  // grpR4BbqPortion
+  optR4BbqPortion1: 'ff000049-0000-4000-8000-000000000049', // 1 người
+  optR4BbqPortion2: 'ff000050-0000-4000-8000-000000000050', // 2 người
+  optR4BbqPortion3: 'ff000051-0000-4000-8000-000000000051', // 3 người
+  // grpR4KimchiSpicy
+  optR4KimchiSpicy0: 'ff000052-0000-4000-8000-000000000052', // Không cay
+  optR4KimchiSpicyM: 'ff000053-0000-4000-8000-000000000053', // Cay vừa
+  optR4KimchiSpicyH: 'ff000054-0000-4000-8000-000000000054', // Cay nhiều
+  // grpR4BibimbapProtein
+  optR4BibimbapBeef: 'ff000055-0000-4000-8000-000000000055', // Thịt bò
+  optR4BibimbapTofu: 'ff000056-0000-4000-8000-000000000056', // Đậu phụ
+  optR4BibimbapEgg: 'ff000057-0000-4000-8000-000000000057', // Trứng sống
+  // grpR4TraSuaSugar
+  optR4TraSuaSugar0: 'ff000058-0000-4000-8000-000000000058', // 0% đường
+  optR4TraSuaSugar30: 'ff000059-0000-4000-8000-000000000059', // 30% đường
+  optR4TraSuaSugar50: 'ff000060-0000-4000-8000-000000000060', // 50% đường
+  optR4TraSuaSugar100: 'ff000061-0000-4000-8000-000000000061', // 100% đường
+  // grpR4TraSuaIce
+  optR4TraSuaIce0: 'ff000062-0000-4000-8000-000000000062', // Không đá
+  optR4TraSuaIceLow: 'ff000063-0000-4000-8000-000000000063', // Ít đá
+  optR4TraSuaIceNorm: 'ff000064-0000-4000-8000-000000000064', // Bình thường
+  // grpR4TraSuaTopping
+  optR4TraSuaToppingPearl: 'ff000065-0000-4000-8000-000000000065', // Trân châu đen
+  optR4TraSuaToppingJelly: 'ff000066-0000-4000-8000-000000000066', // Thạch
+  optR4TraSuaToppingCream: 'ff000067-0000-4000-8000-000000000067', // Kem trứng
+  // grpR5SushiPortion
+  optR5SushiPortion8: 'ff000068-0000-4000-8000-000000000068', // 8 miếng
+  optR5SushiPortion12: 'ff000069-0000-4000-8000-000000000069', // 12 miếng
+  optR5SushiPortion16: 'ff000070-0000-4000-8000-000000000070', // 16 miếng
+  // grpR5SashimiPortion
+  optR5SashimiPortion10: 'ff000071-0000-4000-8000-000000000071', // 10 lát
+  optR5SashimiPortion15: 'ff000072-0000-4000-8000-000000000072', // 15 lát
+  optR5SashimiPortion20: 'ff000073-0000-4000-8000-000000000073', // 20 lát
+  // grpR5BanhMiTemp
+  optR5BanhMiTempHot: 'ff000074-0000-4000-8000-000000000074', // Nóng
+  optR5BanhMiTempCold: 'ff000075-0000-4000-8000-000000000075', // Lạnh
+  // grpR5TraXanhTemp
+  optR5TraXanhTempHot: 'ff000076-0000-4000-8000-000000000076', // Nóng
+  optR5TraXanhTempCold: 'ff000077-0000-4000-8000-000000000077', // Lạnh
+  // grpR5TraXanhStrength
+  optR5TraXanhStrengthLight: 'ff000078-0000-4000-8000-000000000078', // Nhạt
+  optR5TraXanhStrengthNorm: 'ff000079-0000-4000-8000-000000000079', // Bình thường
+  optR5TraXanhStrengthStrong: 'ff000080-0000-4000-8000-000000000080', // Đậm
 } as const;
 
 // ─── Delete functions (reverse insert order to respect foreign keys) ──────────
@@ -163,6 +308,16 @@ async function deleteOrderingMenuItemSnapshots() {
 async function deleteOrderingRestaurantSnapshots() {
   await db.delete(orderingRestaurantSnapshots);
   console.log('🗑️  ordering_restaurant_snapshots cleared');
+}
+
+async function deleteModifierOptions() {
+  await db.delete(modifierOptions);
+  console.log('🗑️  modifier_options cleared');
+}
+
+async function deleteModifierGroups() {
+  await db.delete(modifierGroups);
+  console.log('🗑️  modifier_groups cleared');
 }
 
 async function deleteMenuItems() {
@@ -711,6 +866,987 @@ async function seedMenuItems() {
   console.log('✅ menu_items seeded (19 rows)');
 }
 
+// Modifier price constants — values in the same unit as menu item prices (USD-equivalent)
+const PRICE_FREE = 0; // no extra charge
+const PRICE_TOPPING_SMALL = 0.5; // small add-on (egg, pickle)
+const PRICE_TOPPING_MED = 1.0; // medium add-on (chả lụa, extra protein)
+const PRICE_TOPPING_LG = 1.5; // large add-on (chả cua)
+const PRICE_TOPPING_PREMIUM = 2.0; // premium add-on (chả cua on bánh cuốn)
+const PRICE_SIZE_UP = 0.5; // upsize surcharge (medium → large)
+const PRICE_SIZE_UP2 = 1.0; // double upsize (small → large)
+const PRICE_BBQ_BEEF = 2.0; // premium beef upgrade for BBQ
+const PRICE_BBQ_2PAX = 15.0; // 2-person BBQ set surcharge
+const PRICE_BBQ_3PAX = 25.0; // 3-person BBQ set surcharge
+const PRICE_SUSHI_12 = 5.0; // 12-piece sushi upgrade
+const PRICE_SUSHI_16 = 9.0; // 16-piece sushi upgrade
+const PRICE_SASHIMI_15 = 7.0; // 15-slice sashimi upgrade
+const PRICE_SASHIMI_20 = 12.0; // 20-slice sashimi upgrade
+const PRICE_JELLY = 0.5; // thạch topping
+const PRICE_CREAM = 1.0; // kem trứng topping
+const PRICE_MUSHROOM = 0.5; // nấm xào upgrade for vegetarian rice
+
+async function seedModifierGroups() {
+  const rows = [
+    // ── R1 Phở Bắc ────────────────────────────────────────────────────────────
+    {
+      // Single-select, required — customer must pick a bowl size
+      id: IDS.grpR1Pho1Size,
+      menuItemId: IDS.r1Pho1,
+      name: 'Kích cỡ',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+    {
+      // Multi-select, optional — up to 3 extra toppings on Phở Bò
+      id: IDS.grpR1Pho1Topping,
+      menuItemId: IDS.r1Pho1,
+      name: 'Topping thêm',
+      minSelections: 0,
+      maxSelections: 3,
+      displayOrder: 2,
+    },
+    {
+      // Single-select, required — size for Phở Gà
+      id: IDS.grpR1Pho2Size,
+      menuItemId: IDS.r1Pho2,
+      name: 'Kích cỡ',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+    {
+      // Single-select, required — spice level for Bún Bò Huế
+      id: IDS.grpR1BunBoSpicy,
+      menuItemId: IDS.r1BunBo,
+      name: 'Độ cay',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+    {
+      // Multi-select, optional — extra protein toppings for Bún Bò Huế
+      id: IDS.grpR1BunBoTopping,
+      menuItemId: IDS.r1BunBo,
+      name: 'Topping thêm',
+      minSelections: 0,
+      maxSelections: 2,
+      displayOrder: 2,
+    },
+    {
+      // Multi-select, optional — add-ons for Bánh Cuốn (up to 2)
+      id: IDS.grpR1BanhCuonExtra,
+      menuItemId: IDS.r1BanhCuon,
+      name: 'Phần thêm',
+      minSelections: 0,
+      maxSelections: 2,
+      displayOrder: 1,
+    },
+    {
+      // Single-select, optional — sugar level for iced tea
+      id: IDS.grpR1TraDaSugar,
+      menuItemId: IDS.r1TraDa,
+      name: 'Đường',
+      minSelections: 0,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+
+    // ── R2 Bếp Đóng Cửa ───────────────────────────────────────────────────────
+    {
+      // Single-select, required — sauce choice for Classic Burger
+      id: IDS.grpR2BurgerSauce,
+      menuItemId: IDS.r2Burger,
+      name: 'Sốt',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+
+    // ── R3 Cơm Tấm Sài Gòn ────────────────────────────────────────────────────
+    {
+      // Single-select, required — rice portion size
+      id: IDS.grpR3ComTam1Rice,
+      menuItemId: IDS.r3ComTam1,
+      name: 'Cỡ cơm',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+    {
+      // Multi-select, optional — side add-ons for Cơm Tấm Sườn Nướng
+      id: IDS.grpR3ComTam1Side,
+      menuItemId: IDS.r3ComTam1,
+      name: 'Phần thêm',
+      minSelections: 0,
+      maxSelections: 3,
+      displayOrder: 2,
+    },
+    {
+      // Multi-select, optional — side add-ons for Cơm Tấm Bì Chả
+      id: IDS.grpR3ComTam2Side,
+      menuItemId: IDS.r3ComTam2,
+      name: 'Phần thêm',
+      minSelections: 0,
+      maxSelections: 2,
+      displayOrder: 1,
+    },
+    {
+      // Single-select, required — sauce for Bánh Mì Thịt Nướng
+      id: IDS.grpR3BanhMiSauce,
+      menuItemId: IDS.r3BanhMi,
+      name: 'Sốt',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+    {
+      // Multi-select, optional — vegetables / garnish for Bánh Mì (up to all 4)
+      id: IDS.grpR3BanhMiVeg,
+      menuItemId: IDS.r3BanhMi,
+      name: 'Rau',
+      minSelections: 0,
+      maxSelections: 4,
+      displayOrder: 2,
+    },
+    {
+      // Single-select, required — protein choice for Cơm Chay
+      id: IDS.grpR3ComChayProtein,
+      menuItemId: IDS.r3ComChay,
+      name: 'Protein',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+    {
+      // Single-select, required — which soft drink to pour
+      id: IDS.grpR3NuocNgotType,
+      menuItemId: IDS.r3NuocNgot,
+      name: 'Loại nước ngọt',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+
+    // ── R4 Seoul BBQ & More ────────────────────────────────────────────────────
+    {
+      // Multi-select, required — choose 1 or 2 meats for the BBQ set
+      id: IDS.grpR4BbqMeat,
+      menuItemId: IDS.r4Bbq,
+      name: 'Loại thịt',
+      minSelections: 1,
+      maxSelections: 2,
+      displayOrder: 1,
+    },
+    {
+      // Single-select, required — table-size portion (1 / 2 / 3 people)
+      id: IDS.grpR4BbqPortion,
+      menuItemId: IDS.r4Bbq,
+      name: 'Phần ăn',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 2,
+    },
+    {
+      // Single-select, required — spice level for Kimchi Jjigae
+      id: IDS.grpR4KimchiSpicy,
+      menuItemId: IDS.r4Kimchi,
+      name: 'Độ cay',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+    {
+      // Single-select, required — protein choice for Bibimbap
+      id: IDS.grpR4BibimbapProtein,
+      menuItemId: IDS.r4Bibimbap,
+      name: 'Loại protein',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+    {
+      // Single-select, required — sugar level for bubble tea
+      id: IDS.grpR4TraSuaSugar,
+      menuItemId: IDS.r4TraSua,
+      name: 'Mức đường',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+    {
+      // Single-select, required — ice level for bubble tea
+      id: IDS.grpR4TraSuaIce,
+      menuItemId: IDS.r4TraSua,
+      name: 'Lượng đá',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 2,
+    },
+    {
+      // Multi-select, optional — toppings for bubble tea (up to 2)
+      id: IDS.grpR4TraSuaTopping,
+      menuItemId: IDS.r4TraSua,
+      name: 'Topping',
+      minSelections: 0,
+      maxSelections: 2,
+      displayOrder: 3,
+    },
+
+    // ── R5 Sushi Hana ──────────────────────────────────────────────────────────
+    {
+      // Single-select, required — number of sushi pieces
+      id: IDS.grpR5SushiPortion,
+      menuItemId: IDS.r5Sushi,
+      name: 'Số lượng miếng',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+    {
+      // Single-select, required — number of sashimi slices
+      id: IDS.grpR5SashimiPortion,
+      menuItemId: IDS.r5Sashimi,
+      name: 'Số lượng lát',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+    {
+      // Single-select, required — hot or cold for salmon bánh mì
+      id: IDS.grpR5BanhMiTemp,
+      menuItemId: IDS.r5BanhMi,
+      name: 'Nhiệt độ',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+    {
+      // Single-select, required — hot or iced matcha latte
+      id: IDS.grpR5TraXanhTemp,
+      menuItemId: IDS.r5TraXanh,
+      name: 'Nhiệt độ',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 1,
+    },
+    {
+      // Single-select, required — matcha concentration
+      id: IDS.grpR5TraXanhStrength,
+      menuItemId: IDS.r5TraXanh,
+      name: 'Nồng độ matcha',
+      minSelections: 1,
+      maxSelections: 1,
+      displayOrder: 2,
+    },
+  ];
+  await db.insert(modifierGroups).values(rows);
+  console.log(`✅ modifier_groups seeded (${rows.length} groups)`);
+}
+
+async function seedModifierOptions() {
+  const rows = [
+    // ── grpR1Pho1Size — Kích cỡ (Phở Bò Tái Nạm) ─────────────────────────────
+    {
+      id: IDS.optR1Pho1SizeS,
+      groupId: IDS.grpR1Pho1Size,
+      name: 'Tô nhỏ',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR1Pho1SizeM,
+      groupId: IDS.grpR1Pho1Size,
+      name: 'Tô vừa',
+      price: PRICE_SIZE_UP,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR1Pho1SizeL,
+      groupId: IDS.grpR1Pho1Size,
+      name: 'Tô lớn',
+      price: PRICE_SIZE_UP2,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR1Pho1Topping — Topping thêm (Phở Bò Tái Nạm) ─────────────────────
+    {
+      id: IDS.optR1Pho1TopTai,
+      groupId: IDS.grpR1Pho1Topping,
+      name: 'Thêm tái',
+      price: PRICE_TOPPING_MED,
+      isDefault: false,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR1Pho1TopNam,
+      groupId: IDS.grpR1Pho1Topping,
+      name: 'Thêm nạm',
+      price: PRICE_TOPPING_MED,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR1Pho1TopGan,
+      groupId: IDS.grpR1Pho1Topping,
+      name: 'Thêm gân',
+      price: PRICE_TOPPING_LG,
+      isDefault: false,
+      displayOrder: 3,
+    },
+    {
+      id: IDS.optR1Pho1TopSach,
+      groupId: IDS.grpR1Pho1Topping,
+      name: 'Thêm sách',
+      price: PRICE_TOPPING_LG,
+      isDefault: false,
+      displayOrder: 4,
+    },
+
+    // ── grpR1Pho2Size — Kích cỡ (Phở Gà) ─────────────────────────────────────
+    {
+      id: IDS.optR1Pho2SizeS,
+      groupId: IDS.grpR1Pho2Size,
+      name: 'Tô nhỏ',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR1Pho2SizeM,
+      groupId: IDS.grpR1Pho2Size,
+      name: 'Tô vừa',
+      price: PRICE_SIZE_UP,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR1Pho2SizeL,
+      groupId: IDS.grpR1Pho2Size,
+      name: 'Tô lớn',
+      price: PRICE_SIZE_UP2,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR1BunBoSpicy — Độ cay (Bún Bò Huế) ────────────────────────────────
+    {
+      id: IDS.optR1BunBoSpicy0,
+      groupId: IDS.grpR1BunBoSpicy,
+      name: 'Không cay',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR1BunBoSpicyM,
+      groupId: IDS.grpR1BunBoSpicy,
+      name: 'Cay vừa',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR1BunBoSpicyH,
+      groupId: IDS.grpR1BunBoSpicy,
+      name: 'Cay nhiều',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR1BunBoTopping — Topping thêm (Bún Bò Huế) ────────────────────────
+    {
+      id: IDS.optR1BunBoTopCua,
+      groupId: IDS.grpR1BunBoTopping,
+      name: 'Thêm chả cua',
+      price: PRICE_TOPPING_LG,
+      isDefault: false,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR1BunBoTopHeo,
+      groupId: IDS.grpR1BunBoTopping,
+      name: 'Thêm chả heo',
+      price: PRICE_TOPPING_MED,
+      isDefault: false,
+      displayOrder: 2,
+    },
+
+    // ── grpR1BanhCuonExtra — Phần thêm (Bánh Cuốn) ───────────────────────────
+    {
+      id: IDS.optR1BanhCuonExtraLua,
+      groupId: IDS.grpR1BanhCuonExtra,
+      name: 'Thêm chả lụa',
+      price: PRICE_TOPPING_MED,
+      isDefault: false,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR1BanhCuonExtraEgg,
+      groupId: IDS.grpR1BanhCuonExtra,
+      name: 'Trứng ốp la',
+      price: PRICE_TOPPING_SMALL,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR1BanhCuonExtraCua,
+      groupId: IDS.grpR1BanhCuonExtra,
+      name: 'Chả cua',
+      price: PRICE_TOPPING_PREMIUM,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR1TraDaSugar — Đường (Trà Đá) ─────────────────────────────────────
+    {
+      id: IDS.optR1TraDaSugar0,
+      groupId: IDS.grpR1TraDaSugar,
+      name: 'Không đường',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR1TraDaSugarLow,
+      groupId: IDS.grpR1TraDaSugar,
+      name: 'Ít đường',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR1TraDaSugarNorm,
+      groupId: IDS.grpR1TraDaSugar,
+      name: 'Bình thường',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR2BurgerSauce — Sốt (Classic Burger) ──────────────────────────────
+    {
+      id: IDS.optR2BurgerSauceOrig,
+      groupId: IDS.grpR2BurgerSauce,
+      name: 'Bình thường',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR2BurgerSauceBbq,
+      groupId: IDS.grpR2BurgerSauce,
+      name: 'BBQ',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR2BurgerSauceMayo,
+      groupId: IDS.grpR2BurgerSauce,
+      name: 'Mayo',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR3ComTam1Rice — Cỡ cơm (Cơm Tấm Sườn Nướng) ──────────────────────
+    {
+      id: IDS.optR3ComTam1RiceS,
+      groupId: IDS.grpR3ComTam1Rice,
+      name: 'Ít cơm',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR3ComTam1RiceN,
+      groupId: IDS.grpR3ComTam1Rice,
+      name: 'Bình thường',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR3ComTam1RiceL,
+      groupId: IDS.grpR3ComTam1Rice,
+      name: 'Nhiều cơm',
+      price: PRICE_SIZE_UP,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR3ComTam1Side — Phần thêm (Cơm Tấm Sườn Nướng) ───────────────────
+    {
+      // Đồ chua is pre-checked (comes with the dish by default)
+      id: IDS.optR3ComTam1SidePickle,
+      groupId: IDS.grpR3ComTam1Side,
+      name: 'Đồ chua',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR3ComTam1SideEgg,
+      groupId: IDS.grpR3ComTam1Side,
+      name: 'Trứng ốp la',
+      price: PRICE_TOPPING_SMALL,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR3ComTam1SideBi,
+      groupId: IDS.grpR3ComTam1Side,
+      name: 'Thêm bì',
+      price: PRICE_TOPPING_MED,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR3ComTam2Side — Phần thêm (Cơm Tấm Bì Chả) ───────────────────────
+    {
+      id: IDS.optR3ComTam2SidePickle,
+      groupId: IDS.grpR3ComTam2Side,
+      name: 'Đồ chua',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR3ComTam2SideEgg,
+      groupId: IDS.grpR3ComTam2Side,
+      name: 'Trứng ốp la',
+      price: PRICE_TOPPING_SMALL,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR3ComTam2SideBi,
+      groupId: IDS.grpR3ComTam2Side,
+      name: 'Thêm bì',
+      price: PRICE_TOPPING_MED,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR3BanhMiSauce — Sốt (Bánh Mì Thịt Nướng) ─────────────────────────
+    {
+      id: IDS.optR3BanhMiSauceChili,
+      groupId: IDS.grpR3BanhMiSauce,
+      name: 'Tương ớt',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR3BanhMiSauceBlack,
+      groupId: IDS.grpR3BanhMiSauce,
+      name: 'Tương đen',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR3BanhMiSauceNone,
+      groupId: IDS.grpR3BanhMiSauce,
+      name: 'Không sốt',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR3BanhMiVeg — Rau (Bánh Mì Thịt Nướng) ────────────────────────────
+    {
+      // Both dưa leo and đồ chua are pre-selected (standard bánh mì filling)
+      id: IDS.optR3BanhMiVegCuke,
+      groupId: IDS.grpR3BanhMiVeg,
+      name: 'Dưa leo',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR3BanhMiVegPickle,
+      groupId: IDS.grpR3BanhMiVeg,
+      name: 'Đồ chua',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR3BanhMiVegHerb,
+      groupId: IDS.grpR3BanhMiVeg,
+      name: 'Rau mùi',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 3,
+    },
+    {
+      id: IDS.optR3BanhMiVegNone,
+      groupId: IDS.grpR3BanhMiVeg,
+      name: 'Không rau',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 4,
+    },
+
+    // ── grpR3ComChayProtein — Protein (Cơm Chay) ─────────────────────────────
+    {
+      id: IDS.optR3ComChayTofu,
+      groupId: IDS.grpR3ComChayProtein,
+      name: 'Đậu phụ',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR3ComChayMushroom,
+      groupId: IDS.grpR3ComChayProtein,
+      name: 'Nấm xào',
+      price: PRICE_MUSHROOM,
+      isDefault: false,
+      displayOrder: 2,
+    },
+
+    // ── grpR3NuocNgotType — Loại nước ngọt (Nước Ngọt) ───────────────────────
+    {
+      id: IDS.optR3NuocNgotCola,
+      groupId: IDS.grpR3NuocNgotType,
+      name: 'Coca-Cola',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR3NuocNgotSprite,
+      groupId: IDS.grpR3NuocNgotType,
+      name: 'Sprite',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR3NuocNgot7up,
+      groupId: IDS.grpR3NuocNgotType,
+      name: '7Up',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR4BbqMeat — Loại thịt (Thịt Nướng Hàn Quốc) ──────────────────────
+    {
+      id: IDS.optR4BbqMeatBaChi,
+      groupId: IDS.grpR4BbqMeat,
+      name: 'Ba chỉ heo',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR4BbqMeatCoHeo,
+      groupId: IDS.grpR4BbqMeat,
+      name: 'Cổ heo',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR4BbqMeatBoBaroi,
+      groupId: IDS.grpR4BbqMeat,
+      name: 'Bò ba rọi',
+      price: PRICE_BBQ_BEEF,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR4BbqPortion — Phần ăn (Thịt Nướng Hàn Quốc) ─────────────────────
+    {
+      id: IDS.optR4BbqPortion1,
+      groupId: IDS.grpR4BbqPortion,
+      name: '1 người',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR4BbqPortion2,
+      groupId: IDS.grpR4BbqPortion,
+      name: '2 người',
+      price: PRICE_BBQ_2PAX,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR4BbqPortion3,
+      groupId: IDS.grpR4BbqPortion,
+      name: '3 người',
+      price: PRICE_BBQ_3PAX,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR4KimchiSpicy — Độ cay (Kimchi Jjigae) ────────────────────────────
+    {
+      id: IDS.optR4KimchiSpicy0,
+      groupId: IDS.grpR4KimchiSpicy,
+      name: 'Không cay',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR4KimchiSpicyM,
+      groupId: IDS.grpR4KimchiSpicy,
+      name: 'Cay vừa',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR4KimchiSpicyH,
+      groupId: IDS.grpR4KimchiSpicy,
+      name: 'Cay nhiều',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR4BibimbapProtein — Loại protein (Bibimbap) ────────────────────────
+    {
+      id: IDS.optR4BibimbapBeef,
+      groupId: IDS.grpR4BibimbapProtein,
+      name: 'Thịt bò',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR4BibimbapTofu,
+      groupId: IDS.grpR4BibimbapProtein,
+      name: 'Đậu phụ',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR4BibimbapEgg,
+      groupId: IDS.grpR4BibimbapProtein,
+      name: 'Trứng sống',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR4TraSuaSugar — Mức đường (Trà Sữa Trân Châu) ─────────────────────
+    {
+      id: IDS.optR4TraSuaSugar0,
+      groupId: IDS.grpR4TraSuaSugar,
+      name: '0% đường',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR4TraSuaSugar30,
+      groupId: IDS.grpR4TraSuaSugar,
+      name: '30% đường',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR4TraSuaSugar50,
+      groupId: IDS.grpR4TraSuaSugar,
+      name: '50% đường',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 3,
+    },
+    {
+      id: IDS.optR4TraSuaSugar100,
+      groupId: IDS.grpR4TraSuaSugar,
+      name: '100% đường',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 4,
+    },
+
+    // ── grpR4TraSuaIce — Lượng đá (Trà Sữa Trân Châu) ────────────────────────
+    {
+      id: IDS.optR4TraSuaIce0,
+      groupId: IDS.grpR4TraSuaIce,
+      name: 'Không đá',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR4TraSuaIceLow,
+      groupId: IDS.grpR4TraSuaIce,
+      name: 'Ít đá',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR4TraSuaIceNorm,
+      groupId: IDS.grpR4TraSuaIce,
+      name: 'Bình thường',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 3,
+    },
+
+    // ── grpR4TraSuaTopping — Topping (Trà Sữa Trân Châu) ─────────────────────
+    {
+      // Trân châu đen is pre-selected (it's in the item name)
+      id: IDS.optR4TraSuaToppingPearl,
+      groupId: IDS.grpR4TraSuaTopping,
+      name: 'Trân châu đen',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR4TraSuaToppingJelly,
+      groupId: IDS.grpR4TraSuaTopping,
+      name: 'Thạch',
+      price: PRICE_JELLY,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR4TraSuaToppingCream,
+      groupId: IDS.grpR4TraSuaTopping,
+      name: 'Kem trứng',
+      price: PRICE_CREAM,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR5SushiPortion — Số lượng miếng (Sushi Cá Hồi) ────────────────────
+    {
+      id: IDS.optR5SushiPortion8,
+      groupId: IDS.grpR5SushiPortion,
+      name: '8 miếng',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR5SushiPortion12,
+      groupId: IDS.grpR5SushiPortion,
+      name: '12 miếng',
+      price: PRICE_SUSHI_12,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR5SushiPortion16,
+      groupId: IDS.grpR5SushiPortion,
+      name: '16 miếng',
+      price: PRICE_SUSHI_16,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR5SashimiPortion — Số lượng lát (Sashimi Cá Ngừ) ──────────────────
+    {
+      id: IDS.optR5SashimiPortion10,
+      groupId: IDS.grpR5SashimiPortion,
+      name: '10 lát',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR5SashimiPortion15,
+      groupId: IDS.grpR5SashimiPortion,
+      name: '15 lát',
+      price: PRICE_SASHIMI_15,
+      isDefault: false,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR5SashimiPortion20,
+      groupId: IDS.grpR5SashimiPortion,
+      name: '20 lát',
+      price: PRICE_SASHIMI_20,
+      isDefault: false,
+      displayOrder: 3,
+    },
+
+    // ── grpR5BanhMiTemp — Nhiệt độ (Bánh Mì Cá Hồi) ─────────────────────────
+    {
+      id: IDS.optR5BanhMiTempHot,
+      groupId: IDS.grpR5BanhMiTemp,
+      name: 'Nóng',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR5BanhMiTempCold,
+      groupId: IDS.grpR5BanhMiTemp,
+      name: 'Lạnh',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 2,
+    },
+
+    // ── grpR5TraXanhTemp — Nhiệt độ (Trà Xanh Nhật Bản) ─────────────────────
+    {
+      id: IDS.optR5TraXanhTempHot,
+      groupId: IDS.grpR5TraXanhTemp,
+      name: 'Nóng',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR5TraXanhTempCold,
+      groupId: IDS.grpR5TraXanhTemp,
+      name: 'Lạnh',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 2,
+    },
+
+    // ── grpR5TraXanhStrength — Nồng độ matcha (Trà Xanh Nhật Bản) ───────────
+    {
+      id: IDS.optR5TraXanhStrengthLight,
+      groupId: IDS.grpR5TraXanhStrength,
+      name: 'Nhạt',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 1,
+    },
+    {
+      id: IDS.optR5TraXanhStrengthNorm,
+      groupId: IDS.grpR5TraXanhStrength,
+      name: 'Bình thường',
+      price: PRICE_FREE,
+      isDefault: true,
+      displayOrder: 2,
+    },
+    {
+      id: IDS.optR5TraXanhStrengthStrong,
+      groupId: IDS.grpR5TraXanhStrength,
+      name: 'Đậm',
+      price: PRICE_FREE,
+      isDefault: false,
+      displayOrder: 3,
+    },
+  ];
+  await db.insert(modifierOptions).values(rows);
+  console.log(`✅ modifier_options seeded (${rows.length} options)`);
+}
+
 async function seedAppSettings() {
   const rows = [
     {
@@ -1070,6 +2206,8 @@ async function main() {
   await deleteOrderingDeliveryZoneSnapshots();
   await deleteOrderingMenuItemSnapshots();
   await deleteOrderingRestaurantSnapshots();
+  await deleteModifierOptions();
+  await deleteModifierGroups();
   await deleteMenuItems();
   await deleteMenuCategories();
   await deleteDeliveryZones();
@@ -1083,6 +2221,8 @@ async function main() {
   await seedDeliveryZones(); // 7 rows (R5 has none)
   await seedMenuCategories(); // 13 rows
   await seedMenuItems(); // 19 rows
+  await seedModifierGroups(); // 27 groups
+  await seedModifierOptions(); // 80 options
   await seedAppSettings(); // 3 rows
   await seedOrderingRestaurantSnapshots(); // 5 rows
   await seedOrderingMenuItemSnapshots(); // 19 rows

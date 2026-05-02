@@ -23,21 +23,32 @@ const MAX_PAGE_SIZE = 100;
 const EARTH_RADIUS_KM = 6371;
 
 // ---------------------------------------------------------------------------
+// Scoring weights
+// ---------------------------------------------------------------------------
+// Restaurant section
+const R_SCORE_NAME_EXACT = 12;
+const R_SCORE_NAME_PARTIAL = 9;
+const R_SCORE_CUISINE_MATCH = 6;
+const R_SCORE_DESC_MATCH = 2;
+
+// Item section
+const I_SCORE_NAME_EXACT = 12;
+const I_SCORE_NAME_PARTIAL = 8;
+const I_SCORE_TAG_MATCH = 5;
+const I_SCORE_CATEGORY_MATCH = 3;
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface SearchFilters {
   /**
    * General search term (accent-insensitive via `unaccent`).
-   * - Restaurant section: matched against `restaurants.name`.
-   * - Items section: matched against `menu_items.name`.
+   * - Restaurant section: matched against name, cuisineType, description.
+   * - Items section: matched against name, tags, category name.
    * Examples: "pho" matches "Phở", "banh mi" matches "Bánh Mì".
    */
   q?: string;
-  /** Targeted restaurant name filter (accent-insensitive). */
-  name?: string;
-  /** Targeted menu item name filter (accent-insensitive). */
-  item?: string;
   /** Menu category name filter (accent-insensitive). */
   category?: string;
   /** Cuisine type filter on `restaurants.cuisine_type` (accent-insensitive). */
@@ -124,18 +135,27 @@ export class SearchRepository {
     // Bounding-box pre-filter + exact Haversine check — cheap scan first.
     this.applyGeoConditions(conditions, filters, radiusKm);
 
-    // `q` matches restaurant name (item-name matches surfaced in findItems).
-    // `unaccent` makes "pho" match "Phở", "banh" match "Bánh", etc.
+    // q must match at least one of: name, cuisineType, description, OR
+    // the restaurant carries a matching item (so "pho" surfaces a pho house
+    // even if the restaurant name is "Nhà Hàng Bắc" rather than "Phở Bắc").
     if (filters.q) {
-      conditions.push(
-        sql`unaccent(${restaurants.name}) ILIKE unaccent(${'%' + filters.q + '%'})`,
-      );
+      const q = filters.q;
+      conditions.push(sql`(
+        unaccent(${restaurants.name})        ILIKE unaccent(${'%' + q + '%'})
+        OR unaccent(${restaurants.cuisineType}) ILIKE unaccent(${'%' + q + '%'})
+        OR unaccent(${restaurants.description}) ILIKE unaccent(${'%' + q + '%'})
+        OR EXISTS (
+          SELECT 1 FROM menu_items mi
+          WHERE  mi.restaurant_id = ${restaurants.id}
+            AND  mi.status = 'available'
+            AND  (
+              unaccent(mi.name) ILIKE unaccent(${'%' + q + '%'})
+              OR ${q} = ANY(mi.tags)
+            )
+        )
+      )`);
     }
-    if (filters.name) {
-      conditions.push(
-        sql`unaccent(${restaurants.name}) ILIKE unaccent(${'%' + filters.name + '%'})`,
-      );
-    }
+
     if (filters.cuisineType) {
       conditions.push(
         sql`unaccent(${restaurants.cuisineType}) ILIKE unaccent(${'%' + filters.cuisineType + '%'})`,
@@ -147,15 +167,6 @@ export class SearchRepository {
         SELECT 1 FROM menu_categories mc
         WHERE mc.restaurant_id = ${restaurants.id}
           AND unaccent(mc.name) ILIKE unaccent(${'%' + filters.category + '%'})
-      )`);
-    }
-    // Item name: restaurant must carry ≥1 available item whose name matches.
-    if (filters.item) {
-      conditions.push(sql`EXISTS (
-        SELECT 1 FROM menu_items mi
-        WHERE mi.restaurant_id = ${restaurants.id}
-          AND unaccent(mi.name) ILIKE unaccent(${'%' + filters.item + '%'})
-          AND mi.status = 'available'
       )`);
     }
     // Tag: restaurant must carry ≥1 available item tagged with this value.
@@ -171,6 +182,26 @@ export class SearchRepository {
     const whereClause = and(...conditions);
     const distanceExpr = this.buildDistanceExpr(filters);
     const hasGeo = filters.lat !== undefined && filters.lon !== undefined;
+
+    // ── Relevance score ───────────────────────────────────────────────────
+    // Computed in SQL so ranking happens inside the DB and pagination is
+    // applied to the already-ranked result set.
+    const scoreExpr: SQL<unknown> = filters.q
+      ? (() => {
+          const q = filters.q!;
+          return sql<number>`(
+            CASE WHEN unaccent(${restaurants.name}) ILIKE unaccent(${q})
+                 THEN ${R_SCORE_NAME_EXACT} ELSE 0 END
+            + CASE WHEN unaccent(${restaurants.name}) ILIKE unaccent(${'%' + q + '%'})
+                        AND NOT (unaccent(${restaurants.name}) ILIKE unaccent(${q}))
+                   THEN ${R_SCORE_NAME_PARTIAL} ELSE 0 END
+            + CASE WHEN unaccent(${restaurants.cuisineType}) ILIKE unaccent(${'%' + q + '%'})
+                   THEN ${R_SCORE_CUISINE_MATCH} ELSE 0 END
+            + CASE WHEN unaccent(${restaurants.description}) ILIKE unaccent(${'%' + q + '%'})
+                   THEN ${R_SCORE_DESC_MATCH} ELSE 0 END
+          )`;
+        })()
+      : sql<number>`0`;
 
     const [countResult, rows] = await Promise.all([
       this.db.select({ total: count() }).from(restaurants).where(whereClause),
@@ -191,10 +222,18 @@ export class SearchRepository {
           createdAt: restaurants.createdAt,
           updatedAt: restaurants.updatedAt,
           distanceKm: distanceExpr,
+          score: scoreExpr,
         })
         .from(restaurants)
         .where(whereClause)
-        .orderBy(hasGeo ? distanceExpr : restaurants.createdAt)
+        // Primary: relevance score DESC; secondary: distance ASC when geo;
+        // tertiary: creation date DESC (newest restaurants first).
+        .orderBy(
+          // Only sort by score when q is present; otherwise score is always 0
+          // and ORDER BY 0 is an invalid positional reference in PostgreSQL.
+          ...(filters.q ? [sql`${scoreExpr} DESC`] : []),
+          ...(hasGeo ? [distanceExpr] : [sql`${restaurants.createdAt} DESC`]),
+        )
         .offset(offset)
         .limit(limit),
     ]);
@@ -213,8 +252,9 @@ export class SearchRepository {
    * Returns available menu items matching the food-specific filters, each
    * paired with a lean restaurant summary.
    *
-   * Skips the query entirely when no food-specific filter is supplied (q /
-   * item / tag) — there is nothing to match items on in that case.
+   * The query is skipped entirely when no food-specific signal is provided
+   * (q / tag / category). A plain cuisineType-only or geo-only search is a
+   * restaurant-level query; there is nothing to rank items on.
    */
   private async findItems(
     filters: SearchFilters,
@@ -222,7 +262,8 @@ export class SearchRepository {
     limit: number,
     radiusKm: number,
   ): Promise<{ data: ItemSearchRowDto[]; total: number }> {
-    if (!filters.q && !filters.item && !filters.tag) {
+    const hasFoodFilter = !!(filters.q || filters.tag || filters.category);
+    if (!hasFoodFilter) {
       return { data: [], total: 0 };
     }
 
@@ -240,22 +281,60 @@ export class SearchRepository {
     this.applyGeoConditions(conditions, filters, radiusKm);
 
     if (filters.q) {
-      conditions.push(
-        sql`unaccent(${menuItems.name}) ILIKE unaccent(${'%' + filters.q + '%'})`,
-      );
-    }
-    if (filters.item) {
-      conditions.push(
-        sql`unaccent(${menuItems.name}) ILIKE unaccent(${'%' + filters.item + '%'})`,
-      );
+      const q = filters.q;
+      // Item matches q if: its name matches, OR it has a matching tag,
+      // OR its parent category name matches.
+      conditions.push(sql`(
+        unaccent(${menuItems.name}) ILIKE unaccent(${'%' + q + '%'})
+        OR ${q} = ANY(${menuItems.tags})
+        OR EXISTS (
+          SELECT 1 FROM menu_categories mc2
+          WHERE mc2.id = ${menuItems.categoryId}
+            AND unaccent(mc2.name) ILIKE unaccent(${'%' + q + '%'})
+        )
+      )`);
     }
     if (filters.tag) {
       conditions.push(sql`${filters.tag} = ANY(${menuItems.tags})`);
+    }
+    if (filters.category) {
+      conditions.push(sql`EXISTS (
+        SELECT 1 FROM menu_categories mc3
+        WHERE mc3.id = ${menuItems.categoryId}
+          AND unaccent(mc3.name) ILIKE unaccent(${'%' + filters.category + '%'})
+      )`);
+    }
+    // cuisineType cross-filter: only items from restaurants of the right cuisine.
+    if (filters.cuisineType) {
+      conditions.push(
+        sql`unaccent(${restaurants.cuisineType}) ILIKE unaccent(${'%' + filters.cuisineType + '%'})`,
+      );
     }
 
     const whereClause = and(...conditions);
     const distanceExpr = this.buildDistanceExpr(filters);
     const hasGeo = filters.lat !== undefined && filters.lon !== undefined;
+
+    // ── Item relevance score ──────────────────────────────────────────────
+    const scoreExpr: SQL<unknown> = filters.q
+      ? (() => {
+          const q = filters.q!;
+          return sql<number>`(
+            CASE WHEN unaccent(${menuItems.name}) ILIKE unaccent(${q})
+                 THEN ${I_SCORE_NAME_EXACT} ELSE 0 END
+            + CASE WHEN unaccent(${menuItems.name}) ILIKE unaccent(${'%' + q + '%'})
+                        AND NOT (unaccent(${menuItems.name}) ILIKE unaccent(${q}))
+                   THEN ${I_SCORE_NAME_PARTIAL} ELSE 0 END
+            + CASE WHEN ${q} = ANY(${menuItems.tags})
+                   THEN ${I_SCORE_TAG_MATCH} ELSE 0 END
+            + CASE WHEN EXISTS (
+                SELECT 1 FROM menu_categories mc4
+                WHERE mc4.id = ${menuItems.categoryId}
+                  AND unaccent(mc4.name) ILIKE unaccent(${'%' + q + '%'})
+              ) THEN ${I_SCORE_CATEGORY_MATCH} ELSE 0 END
+          )`;
+        })()
+      : sql<number>`0`;
 
     const [countResult, rows] = await Promise.all([
       this.db
@@ -284,12 +363,18 @@ export class SearchRepository {
           restaurantLatitude: restaurants.latitude,
           restaurantLongitude: restaurants.longitude,
           distanceKm: distanceExpr,
+          score: scoreExpr,
         })
         .from(menuItems)
         .innerJoin(restaurants, eq(menuItems.restaurantId, restaurants.id))
         .leftJoin(menuCategories, eq(menuItems.categoryId, menuCategories.id))
         .where(whereClause)
-        .orderBy(hasGeo ? distanceExpr : menuItems.createdAt)
+        .orderBy(
+          // Only sort by score when q is present; score=0 would generate
+          // ORDER BY 0 which PostgreSQL rejects as an invalid position.
+          ...(filters.q ? [sql`${scoreExpr} DESC`] : []),
+          ...(hasGeo ? [distanceExpr] : [sql`${menuItems.createdAt} DESC`]),
+        )
         .limit(limit)
         .offset(offset),
     ]);
@@ -302,6 +387,7 @@ export class SearchRepository {
       imageUrl: row.imageUrl,
       tags: row.tags,
       categoryName: row.categoryName,
+      score: typeof row.score === 'number' ? row.score : Number(row.score ?? 0),
       restaurant: {
         id: row.restaurantId,
         name: row.restaurantName,

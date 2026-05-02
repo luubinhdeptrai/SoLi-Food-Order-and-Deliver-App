@@ -84,6 +84,12 @@ export class ItemSearchRowDto {
   })
   categoryName?: string | null;
 
+  @ApiPropertyOptional({
+    description: 'Relevance score used for ranking (higher = better match)',
+    example: 12,
+  })
+  score?: number;
+
   @ApiProperty({ type: () => RestaurantSummaryDto })
   restaurant!: RestaurantSummaryDto;
 }

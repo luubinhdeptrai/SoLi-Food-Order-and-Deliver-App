@@ -18,7 +18,7 @@
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { inArray } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 import * as schema from '../../src/drizzle/schema';
 import { restaurants } from '../../src/module/restaurant-catalog/restaurant/restaurant.schema';
 import { orderingMenuItemSnapshots } from '../../src/module/ordering/acl/schemas/menu-item-snapshot.schema';
@@ -103,6 +103,25 @@ export async function resetDb(): Promise<void> {
  * (or in nested beforeAll blocks) via the real HTTP API so domain events fire
  * and the ordering snapshot stays in sync.
  */
+/**
+ * Ensures PostgreSQL extensions required by the search module are installed.
+ *
+ * Idempotent — safe to call even if extensions are already present.
+ * Must be called in the `beforeAll` of any test suite that exercises
+ * text-based search filters (q, name, item, category, cuisineType), because
+ * those filters use `unaccent()` which requires the extension to be created.
+ *
+ * Background: extensions are DB-level objects installed by migration
+ * 0007_search_indexes.sql. If the database was bootstrapped via `db:push`
+ * instead of `db:migrate`, the extensions are absent and every unaccent()
+ * call will throw `function unaccent(text) does not exist` → HTTP 500.
+ */
+export async function ensureExtensions(): Promise<void> {
+  const db = getTestDb();
+  await db.execute(sql`CREATE EXTENSION IF NOT EXISTS unaccent`);
+  await db.execute(sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
+}
+
 export async function seedBaseRestaurant(ownerId: string): Promise<void> {
   const db = getTestDb();
   await db.insert(restaurants).values({

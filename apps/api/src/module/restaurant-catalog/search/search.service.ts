@@ -22,8 +22,6 @@ export class SearchService {
    */
   async search(
     q?: string,
-    name?: string,
-    item?: string,
     category?: string,
     cuisineType?: string,
     tag?: string,
@@ -39,14 +37,10 @@ export class SearchService {
       );
     }
 
-    // Enforce pagination ceiling in the service layer so the repository never
-    // receives an unbounded request regardless of how it is called.
     const safeLimit = Math.min(limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 
     const filters: SearchFilters = {
       q,
-      name,
-      item,
       category,
       cuisineType,
       tag,
