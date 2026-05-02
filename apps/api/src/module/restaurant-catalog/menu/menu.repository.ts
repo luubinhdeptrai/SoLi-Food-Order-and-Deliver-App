@@ -1,23 +1,45 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Inject, Injectable } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
+import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import { eq, and, count, inArray } from 'drizzle-orm';
 import {
   menuItems,
   menuCategories,
   type MenuItem,
   type MenuCategory,
   type NewMenuCategory,
+  menuItemStatusEnum,
 } from '@/module/restaurant-catalog/menu/menu.schema';
 import type {
   CreateMenuItemDto,
   UpdateMenuItemDto,
   CreateMenuCategoryDto,
   UpdateMenuCategoryDto,
+  MenuItemStatusFilter,
 } from './dto/menu.dto';
 import { DB_CONNECTION } from '@/drizzle/drizzle.constants';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@/drizzle/schema';
+
+// PostgreSQL unique-constraint violation error code.
+const PG_UNIQUE_VIOLATION = '23505';
+
+export interface FindMenuItemsOptions {
+  categoryId?: string;
+  /**
+   * 'available' | 'unavailable' | 'out_of_stock' — filter to exact status.
+   * 'all' — return every status (useful for owner/admin views).
+   * Defaults to 'available' when not provided.
+   */
+  status?: MenuItemStatusFilter;
+  offset?: number;
+  limit?: number;
+}
+
+export interface PaginatedMenuItems {
+  data: MenuItem[];
+  total: number;
+}
 
 @Injectable()
 export class MenuRepository {
@@ -31,18 +53,42 @@ export class MenuRepository {
 
   async findByRestaurant(
     restaurantId: string,
-    categoryId?: string,
-  ): Promise<MenuItem[]> {
+    opts: FindMenuItemsOptions = {},
+  ): Promise<PaginatedMenuItems> {
+    const { categoryId, status = 'available', offset = 0, limit = 20 } = opts;
+
     const conditions = [eq(menuItems.restaurantId, restaurantId)];
+
     if (categoryId) {
       conditions.push(eq(menuItems.categoryId, categoryId));
     }
 
-    return await this.db
-      .select()
-      .from(menuItems)
-      .where(and(...conditions))
-      .orderBy(menuItems.createdAt);
+    // Apply status filter unless caller explicitly requests all items.
+    // Public endpoint defaults to 'available' so customers never see unavailable items.
+    if (status !== 'all') {
+      conditions.push(
+        eq(menuItems.status, status as (typeof menuItemStatusEnum.enumValues)[number]),
+      );
+    }
+
+    const whereClause = and(...conditions);
+
+    // Run count and data queries in parallel for efficiency.
+    const [countResult, rows] = await Promise.all([
+      this.db.select({ total: count() }).from(menuItems).where(whereClause),
+      this.db
+        .select()
+        .from(menuItems)
+        .where(whereClause)
+        .orderBy(menuItems.createdAt)
+        .offset(offset)
+        .limit(limit),
+    ]);
+
+    return {
+      data: rows,
+      total: countResult[0]?.total ?? 0,
+    };
   }
 
   async findById(id: string): Promise<MenuItem | null> {
@@ -102,23 +148,45 @@ export class MenuRepository {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       displayOrder: dto.displayOrder ?? 0,
     };
-    const [row] = await this.db.insert(menuCategories).values(data).returning();
-    return row;
+
+    try {
+      const [row] = await this.db.insert(menuCategories).values(data).returning();
+      return row;
+    } catch (err: unknown) {
+      // Map PostgreSQL unique-constraint violation (Issue #13) to a 409 so
+      // the service layer doesn't need to understand DB error codes.
+      if ((err as { code?: string }).code === PG_UNIQUE_VIOLATION) {
+        throw new ConflictException(
+          `Category "${dto.name}" already exists for this restaurant`,
+        );
+      }
+      throw err;
+    }
   }
 
   async updateCategory(
     id: string,
     dto: UpdateMenuCategoryDto,
   ): Promise<MenuCategory> {
-    const [row] = await this.db
-      .update(menuCategories)
-      .set({ ...dto, updatedAt: new Date() })
-      .where(eq(menuCategories.id, id))
-      .returning();
-    return row;
+    try {
+      const [row] = await this.db
+        .update(menuCategories)
+        .set({ ...dto, updatedAt: new Date() })
+        .where(eq(menuCategories.id, id))
+        .returning();
+      return row;
+    } catch (err: unknown) {
+      if ((err as { code?: string }).code === PG_UNIQUE_VIOLATION) {
+        throw new ConflictException(
+          `A category named "${dto.name}" already exists for this restaurant`,
+        );
+      }
+      throw err;
+    }
   }
 
   async removeCategory(id: string): Promise<void> {
     await this.db.delete(menuCategories).where(eq(menuCategories.id, id));
   }
 }
+

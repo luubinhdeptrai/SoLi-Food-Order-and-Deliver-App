@@ -61,7 +61,7 @@ export class RestaurantSnapshotRepository {
           isOpen: data.isOpen,
           isApproved: data.isApproved,
           address: data.address,
-          deliveryRadiusKm: data.deliveryRadiusKm,
+          cuisineType: data.cuisineType,
           latitude: data.latitude,
           longitude: data.longitude,
           lastSyncedAt: data.lastSyncedAt ?? new Date(),

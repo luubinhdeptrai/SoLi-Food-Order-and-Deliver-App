@@ -5,6 +5,8 @@ import {
   text,
   boolean,
   integer,
+  index,
+  uniqueIndex,
   timestamp,
   customType,
 } from 'drizzle-orm/pg-core';
@@ -37,16 +39,27 @@ export const menuItemStatusEnum = pgEnum('menu_item_status', [
 // ---------------------------------------------------------------------------
 // menu_categories — per-restaurant categories (D-2 fix, replaces global enum)
 // ---------------------------------------------------------------------------
-export const menuCategories = pgTable('menu_categories', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  restaurantId: uuid('restaurant_id')
-    .notNull()
-    .references(() => restaurants.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  displayOrder: integer('display_order').notNull().default(0),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const menuCategories = pgTable(
+  'menu_categories',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    restaurantId: uuid('restaurant_id')
+      .notNull()
+      .references(() => restaurants.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    displayOrder: integer('display_order').notNull().default(0),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    // Prevent duplicate category names within the same restaurant (Issue #13).
+    // The service layer catches the resulting DB error and maps it to a 409.
+    uniqueIndex('menu_categories_restaurant_name_uidx').on(
+      table.restaurantId,
+      table.name,
+    ),
+  ],
+);
 
 export type MenuCategory = typeof menuCategories.$inferSelect;
 export type NewMenuCategory = typeof menuCategories.$inferInsert;
@@ -54,25 +67,33 @@ export type NewMenuCategory = typeof menuCategories.$inferInsert;
 // ---------------------------------------------------------------------------
 // menu_items — isAvailable removed (D-3/S-2 fix); price is numeric(12,2)
 // ---------------------------------------------------------------------------
-export const menuItems = pgTable('menu_items', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  restaurantId: uuid('restaurant_id')
-    .notNull()
-    .references(() => restaurants.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  description: text('description'),
-  price: moneyColumn('price').notNull(),
-  sku: text('sku'),
-  /** FK to menu_categories — nullable; items without a category are allowed */
-  categoryId: uuid('category_id').references(() => menuCategories.id, {
-    onDelete: 'set null',
-  }),
-  status: menuItemStatusEnum('status').notNull().default('available'),
-  imageUrl: text('image_url'),
-  tags: text('tags').array(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const menuItems = pgTable(
+  'menu_items',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    restaurantId: uuid('restaurant_id')
+      .notNull()
+      .references(() => restaurants.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description'),
+    price: moneyColumn('price').notNull(),
+    sku: text('sku'),
+    /** FK to menu_categories — nullable; items without a category are allowed */
+    categoryId: uuid('category_id').references(() => menuCategories.id, {
+      onDelete: 'set null',
+    }),
+    status: menuItemStatusEnum('status').notNull().default('available'),
+    imageUrl: text('image_url'),
+    tags: text('tags').array(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    // GIN index enables efficient array-contains queries on tags, e.g.
+    // WHERE 'vegetarian' = ANY(tags) (Issue #15).
+    index('menu_items_tags_gin_idx').using('gin', table.tags),
+  ],
+);
 
 export type MenuItem = typeof menuItems.$inferSelect;
 export type NewMenuItem = typeof menuItems.$inferInsert;

@@ -21,23 +21,14 @@ import {
  *    be placed if the restaurant is closed or not yet approved.
  *  - address is stored for downstream use in OrderReadyForPickupEvent (Phase 6),
  *    which the Delivery context consumes to dispatch a shipper.
- *
- * ⚠️  UPSTREAM MISSING — deliveryRadiusKm:
- *    The `restaurants` table in restaurant-catalog BC does NOT have this column.
- *    It is included here as nullable so the schema is ready when upstream adds it.
- *    BR-3 (delivery-radius enforcement at checkout, Phase 4) CANNOT be fully
- *    implemented until restaurant-catalog adds `delivery_radius_km`.
- *    → Documented in: docs/Những yêu cầu cho các BC/restaurant-catalog.md
- *
- * ⚠️  UPSTREAM MISSING — latitude / longitude on restaurants:
- *    The upstream `restaurants` table has `latitude` and `longitude` columns.
- *    They are included here so the Ordering context can compute the Haversine
- *    distance between delivery address and restaurant (BR-3).
- *    They are nullable because the upstream values are optional.
+ *  - deliveryRadiusKm has been REMOVED. Delivery zones are now managed via the
+ *    dedicated `ordering_delivery_zone_snapshots` table (Phase 4).
+ *  - cuisineType carries the cuisine label for any ordering-side queries that
+ *    need it (e.g., displaying restaurant details in the order confirmation).
  *
  * Populated by: RestaurantSnapshotProjector (Phase 3) via RestaurantUpdatedEvent.
  * Consumed by:  CartService (Phase 2) — restaurantId resolution.
- *               PlaceOrderHandler (Phase 4) — open/approved + radius validation.
+ *               PlaceOrderHandler (Phase 4) — open/approved validation.
  *               OrderReadyForPickupEvent (Phase 6) — restaurantAddress payload.
  */
 export const orderingRestaurantSnapshots = pgTable(
@@ -49,18 +40,10 @@ export const orderingRestaurantSnapshots = pgTable(
     isApproved: boolean('is_approved').notNull().default(false),
 
     // Required by OrderReadyForPickupEvent payload (Phase 6).
-    // Sourced from restaurants.address. RestaurantUpdatedEvent.address is a
-    // required string (upstream restaurants.address is also notNull), so this
-    // column is notNull. Re-run db:push if migrating an existing dev database.
     address: text('address').notNull(),
 
-    /**
-     * @deprecated Since dynamic delivery zones were introduced (Phase 4 / delivery-zones-haversine-proposal).
-     * The single-radius model is replaced by the `delivery_zones` table in restaurant-catalog BC.
-     * `PlaceOrderHandler` now queries `delivery_zones` directly for BR-3 enforcement.
-     * This column is kept as nullable to avoid a breaking migration; it is no longer populated.
-     */
-    deliveryRadiusKm: real('delivery_radius_km'),
+    // Cuisine type for display / future filtering at the ordering layer.
+    cuisineType: text('cuisine_type'),
 
     // Sourced from restaurants.latitude / restaurants.longitude.
     // Used to compute Haversine distance at checkout (BR-3, Phase 4).

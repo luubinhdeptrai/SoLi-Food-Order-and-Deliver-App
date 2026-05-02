@@ -2,15 +2,15 @@
  * RestaurantUpdatedEvent
  *
  * Published by: RestaurantCatalog BC (RestaurantService)
- * Triggers after: create, update, approve/unapprove, open/close
+ * Triggers after: create, update, approve/unapprove, open/close, delete
  * Consumed by: Ordering BC → RestaurantSnapshotProjector (Phase 3)
  *
- * Includes `address` so the snapshot table can populate `restaurantAddress`
- * in OrderReadyForPickupEvent (Phase 6).
- *
- * Optional fields (`deliveryRadiusKm`, `latitude`, `longitude`) are included
- * to future-proof BR-3 (delivery-radius check, Phase 4). They are nullable
- * because the upstream `restaurants` table may not have these values populated.
+ * Design notes:
+ *  - `address` is required for OrderReadyForPickupEvent payload (Phase 6).
+ *  - `latitude`/`longitude` are optional — not all restaurants have coordinates.
+ *  - `cuisineType` is optional — carries the cuisine label for snapshot queries.
+ *  - `deliveryRadiusKm` has been removed; delivery zones are now managed via the
+ *    dedicated `delivery_zones` table and `DeliveryZoneSnapshotUpdatedEvent`.
  */
 export class RestaurantUpdatedEvent {
   constructor(
@@ -19,10 +19,10 @@ export class RestaurantUpdatedEvent {
     public readonly isOpen: boolean,
     public readonly isApproved: boolean,
     public readonly address: string,
-    /** BR-3: delivery radius. Nullable until restaurant-catalog adds the column. */
-    public readonly deliveryRadiusKm?: number | null,
-    /** Haversine distance source. Nullable until upstream populates it. */
+    /** Nullable because many restaurants may not have coordinates yet. */
     public readonly latitude?: number | null,
     public readonly longitude?: number | null,
+    /** Cuisine label (e.g. 'Vietnamese', 'Italian') — null when not set. */
+    public readonly cuisineType?: string | null,
   ) {}
 }

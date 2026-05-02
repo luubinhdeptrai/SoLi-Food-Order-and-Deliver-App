@@ -1,5 +1,6 @@
 export * from './menu-item-updated.event';
 export * from './restaurant-updated.event';
+export * from './delivery-zone-snapshot-updated.event';
 export * from './order-placed.event';
 export * from './order-status-changed.event';
 export * from './order-ready-for-pickup.event';

@@ -17,6 +17,7 @@ import {
   CreateMenuItemDto,
   CreateMenuCategoryDto,
   MenuCategoryResponseDto,
+  MenuItemListResponseDto,
   MenuItemResponseDto,
   QueryMenuItemDto,
   UpdateMenuCategoryDto,
@@ -61,7 +62,6 @@ export class MenuController {
     format: 'uuid',
   })
   @ApiOkResponse({ type: [MenuCategoryResponseDto] })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token' })
   getCategories(@Query('restaurantId', ParseUUIDPipe) restaurantId: string) {
     return this.service.findCategoriesByRestaurant(restaurantId);
   }
@@ -150,14 +150,16 @@ export class MenuController {
   })
   @ApiOkResponse({
     description: 'Menu items returned successfully',
-    type: [MenuItemResponseDto],
+    type: MenuItemListResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Restaurant not found' })
-  @ApiUnauthorizedResponse({
-    description: 'Missing or invalid access token',
-  })
   findByRestaurant(@Query() query: QueryMenuItemDto) {
-    return this.service.findByRestaurant(query.restaurantId, query.categoryId);
+    return this.service.findByRestaurant(query.restaurantId, {
+      categoryId: query.categoryId,
+      status: query.status,
+      offset: query.offset,
+      limit: query.limit,
+    });
   }
 
   @Get(':id')
@@ -175,9 +177,6 @@ export class MenuController {
     type: MenuItemResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Menu item not found' })
-  @ApiUnauthorizedResponse({
-    description: 'Missing or invalid access token',
-  })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.findOne(id);
   }

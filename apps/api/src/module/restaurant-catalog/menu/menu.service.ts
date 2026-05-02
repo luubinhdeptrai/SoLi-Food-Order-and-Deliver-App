@@ -10,12 +10,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EventBus } from '@nestjs/cqrs';
-import { MenuRepository } from './menu.repository';
+import { MenuRepository, type PaginatedMenuItems } from './menu.repository';
 import type {
   CreateMenuItemDto,
   UpdateMenuItemDto,
   CreateMenuCategoryDto,
   UpdateMenuCategoryDto,
+  MenuItemStatusFilter,
 } from './dto/menu.dto';
 import type {
   MenuItem,
@@ -24,6 +25,19 @@ import type {
 import { RestaurantService } from '@/module/restaurant-catalog/restaurant/restaurant.service';
 import { MenuItemUpdatedEvent } from '@/shared/events/menu-item-updated.event';
 import type { MenuItemModifierSnapshot } from '@/shared/events/menu-item-updated.event';
+
+export interface FindByRestaurantOptions {
+  categoryId?: string;
+  status?: MenuItemStatusFilter;
+  offset?: number;
+  limit?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Pagination constants
+// ---------------------------------------------------------------------------
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
 
 @Injectable()
 export class MenuService {
@@ -39,10 +53,11 @@ export class MenuService {
 
   async findByRestaurant(
     restaurantId: string,
-    categoryId?: string,
-  ): Promise<MenuItem[]> {
+    opts: FindByRestaurantOptions = {},
+  ): Promise<PaginatedMenuItems> {
     await this.restaurantService.findOne(restaurantId);
-    return this.repo.findByRestaurant(restaurantId, categoryId);
+    const safeLimit = Math.min(opts.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+    return this.repo.findByRestaurant(restaurantId, { ...opts, limit: safeLimit });
   }
 
   async findOne(id: string): Promise<MenuItem> {

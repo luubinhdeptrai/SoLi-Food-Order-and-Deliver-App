@@ -16,6 +16,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export const MENU_ITEM_STATUSES = [
   'available',
@@ -163,6 +164,14 @@ export class UpdateMenuItemDto extends PartialType(
   status?: MenuItemStatus;
 }
 
+// Valid values callers can pass for the status filter.
+// 'all' bypasses filtering — useful for restaurant owners viewing their full menu.
+export const MENU_ITEM_STATUS_FILTER_VALUES = [
+  ...MENU_ITEM_STATUSES,
+  'all',
+] as const;
+export type MenuItemStatusFilter = (typeof MENU_ITEM_STATUS_FILTER_VALUES)[number];
+
 export class QueryMenuItemDto {
   @ApiProperty({
     format: 'uuid',
@@ -180,6 +189,39 @@ export class QueryMenuItemDto {
   @IsOptional()
   @IsUUID()
   categoryId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Filter by availability status. Defaults to \'available\' for public requests. ' +
+      'Pass \'all\' to include unavailable and out-of-stock items (e.g. for owners).',
+    enum: MENU_ITEM_STATUS_FILTER_VALUES,
+    example: 'available',
+  })
+  @IsOptional()
+  @IsEnum(MENU_ITEM_STATUS_FILTER_VALUES)
+  status?: MenuItemStatusFilter;
+
+  @ApiPropertyOptional({
+    description: 'Pagination offset (number of items to skip)',
+    example: 0,
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  offset?: number;
+
+  @ApiPropertyOptional({
+    description: 'Pagination limit (max items to return, capped at 100)',
+    example: 20,
+    minimum: 1,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  limit?: number;
 }
 
 export class MenuItemResponseDto {
@@ -237,3 +279,20 @@ export class MenuItemResponseDto {
   @ApiProperty({ type: String, format: 'date-time' })
   updatedAt!: Date;
 }
+
+/**
+ * Paginated wrapper for menu item listing.
+ * `total` reflects the full count matching the filters (ignoring offset/limit),
+ * which clients use to implement pagination controls or infinite scroll.
+ */
+export class MenuItemListResponseDto {
+  @ApiProperty({ type: [MenuItemResponseDto] })
+  data!: MenuItemResponseDto[];
+
+  @ApiProperty({
+    description: 'Total number of menu items matching the query',
+    example: 35,
+  })
+  total!: number;
+}
+

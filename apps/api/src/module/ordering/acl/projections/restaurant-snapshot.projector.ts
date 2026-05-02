@@ -39,9 +39,9 @@ export class RestaurantSnapshotProjector
       isOpen,
       isApproved,
       address,
-      deliveryRadiusKm = null,
       latitude = null,
       longitude = null,
+      cuisineType = null,
     } = event;
 
     this.logger.debug(
@@ -55,7 +55,7 @@ export class RestaurantSnapshotProjector
         isOpen,
         isApproved,
         address,
-        deliveryRadiusKm,
+        cuisineType,
         latitude,
         longitude,
         lastSyncedAt: new Date(),

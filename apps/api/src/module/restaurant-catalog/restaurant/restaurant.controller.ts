@@ -17,6 +17,7 @@ import { RestaurantService } from './restaurant.service';
 import { hasRole } from '@/module/auth/role.util';
 import {
   CreateRestaurantDto,
+  RestaurantListResponseDto,
   RestaurantResponseDto,
   UpdateRestaurantDto,
 } from './dto/restaurant.dto';
@@ -36,7 +37,6 @@ import {
 
 @ApiTags('Restaurants')
 @ApiBearerAuth()
-@ApiUnauthorizedResponse({ description: 'Missing or invalid bearer token' })
 @Controller('restaurants')
 export class RestaurantController {
   constructor(private readonly service: RestaurantService) {}
@@ -49,7 +49,7 @@ export class RestaurantController {
   })
   @ApiOkResponse({
     description: 'Restaurants retrieved successfully',
-    type: [RestaurantResponseDto],
+    type: RestaurantListResponseDto,
   })
   findAll(
     @Query('offset', new ParseIntPipe({ optional: true })) offset?: number,
@@ -82,6 +82,7 @@ export class RestaurantController {
 
   @Post()
   @Roles(['admin', 'restaurant'])
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid bearer token' })
   @ApiOperation({
     summary: 'Create restaurant',
     description: 'Creates a new restaurant for the authenticated owner.',
@@ -99,6 +100,7 @@ export class RestaurantController {
 
   @Patch(':id')
   @Roles(['admin', 'restaurant'])
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid bearer token' })
   @ApiOperation({
     summary: 'Update restaurant',
     description:
@@ -136,6 +138,7 @@ export class RestaurantController {
 
   @Patch(':id/approve')
   @Roles(['admin'])
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid bearer token' })
   @ApiOperation({
     summary: 'Approve restaurant',
     description: 'Mark a restaurant as approved. Admin only endpoint.',
@@ -161,6 +164,7 @@ export class RestaurantController {
 
   @Patch(':id/unapprove')
   @Roles(['admin'])
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid bearer token' })
   @ApiOperation({
     summary: 'Unapprove restaurant',
     description: 'Mark a restaurant as unapproved. Admin only endpoint.',
@@ -187,6 +191,7 @@ export class RestaurantController {
   @Delete(':id')
   @Roles(['admin'])
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid bearer token' })
   @ApiOperation({
     summary: 'Delete restaurant',
     description: 'Deletes a restaurant by UUID. Admin only endpoint.',

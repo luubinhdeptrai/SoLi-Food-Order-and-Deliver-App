@@ -2,6 +2,7 @@ import {
   boolean,
   customType,
   doublePrecision,
+  index,
   pgTable,
   real,
   text,
@@ -29,20 +30,33 @@ const zoneFeeColumn = customType<{ data: number; driverData: string }>({
   },
 });
 
-export const restaurants = pgTable('restaurants', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  ownerId: uuid('owner_id').notNull(),
-  name: text('name').notNull(),
-  description: text('description'),
-  address: text('address').notNull(),
-  phone: text('phone').notNull(),
-  isOpen: boolean('is_open').notNull().default(false),
-  isApproved: boolean('is_approved').notNull().default(false),
-  latitude: doublePrecision('latitude'),
-  longitude: doublePrecision('longitude'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const restaurants = pgTable(
+  'restaurants',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    ownerId: uuid('owner_id').notNull(),
+    name: text('name').notNull(),
+    description: text('description'),
+    address: text('address').notNull(),
+    phone: text('phone').notNull(),
+    isOpen: boolean('is_open').notNull().default(false),
+    isApproved: boolean('is_approved').notNull().default(false),
+    latitude: doublePrecision('latitude'),
+    longitude: doublePrecision('longitude'),
+    // Catalog enrichment fields (Issue #10): cuisine type for filtering/search,
+    // logo and cover images for UI display.
+    cuisineType: text('cuisine_type'),
+    logoUrl: text('logo_url'),
+    coverImageUrl: text('cover_image_url'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    // Composite index speeds up the most common public query:
+    // WHERE is_approved = true AND is_open = true (Issue #14).
+    index('restaurants_approved_open_idx').on(table.isApproved, table.isOpen),
+  ],
+);
 
 export type Restaurant = typeof restaurants.$inferSelect;
 export type NewRestaurant = typeof restaurants.$inferInsert;

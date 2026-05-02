@@ -107,13 +107,12 @@ export class RestaurantSnapshotResponseDto {
   address!: string;
 
   @ApiPropertyOptional({
-    description:
-      'Delivery radius in kilometres. Null until upstream adds this column (BR-3, Phase 4).',
-    example: null,
+    description: 'Cuisine type, e.g. "Vietnamese", "Japanese" (Issue #10)',
+    example: 'Vietnamese',
     nullable: true,
-    type: Number,
+    type: String,
   })
-  deliveryRadiusKm!: number | null;
+  cuisineType!: string | null;
 
   @ApiPropertyOptional({
     description: 'Latitude for Haversine distance check (BR-3)',
