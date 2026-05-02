@@ -1,4 +1,10 @@
-import { Controller, Get, Query, ParseFloatPipe, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  ParseFloatPipe,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 import { SearchService } from './search.service';
 import {
@@ -8,32 +14,63 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { RestaurantSearchResponseDto } from '@/module/restaurant-catalog/restaurant/dto/restaurant.dto';
+import { UnifiedSearchResponseDto } from './search.dto';
 
 @ApiTags('Search')
 @ApiBearerAuth()
-@Controller('restaurants/search')
+@Controller('search')
 export class SearchController {
   constructor(private readonly service: SearchService) {}
 
   @Get()
   @AllowAnonymous()
   @ApiOperation({
-    summary: 'Search restaurants',
+    summary: 'Unified food & restaurant search',
     description:
-      'Search for approved, open restaurants by name, category, and/or location.',
+      'Returns matching restaurants AND menu items in a single response (SERP). ' +
+      'Accent-insensitive: "pho" matches "Phở", "banh mi" matches "Bánh Mì", ' +
+      '"com" matches "Cơm". ' +
+      'Requires unaccent + pg_trgm PostgreSQL extensions (migration 0007).',
+  })
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    description:
+      'General search term (accent-insensitive). ' +
+      'Matched against restaurant names (restaurant section) and menu item names (items section).',
+    example: 'banh mi',
   })
   @ApiQuery({
     name: 'name',
     required: false,
-    description: 'Restaurant name (substring search)',
-    example: 'Pizza',
+    description: 'Targeted restaurant name filter (accent-insensitive)',
+    example: 'Sunset Bistro',
+  })
+  @ApiQuery({
+    name: 'item',
+    required: false,
+    description:
+      'Menu item name filter (accent-insensitive). Shows restaurants that carry the item + the items themselves.',
+    example: 'bánh mì',
   })
   @ApiQuery({
     name: 'category',
     required: false,
-    description: 'Menu category name (substring search, e.g. "sushi")',
-    example: 'sushi',
+    description:
+      'Menu category name filter (accent-insensitive, e.g. "Sandwiches")',
+    example: 'Sandwiches',
+  })
+  @ApiQuery({
+    name: 'cuisineType',
+    required: false,
+    description: 'Cuisine type filter on restaurants (accent-insensitive)',
+    example: 'Vietnamese',
+  })
+  @ApiQuery({
+    name: 'tag',
+    required: false,
+    description: 'Menu item tag filter — exact match against items.tags array',
+    example: 'vegetarian',
   })
   @ApiQuery({
     name: 'lat',
@@ -60,31 +97,47 @@ export class SearchController {
     name: 'offset',
     required: false,
     type: Number,
-    description: 'Pagination offset',
+    description:
+      'Pagination offset — applies independently to both restaurants and items sections',
     example: 0,
   })
   @ApiQuery({
     name: 'limit',
     required: false,
     type: Number,
-    description: `Pagination limit (max 100, default 20)`,
+    description: 'Pagination limit per section (max 100, default 20)',
     example: 20,
   })
   @ApiOkResponse({
-    description: 'Search results returned successfully',
-    type: RestaurantSearchResponseDto,
+    description: 'Unified search results — restaurants section + items section',
+    type: UnifiedSearchResponseDto,
   })
   search(
+    @Query('q') q?: string,
     @Query('name') name?: string,
+    @Query('item') item?: string,
     @Query('category') category?: string,
-    // ParseFloatPipe preserves decimal precision for coordinates (Issue #1).
+    @Query('cuisineType') cuisineType?: string,
+    @Query('tag') tag?: string,
     @Query('lat', new ParseFloatPipe({ optional: true })) lat?: number,
     @Query('lon', new ParseFloatPipe({ optional: true })) lon?: number,
-    @Query('radiusKm', new ParseFloatPipe({ optional: true })) radiusKm?: number,
+    @Query('radiusKm', new ParseFloatPipe({ optional: true }))
+    radiusKm?: number,
     @Query('offset', new ParseIntPipe({ optional: true })) offset?: number,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
   ) {
-    return this.service.searchRestaurants(name, category, lat, lon, radiusKm, offset, limit);
+    return this.service.search(
+      q,
+      name,
+      item,
+      category,
+      cuisineType,
+      tag,
+      lat,
+      lon,
+      radiusKm,
+      offset,
+      limit,
+    );
   }
 }
-

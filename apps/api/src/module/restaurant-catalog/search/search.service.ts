@@ -1,5 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { SearchRepository, type SearchResult } from './search.repository';
+import {
+  SearchRepository,
+  type SearchFilters,
+  type UnifiedSearchResult,
+} from './search.repository';
 
 // ---------------------------------------------------------------------------
 // Pagination constants
@@ -11,37 +15,48 @@ const MAX_PAGE_SIZE = 100;
 export class SearchService {
   constructor(private readonly repo: SearchRepository) {}
 
-  async searchRestaurants(
+  /**
+   * Entry point for the unified search endpoint. Validates that lat and lon
+   * are always provided together (providing only one would silently degrade
+   * to a non-geo search without any warning to the caller).
+   */
+  async search(
+    q?: string,
     name?: string,
+    item?: string,
     category?: string,
+    cuisineType?: string,
+    tag?: string,
     lat?: number,
     lon?: number,
     radiusKm?: number,
     offset?: number,
     limit?: number,
-  ): Promise<SearchResult> {
-    // lat and lon must always be provided together (Issue #18).
-    // Accepting only one silently degrades to a non-geo search without warning.
-    const hasLat = lat !== undefined;
-    const hasLon = lon !== undefined;
-    if (hasLat !== hasLon) {
+  ): Promise<UnifiedSearchResult> {
+    if ((lat === undefined) !== (lon === undefined)) {
       throw new BadRequestException(
         'lat and lon must both be provided together for geo search',
       );
     }
 
-    // Enforce page size defaults and ceiling (Issue #5).
+    // Enforce pagination ceiling in the service layer so the repository never
+    // receives an unbounded request regardless of how it is called.
     const safeLimit = Math.min(limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 
-    return this.repo.search({
+    const filters: SearchFilters = {
+      q,
       name,
+      item,
       category,
+      cuisineType,
+      tag,
       lat,
       lon,
       radiusKm,
       offset,
       limit: safeLimit,
-    });
+    };
+
+    return this.repo.search(filters);
   }
 }
-
