@@ -5,6 +5,7 @@ import { PlaceOrderHandler } from './commands/place-order.handler';
 import { AppSettingsService } from '../common/app-settings.service';
 import { MenuItemSnapshotRepository } from '../acl/repositories/menu-item-snapshot.repository';
 import { RestaurantSnapshotRepository } from '../acl/repositories/restaurant-snapshot.repository';
+import { DeliveryZoneSnapshotRepository } from '../acl/repositories/delivery-zone-snapshot.repository';
 import { CartRedisRepository } from '../cart/cart.redis-repository';
 
 /**
@@ -17,6 +18,7 @@ import { CartRedisRepository } from '../cart/cart.redis-repository';
  *   - CartRedisRepository       : reads (and clears) the Redis cart
  *   - MenuItemSnapshotRepository: ACL snapshot for menu item validation
  *   - RestaurantSnapshotRepository: ACL snapshot for restaurant validation
+ *   - DeliveryZoneSnapshotRepository: ACL snapshot for BR-3 delivery-zone check
  *   - AppSettingsService        : reads ORDER_IDEMPOTENCY_TTL_SECONDS and
  *                                 RESTAURANT_ACCEPT_TIMEOUT_SECONDS from DB
  *   - RedisService              : globally provided via RedisModule (AppModule)
@@ -31,6 +33,7 @@ import { CartRedisRepository } from '../cart/cart.redis-repository';
     // declares them here directly to avoid a circular import with AclModule)
     MenuItemSnapshotRepository,
     RestaurantSnapshotRepository,
+    DeliveryZoneSnapshotRepository,
     // Cart Redis repository (CartModule exports CartService, not the repo;
     // declare directly here to keep the checkout handler self-contained)
     CartRedisRepository,

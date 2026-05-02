@@ -8,7 +8,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { CommandHandler, ICommandHandler, EventBus } from '@nestjs/cqrs';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DB_CONNECTION } from '@/drizzle/drizzle.constants';
 import * as schema from '@/drizzle/schema';
@@ -16,6 +16,7 @@ import { PlaceOrderCommand } from './place-order.command';
 import { CartRedisRepository } from '../../cart/cart.redis-repository';
 import { MenuItemSnapshotRepository } from '../../acl/repositories/menu-item-snapshot.repository';
 import { RestaurantSnapshotRepository } from '../../acl/repositories/restaurant-snapshot.repository';
+import { DeliveryZoneSnapshotRepository } from '../../acl/repositories/delivery-zone-snapshot.repository';
 import { AppSettingsService } from '../../common/app-settings.service';
 import { RedisService } from '@/lib/redis/redis.service';
 import { OrderPlacedEvent } from '@/shared/events/order-placed.event';
@@ -43,7 +44,6 @@ import {
 import { APP_SETTING_KEYS } from '../../common/app-settings.schema';
 import { randomUUID } from 'crypto';
 import { GeoService } from '@/lib/geo/geo.service';
-import { deliveryZones } from '@/drizzle/schema';
 
 /**
  * Local projection of a delivery zone — contains only the fields needed for
@@ -101,6 +101,7 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     private readonly cartRepo: CartRedisRepository,
     private readonly menuItemSnapshotRepo: MenuItemSnapshotRepository,
     private readonly restaurantSnapshotRepo: RestaurantSnapshotRepository,
+    private readonly deliveryZoneSnapshotRepo: DeliveryZoneSnapshotRepository,
     private readonly appSettingsService: AppSettingsService,
     private readonly redis: RedisService,
     private readonly eventBus: EventBus,
@@ -214,17 +215,10 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
 
     // -------------------------------------------------------------------------
     // Step 6 — BR-3: Delivery zone check (best-effort — skipped if no coords)
-    // Load active delivery zones and verify the customer is within at least one.
+    // Load active delivery zone snapshots from the ACL table (D3-B compliant).
     // -------------------------------------------------------------------------
-    const activeZones = await this.db
-      .select({ radiusKm: deliveryZones.radiusKm })
-      .from(deliveryZones)
-      .where(
-        and(
-          eq(deliveryZones.restaurantId, cart!.restaurantId),
-          eq(deliveryZones.isActive, true),
-        ),
-      );
+    const activeZones = await this.deliveryZoneSnapshotRepo
+      .findActiveByRestaurantId(cart!.restaurantId);
     this.assertDeliveryZoneIfApplicable(restaurantSnapshot!, deliveryAddress, activeZones);
 
     // -------------------------------------------------------------------------

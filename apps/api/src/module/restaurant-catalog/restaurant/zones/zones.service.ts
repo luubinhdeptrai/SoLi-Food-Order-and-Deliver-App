@@ -4,9 +4,11 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
+import { EventBus } from '@nestjs/cqrs';
 import { ZonesRepository } from './zones.repository';
 import { RestaurantService } from '../restaurant.service';
 import { GeoService, type Coordinates } from '@/lib/geo/geo.service';
+import { DeliveryZoneSnapshotUpdatedEvent } from '@/shared/events/delivery-zone-snapshot-updated.event';
 import type {
   CreateDeliveryZoneDto,
   UpdateDeliveryZoneDto,
@@ -21,6 +23,7 @@ export class ZonesService {
     private readonly repo: ZonesRepository,
     private readonly restaurantService: RestaurantService,
     private readonly geo: GeoService,
+    private readonly eventBus: EventBus,
   ) {}
 
   async findByRestaurant(restaurantId: string): Promise<DeliveryZone[]> {
@@ -46,7 +49,24 @@ export class ZonesService {
     if (!isAdmin && restaurant.ownerId !== requesterId) {
       throw new ForbiddenException('You do not own this restaurant');
     }
-    return this.repo.create(restaurantId, dto);
+    const zone = await this.repo.create(restaurantId, dto);
+    // Notify Ordering BC so it can update its delivery-zone snapshot (D3-B).
+    this.eventBus.publish(
+      new DeliveryZoneSnapshotUpdatedEvent(
+        zone.id,
+        zone.restaurantId,
+        zone.name,
+        zone.radiusKm,
+        zone.baseFee,
+        zone.perKmRate,
+        zone.avgSpeedKmh,
+        zone.prepTimeMinutes,
+        zone.bufferMinutes,
+        zone.isActive,
+        false, // not deleted
+      ),
+    );
+    return zone;
   }
 
   async update(
@@ -61,7 +81,24 @@ export class ZonesService {
     if (!isAdmin && restaurant.ownerId !== requesterId) {
       throw new ForbiddenException('You do not own this restaurant');
     }
-    return this.repo.update(id, dto);
+    const zone = await this.repo.update(id, dto);
+    // Notify Ordering BC of the updated zone values (D3-B).
+    this.eventBus.publish(
+      new DeliveryZoneSnapshotUpdatedEvent(
+        zone.id,
+        zone.restaurantId,
+        zone.name,
+        zone.radiusKm,
+        zone.baseFee,
+        zone.perKmRate,
+        zone.avgSpeedKmh,
+        zone.prepTimeMinutes,
+        zone.bufferMinutes,
+        zone.isActive,
+        false, // not deleted
+      ),
+    );
+    return zone;
   }
 
   async remove(
@@ -70,12 +107,29 @@ export class ZonesService {
     requesterId: string,
     isAdmin: boolean,
   ): Promise<void> {
-    await this.findOne(id, restaurantId);
+    // Load zone before deletion so we have the full payload for the tombstone event.
+    const zone = await this.findOne(id, restaurantId);
     const restaurant = await this.restaurantService.findOne(restaurantId);
     if (!isAdmin && restaurant.ownerId !== requesterId) {
       throw new ForbiddenException('You do not own this restaurant');
     }
-    return this.repo.remove(id);
+    await this.repo.remove(id);
+    // Notify Ordering BC to tombstone the snapshot row (D3-B).
+    this.eventBus.publish(
+      new DeliveryZoneSnapshotUpdatedEvent(
+        zone.id,
+        zone.restaurantId,
+        zone.name,
+        zone.radiusKm,
+        zone.baseFee,
+        zone.perKmRate,
+        zone.avgSpeedKmh,
+        zone.prepTimeMinutes,
+        zone.bufferMinutes,
+        zone.isActive,
+        true, // hard-deleted → tombstone
+      ),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -191,4 +245,3 @@ export class ZonesService {
     };
   }
 }
-

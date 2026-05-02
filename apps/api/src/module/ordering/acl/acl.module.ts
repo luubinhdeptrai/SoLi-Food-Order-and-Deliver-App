@@ -5,10 +5,12 @@ import { DatabaseModule } from '@/drizzle/drizzle.module';
 // Projectors
 import { MenuItemProjector } from './projections/menu-item.projector';
 import { RestaurantSnapshotProjector } from './projections/restaurant-snapshot.projector';
+import { DeliveryZoneSnapshotProjector } from './projections/delivery-zone-snapshot.projector';
 
 // Repositories
 import { MenuItemSnapshotRepository } from './repositories/menu-item-snapshot.repository';
 import { RestaurantSnapshotRepository } from './repositories/restaurant-snapshot.repository';
+import { DeliveryZoneSnapshotRepository } from './repositories/delivery-zone-snapshot.repository';
 
 // Service
 import { AclService } from './acl.service';
@@ -37,12 +39,18 @@ import { AclController } from './acl.controller';
     // Projectors (event handlers)
     MenuItemProjector,
     RestaurantSnapshotProjector,
+    DeliveryZoneSnapshotProjector,
     // Repositories (data access)
     MenuItemSnapshotRepository,
     RestaurantSnapshotRepository,
+    DeliveryZoneSnapshotRepository,
     // Service (read-side orchestration for controller)
     AclService,
   ],
-  exports: [MenuItemSnapshotRepository, RestaurantSnapshotRepository],
+  exports: [
+    MenuItemSnapshotRepository,
+    RestaurantSnapshotRepository,
+    DeliveryZoneSnapshotRepository,
+  ],
 })
 export class AclModule {}
