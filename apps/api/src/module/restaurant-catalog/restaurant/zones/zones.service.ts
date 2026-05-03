@@ -210,8 +210,13 @@ export class ZonesService {
     zone: DeliveryZone,
     distanceKm: number,
   ): number {
-    const travelTimeMinutes = Math.ceil((distanceKm / zone.avgSpeedKmh) * 60);
-    return zone.prepTimeMinutes + travelTimeMinutes + zone.bufferMinutes;
+    // Guard: clamp avgSpeedKmh to ≥ 1 to prevent division-by-zero on bad data.
+    // (DTO validation enforces Min(1), but defensive in case of direct DB writes.)
+    const safeSpeed = Math.max(zone.avgSpeedKmh, 1);
+    const travelTimeMinutes = (distanceKm / safeSpeed) * 60;
+    // Ceiling on the total (same formula as PlaceOrderHandler.estimateDeliveryMinutes)
+    // so the preview matches the value stored on the order at checkout.
+    return Math.ceil(zone.prepTimeMinutes + travelTimeMinutes + zone.bufferMinutes);
   }
 
   private buildEstimateResponse(
@@ -221,7 +226,9 @@ export class ZonesService {
   ): DeliveryEstimateResponseDto {
     const deliveryFee = this.calculateDeliveryFee(zone, distanceKm);
     const distanceFee = distanceKm * zone.perKmRate;
-    const travelTimeMinutes = Math.ceil((distanceKm / zone.avgSpeedKmh) * 60);
+    // Use the same safeSpeed guard as calculateEstimatedMinutes.
+    const safeSpeed = Math.max(zone.avgSpeedKmh, 1);
+    const travelTimeMinutes = Math.ceil((distanceKm / safeSpeed) * 60);
     const estimatedMinutes = this.calculateEstimatedMinutes(zone, distanceKm);
 
     const breakdown: DeliveryFeeBreakdownDto = {
@@ -239,8 +246,8 @@ export class ZonesService {
       zone: { id: zone.id, name: zone.name, radiusKm: zone.radiusKm },
       // Round to whole VND — fractional currency units are not used in Vietnam.
       deliveryFee: Math.round(deliveryFee),
-      // Round to whole minutes — fractional ETA confuses customers.
-      estimatedMinutes: Math.round(estimatedMinutes),
+      // Already an integer from Math.ceil in calculateEstimatedMinutes.
+      estimatedMinutes,
       breakdown,
     };
   }

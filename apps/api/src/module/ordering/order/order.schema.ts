@@ -4,6 +4,7 @@ import {
   uuid,
   text,
   integer,
+  real,
   jsonb,
   timestamp,
   unique,
@@ -129,6 +130,21 @@ export const orders = pgTable(
 
     status: orderStatusEnum('status').notNull().default('pending'),
     totalAmount: moneyColumn('total_amount').notNull(),
+    /**
+     * Shipping fee computed at checkout time from the innermost eligible delivery
+     * zone snapshot: baseFee + (distanceKm × perKmRate).
+     * Stored separately from totalAmount so receipts and payout logic can
+     * distinguish item cost from delivery cost.
+     * Defaults to 0 when restaurant coordinates or delivery zones are absent.
+     */
+    shippingFee: moneyColumn('shipping_fee').notNull().default(0),
+    /**
+     * Estimated delivery time in minutes, computed at checkout.
+     * Formula: prepTimeMinutes + (distanceKm / avgSpeedKmh × 60) + bufferMinutes.
+     * Null when coordinates or zone data is unavailable.
+     * Informational only — does not gate order placement.
+     */
+    estimatedDeliveryMinutes: real('estimated_delivery_minutes'),
     paymentMethod: paymentMethodEnum('payment_method').notNull(),
 
     // JSONB delivery address — DeliveryAddress shape

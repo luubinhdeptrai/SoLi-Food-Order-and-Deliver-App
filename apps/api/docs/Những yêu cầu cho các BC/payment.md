@@ -116,12 +116,21 @@ export class PaymentFailedEvent {
   customerId: string,
   restaurantId: string,
   restaurantName: string,
-  totalAmount: number,
+  totalAmount: number,           // itemsTotal + shippingFee
+  shippingFee: number,           // [ADDED Phase 4] delivery fee — 0 when zone data absent
   paymentMethod: 'cod' | 'vnpay',
   items: Array<{ menuItemId, name, quantity, unitPrice }>,
   deliveryAddress: { street, district, city, latitude?, longitude? },
+  distanceKm?: number,           // [ADDED Phase 4] undefined when coordinates absent
+  estimatedDeliveryMinutes?: number, // [ADDED Phase 4] undefined when not computable
 }
 ```
+
+**Why `shippingFee` matters for Payment:**
+- VNPay payment session amount must equal `totalAmount` (not itemsTotal alone).
+- `totalAmount = itemsTotal + shippingFee` — Payment BC should use `totalAmount`
+  directly and MUST NOT recompute it.
+- Refunds should use the stored `orders.total_amount` (immutable after order creation).
 
 ---
 
@@ -172,14 +181,16 @@ export class PaymentModule {}
 
 ---
 
-## 4. Missing Fields in Ordering Schema
+## 4. Schema Fields in Ordering (for Payment integration)
 
 The `orders` table is designed to accommodate Payment context integration:
 
-| Field          | Type   | Purpose                                         |
-|----------------|--------|-------------------------------------------------|
-| `payment_url`  | TEXT   | Stores VNPay redirect URL returned after `OrderPlacedEvent` |
-| `payment_method` | ENUM | `cod` or `vnpay` — drives state machine logic  |
+| Field                    | Type          | Purpose                                                        |
+|--------------------------|---------------|----------------------------------------------------------------|
+| `payment_url`            | TEXT          | Stores VNPay redirect URL returned after `OrderPlacedEvent`    |
+| `payment_method`         | ENUM          | `cod` or `vnpay` — drives state machine logic                  |
+| `total_amount`           | NUMERIC(12,2) | Immutable total = items + shippingFee. Use this for VNPay.     |
+| `shipping_fee`           | NUMERIC(12,2) | [ADDED Phase 4] Delivery fee component — 0 when zone unknown   |
 
 No additional schema changes are required in the Ordering context for Payment integration.
 

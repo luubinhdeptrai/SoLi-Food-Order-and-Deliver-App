@@ -47,12 +47,34 @@ import { GeoService } from '@/lib/geo/geo.service';
 
 /**
  * Local projection of a delivery zone — contains only the fields needed for
- * the delivery-zone eligibility check. Using a local interface instead of
- * importing DeliveryZone from restaurant-catalog keeps D3-B (no cross-BC
- * type imports) intact.
+ * pricing and delivery-time estimation at checkout.
+ * Using a local interface instead of importing DeliveryZone from
+ * restaurant-catalog keeps D3-B (no cross-BC type imports) intact.
  */
 interface DeliveryZoneInfo {
+  zoneId: string;
   radiusKm: number;
+  baseFee: number;
+  perKmRate: number;
+  avgSpeedKmh: number;
+  prepTimeMinutes: number;
+  bufferMinutes: number;
+}
+
+/**
+ * Result of the delivery pricing resolution step.
+ * Returned by resolveDeliveryPricing when all coordinates are present
+ * and an eligible zone is found.
+ */
+interface DeliveryPricingResult {
+  /** The delivery zone used for pricing (innermost eligible zone). */
+  zoneId: string;
+  /** Haversine distance in km from restaurant to delivery address. */
+  distanceKm: number;
+  /** Computed shipping fee: baseFee + (distanceKm × perKmRate), rounded to 2dp. */
+  shippingFee: number;
+  /** Estimated delivery time in minutes: prepTime + travelTime + buffer. */
+  estimatedDeliveryMinutes: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -214,12 +236,18 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     this.assertModifierConstraintsAtCheckout(cart!.items, snapshotMapForModifiers);
 
     // -------------------------------------------------------------------------
-    // Step 6 — BR-3: Delivery zone check (best-effort — skipped if no coords)
-    // Load active delivery zone snapshots from the ACL table (D3-B compliant).
+    // Step 6 — BR-3: Resolve delivery pricing from zone snapshots.
+    // Loads active zones from the ACL table (D3-B compliant — no upstream calls).
+    // Returns shipping fee + delivery estimate when coordinates are present;
+    // returns null (fee = 0) when coordinates or zones are absent (soft guard).
     // -------------------------------------------------------------------------
     const activeZones = await this.deliveryZoneSnapshotRepo
       .findActiveByRestaurantId(cart!.restaurantId);
-    this.assertDeliveryZoneIfApplicable(restaurantSnapshot!, deliveryAddress, activeZones);
+    const deliveryPricing = this.resolveDeliveryPricing(
+      restaurantSnapshot!,
+      deliveryAddress,
+      activeZones,
+    );
 
     // -------------------------------------------------------------------------
     // Step 7 — Snapshot prices from ACL into order_items
@@ -233,10 +261,17 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     );
 
     // -------------------------------------------------------------------------
-    // Step 8 — Calculate total
+    // Step 8 — Compute final totals
+    // Shipping fee defaults to 0 when delivery pricing could not be resolved
+    // (missing coordinates or no active zones configured for the restaurant).
+    // parseFloat(toFixed(2)) eliminates floating-point accumulation before write.
     // -------------------------------------------------------------------------
-    const totalAmount = this.calculateTotal(snapshotedItems);
-    if (totalAmount <= MINIMUM_ORDER_TOTAL) {
+    const shippingFee = deliveryPricing?.shippingFee ?? 0;
+    const estimatedDeliveryMinutes = deliveryPricing?.estimatedDeliveryMinutes ?? null;
+    const distanceKm = deliveryPricing?.distanceKm;
+    const itemsTotal = this.calculateItemsTotal(snapshotedItems);
+    const totalAmount = parseFloat((itemsTotal + shippingFee).toFixed(2));
+    if (itemsTotal <= MINIMUM_ORDER_TOTAL) {
       throw new UnprocessableEntityException(
         'Order total must be greater than zero.',
       );
@@ -267,6 +302,8 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
       restaurantName: restaurantSnapshot!.name,
       cartId: cart!.cartId,
       totalAmount,
+      shippingFee,
+      estimatedDeliveryMinutes,
       paymentMethod,
       deliveryAddress,
       note,
@@ -290,7 +327,7 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     // -------------------------------------------------------------------------
     // Step 12 — Publish OrderPlacedEvent (Payment + Notification contexts consume it)
     // -------------------------------------------------------------------------
-    this.publishOrderPlacedEvent(order, snapshotedItems, deliveryAddress);
+    this.publishOrderPlacedEvent(order, snapshotedItems, deliveryAddress, distanceKm);
 
     // -------------------------------------------------------------------------
     // Step 13 — Clear the Redis cart (best-effort).
@@ -306,7 +343,9 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     this.logger.log(`Cart cleared for customerId=${customerId}`);
 
     this.logger.log(
-      `Order placed: orderId=${order.id}, customerId=${customerId}, total=${totalAmount}`,
+      `Order placed: orderId=${order.id}, customerId=${customerId}, ` +
+        `itemsTotal=${itemsTotal}, shippingFee=${shippingFee}, total=${totalAmount}` +
+        (distanceKm != null ? `, distanceKm=${distanceKm.toFixed(2)}` : ''),
     );
 
     return order;
@@ -452,24 +491,30 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
   }
 
   /**
-   * Best-effort delivery-zone enforcement (BR-3).
+   * Resolves delivery pricing for this order (BR-3).
    *
-   * Soft guard: if the restaurant snapshot or delivery address is missing
-   * coordinates, the check is skipped with a warning so orders placed before
-   * location data is configured still succeed.
+   * Returns a DeliveryPricingResult when all coordinates are present and
+   * an eligible zone is found. Returns null (shippingFee → 0) when:
+   *  - Either the restaurant or the delivery address is missing coordinates.
+   *  - No active delivery zones are configured for the restaurant.
    *
-   * When all coordinates are present, uses GeoService.calculateDistanceKm
-   * (Haversine) and rejects if the customer is outside every active zone.
+   * Throws UnprocessableEntityException when coordinates ARE present but
+   * the delivery address is outside every active zone — hard reject.
+   *
+   * Zone selection: innermost zone where distanceKm ≤ radiusKm is chosen
+   * (most accurate pricing, not necessarily cheapest).
    */
-  private assertDeliveryZoneIfApplicable(
+  private resolveDeliveryPricing(
     restaurantSnapshot: OrderingRestaurantSnapshot,
     deliveryAddress: DeliveryAddress,
     activeZones: DeliveryZoneInfo[],
-  ): void {
+  ): DeliveryPricingResult | null {
     const { latitude: restaurantLat, longitude: restaurantLng } = restaurantSnapshot;
     const { latitude: addressLat, longitude: addressLng } = deliveryAddress;
 
-    // Skip if either side is missing coordinates.
+    // Soft guard: skip pricing if either party is missing coordinates.
+    // This preserves backwards-compatibility for restaurants that haven't
+    // configured their GPS location yet.
     if (
       restaurantLat == null ||
       restaurantLng == null ||
@@ -477,19 +522,19 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
       addressLng == null
     ) {
       this.logger.warn(
-        `BR-3 delivery-zone check skipped for restaurantId=${restaurantSnapshot.restaurantId}: ` +
-          'missing coordinates.',
+        `Delivery pricing skipped for restaurantId=${restaurantSnapshot.restaurantId}: ` +
+          'missing coordinates — shippingFee will default to 0.',
       );
-      return;
+      return null;
     }
 
-    // Skip if no active zones are configured — restaurant may not have set them up yet.
+    // Soft guard: skip pricing if the restaurant has no active zones yet.
     if (activeZones.length === 0) {
       this.logger.warn(
-        `BR-3 delivery-zone check skipped for restaurantId=${restaurantSnapshot.restaurantId}: ` +
-          'no active delivery zones.',
+        `Delivery pricing skipped for restaurantId=${restaurantSnapshot.restaurantId}: ` +
+          'no active delivery zones configured — shippingFee will default to 0.',
       );
-      return;
+      return null;
     }
 
     const distanceKm = this.geo.calculateDistanceKm(
@@ -497,9 +542,11 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
       { latitude: addressLat, longitude: addressLng },
     );
 
-    // Sort a copy so we never mutate the caller's array.
+    // Sort ascending by radius so the first match is the innermost (most
+    // granular) zone. This gives the most accurate fee for the customer's
+    // actual proximity rather than using a large catch-all outer zone.
     const sortedZones = [...activeZones].sort((a, b) => a.radiusKm - b.radiusKm);
-    const eligibleZone = sortedZones.find((z) => z.radiusKm >= distanceKm);
+    const eligibleZone = sortedZones.find((zone) => distanceKm <= zone.radiusKm);
 
     if (!eligibleZone) {
       const maxRadius = sortedZones[sortedZones.length - 1].radiusKm;
@@ -508,6 +555,42 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
           `which exceeds the maximum delivery zone radius of ${maxRadius} km.`,
       );
     }
+
+    const shippingFee = this.calculateShippingFee(distanceKm, eligibleZone);
+    const estimatedDeliveryMinutes = this.estimateDeliveryMinutes(distanceKm, eligibleZone);
+
+    this.logger.debug(
+      `Delivery pricing resolved for restaurantId=${restaurantSnapshot.restaurantId}: ` +
+        `distanceKm=${distanceKm.toFixed(2)}, zone=${eligibleZone.zoneId}, ` +
+        `shippingFee=${shippingFee}, estimatedDeliveryMinutes=${estimatedDeliveryMinutes}`,
+    );
+
+    return { zoneId: eligibleZone.zoneId, distanceKm, shippingFee, estimatedDeliveryMinutes };
+  }
+
+  /**
+   * Shipping fee formula: baseFee + (distanceKm × perKmRate)
+   * Both values come from the innermost eligible delivery zone snapshot.
+   * Rounded to 2 decimal places to match NUMERIC(12, 2) DB column precision.
+   */
+  private calculateShippingFee(distanceKm: number, zone: DeliveryZoneInfo): number {
+    const fee = zone.baseFee + distanceKm * zone.perKmRate;
+    return parseFloat(fee.toFixed(2));
+  }
+
+  /**
+   * Delivery time estimation:
+   *   travelTime    = (distanceKm / avgSpeedKmh) × 60  [minutes]
+   *   estimatedTime = prepTimeMinutes + travelTime + bufferMinutes
+   *
+   * avgSpeedKmh is clamped to a minimum of 1 km/h to prevent division by zero.
+   * Result is ceiling-rounded — fractional minutes are meaningless to customers.
+   */
+  private estimateDeliveryMinutes(distanceKm: number, zone: DeliveryZoneInfo): number {
+    const safeAvgSpeed = Math.max(zone.avgSpeedKmh, 1);
+    const travelTimeMinutes = (distanceKm / safeAvgSpeed) * 60;
+    const totalMinutes = zone.prepTimeMinutes + travelTimeMinutes + zone.bufferMinutes;
+    return Math.ceil(totalMinutes);
   }
 
   // ---------------------------------------------------------------------------
@@ -580,7 +663,7 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     });
   }
 
-  private calculateTotal(
+  private calculateItemsTotal(
     items: Array<{ subtotal: number }>,
   ): number {
     return items.reduce((sum, item) => sum + item.subtotal, 0);
@@ -596,6 +679,8 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     restaurantName: string;
     cartId: string;
     totalAmount: number;
+    shippingFee: number;
+    estimatedDeliveryMinutes: number | null;
     paymentMethod: 'cod' | 'vnpay';
     deliveryAddress: DeliveryAddress;
     note: string | undefined;
@@ -616,6 +701,8 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
       restaurantName,
       cartId,
       totalAmount,
+      shippingFee,
+      estimatedDeliveryMinutes,
       paymentMethod,
       deliveryAddress,
       note,
@@ -633,6 +720,8 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
           cartId,
           status: 'pending',
           totalAmount,
+          shippingFee,
+          estimatedDeliveryMinutes,
           paymentMethod,
           deliveryAddress,
           note: note ?? null,
@@ -705,6 +794,7 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
       quantity: number;
     }>,
     deliveryAddress: DeliveryAddress,
+    distanceKm: number | undefined,
   ): void {
     const event = new OrderPlacedEvent(
       order.id,
@@ -712,6 +802,7 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
       order.restaurantId,
       order.restaurantName,
       order.totalAmount,
+      order.shippingFee,
       order.paymentMethod as 'cod' | 'vnpay',
       items.map((i) => ({
         menuItemId: i.menuItemId,
@@ -726,6 +817,8 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
         latitude: deliveryAddress.latitude,
         longitude: deliveryAddress.longitude,
       },
+      distanceKm,
+      order.estimatedDeliveryMinutes ?? undefined,
     );
 
     this.eventBus.publish(event);

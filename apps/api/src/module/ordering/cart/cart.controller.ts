@@ -302,8 +302,10 @@ export class CartController {
       orderId: order.id,
       status: order.status,
       totalAmount: order.totalAmount,
+      shippingFee: order.shippingFee,
       paymentMethod: order.paymentMethod,
       paymentUrl: order.paymentUrl,
+      estimatedDeliveryMinutes: order.estimatedDeliveryMinutes,
       createdAt: order.createdAt.toISOString(),
     };
   }

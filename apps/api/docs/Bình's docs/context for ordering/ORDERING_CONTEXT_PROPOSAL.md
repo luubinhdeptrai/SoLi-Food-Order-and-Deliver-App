@@ -141,22 +141,25 @@ The **Ordering Context** is the **core domain** of the SoLi Food Delivery platfo
 │  │ cartId (UNIQUE D5-B)│          │ unitPrice      ← NUMERIC(12,2)   │  │  ← [UPDATED]
 │  │ status (enum)       │          │ modifiersPrice ← NUMERIC(12,2)   │  │  ← [ADDED]
 │  │ totalAmount         │          │ quantity                          │  │
-│  │ paymentMethod       │          │ subtotal       ← NUMERIC(12,2)   │  │  ← [UPDATED]
-│  │ deliveryAddress     │          │ modifiers[]    ← JSONB snapshot   │  │  ← [ADDED]
-│  │ note                │          └───────────────────────────────────┘  │
-│  │ paymentUrl          │                                                   │
-│  │ expiresAt           │  1    N  ┌────────────────────────────────────┐  │
-│  │ createdAt           │ ──────── │         OrderStatusLog             │  │
-│  │ updatedAt           │          │────────────────────────────────────│  │
-│  └─────────────────────┘          │ id (PK)                            │  │
-│                                   │ orderId (FK cascade)               │  │
-│  ┌──────────────────────┐          │ fromStatus (nullable — null=init) │  │  ← [ADDED]
-│  │   DeliveryAddress    │          │ toStatus                          │  │
-│  │──────────────────────│          │ triggeredBy (nullable — null=sys) │  │  ← [UPDATED]
-│  │ street               │          │ triggeredByRole (enum)            │  │
-│  │ district             │          │ note                              │  │
-│  │ city                 │          │ createdAt                         │  │
-│  │ latitude? (number)   │          └────────────────────────────────────┘  │
+│  │ shippingFee         │          │ subtotal       ← NUMERIC(12,2)   │  │  ← [UPDATED]
+│  │ estimatedDelivery   │          │ modifiers[]    ← JSONB snapshot   │  │  ← [ADDED]
+│  │ Minutes (nullable)  │          └───────────────────────────────────┘  │
+│  │ paymentMethod       │                                                   │
+│  │ deliveryAddress     │  1    N  ┌────────────────────────────────────┐  │
+│  │ note                │ ──────── │         OrderStatusLog             │  │
+│  │ paymentUrl          │          │────────────────────────────────────│  │
+│  │ expiresAt           │          │ id (PK)                            │  │
+│  │ createdAt           │          │ orderId (FK cascade)               │  │
+│  │ updatedAt           │          │ fromStatus (nullable — null=init)  │  │  ← [ADDED]
+│  └─────────────────────┘          │ toStatus                          │  │
+│                                   │ triggeredBy (nullable — null=sys) │  │  ← [UPDATED]
+│  ┌──────────────────────┐          │ triggeredByRole (enum)           │  │
+│  │   DeliveryAddress    │          │ note                              │  │
+│  │──────────────────────│          │ createdAt                         │  │
+│  │ street               │          └────────────────────────────────────┘  │
+│  │ district             │                                                   │
+│  │ city                 │                                                   │
+│  │ latitude? (number)   │                                                   │
 │  │ longitude? (number)  │                                                   │
 │  └──────────────────────┘                                                  │
 └────────────────────────────────────────────────────────────────────────────┘
@@ -925,7 +928,7 @@ interface MenuItemModifierSnapshot {
 - `PlaceOrderHandler` — CQRS `CommandHandler` (D1-C); dispatched via `CommandBus` by `CartController.checkout()`
 - `PlaceOrderCommand` — carries `customerId`, `deliveryAddress`, `paymentMethod`, `note?`, `idempotencyKey?`
 - `CheckoutDto` — `deliveryAddress` (nested `DeliveryAddressDto`), `paymentMethod` (cod|vnpay), `note?` (maxLength 500)
-- `CheckoutResponseDto` — `orderId`, `status`, `totalAmount`, `paymentMethod`, `paymentUrl?`
+- `CheckoutResponseDto` — `orderId`, `status`, `totalAmount`, `shippingFee`, `paymentMethod`, `paymentUrl?`, `estimatedDeliveryMinutes?`
 
 **Checkout Flow — 13 Steps:** **[UPDATED]**
 
@@ -974,14 +977,19 @@ POST /carts/my/checkout
     │  │  → FAILS: 422 UnprocessableEntityException                     │
     │  └────────────────────────────────────────────────────────────────┘
     │
-    │  ┌─ STEP 6: BR-3 Delivery zone check (best-effort) ───────────────┐
+    │  ┌─ STEP 6: BR-3 Delivery zone pricing (resolveDeliveryPricing) ──┐
     │  │  DeliveryZoneSnapshotRepository.findActiveByRestaurantId()     │
-    │  │  → SKIP if restaurant has no lat/lng OR no active zones        │
-    │  │  → SKIP (best-effort): zones present but customer has no coords│
-    │  │  → HAS coords + zones: GeoService.calculateDistanceKm()        │
+    │  │  → SOFT SKIP (return null) if restaurant or address has no    │
+    │  │    lat/lng, OR restaurant has no active zones configured       │
+    │  │  → HAS coords + zones: GeoService.calculateDistanceKm()       │
     │  │    (Haversine formula; ±0.1 km accuracy at delivery distances) │
-    │  │    find innermost zone with radiusKm >= distanceKm             │
-    │  │    → OUTSIDE ALL ZONES: 422 UnprocessableEntityException       │
+    │  │    Sort zones ascending by radiusKm                           │
+    │  │    Find innermost zone with distanceKm <= radiusKm            │
+    │  │    → OUTSIDE ALL ZONES: 422 UnprocessableEntityException      │
+    │  │    → INSIDE a zone: compute shippingFee + estimatedMinutes    │
+    │  │      shippingFee = baseFee + (distanceKm × perKmRate)         │
+    │  │      eta = prepTimeMinutes + (distanceKm/avgSpeedKmh×60)      │
+    │  │              + bufferMinutes  [ceiling rounded]               │
     │  └───────────────────────────────────────────────────────────────┘
     │
     │  ┌─ STEP 7: Snapshot prices from ACL ──────────────────────────────┐
@@ -992,8 +1000,10 @@ POST /carts/my/checkout
     │  └───────────────────────────────────────────────────────────────┘
     │
     │  ┌─ STEP 8: Calculate totalAmount ────────────────────────────────┐
-    │  │  totalAmount = SUM(subtotal for all items)                    │
-    │  │  NOTE: no shipping fee in current implementation              │
+    │  │  itemsTotal  = SUM(subtotal for all items)                    │
+    │  │  shippingFee = deliveryPricing?.shippingFee ?? 0              │
+    │  │  totalAmount = itemsTotal + shippingFee                       │
+    │  │  Guard: itemsTotal must be > 0 (zero-item or zero-price cart) │
     │  └───────────────────────────────────────────────────────────────┘
     │
     │  ┌─ STEP 9: Get expiresAt from app_settings ──────────────────────┐
@@ -1002,7 +1012,8 @@ POST /carts/my/checkout
     │  └───────────────────────────────────────────────────────────────┘
     │
     │  ┌─ STEP 10: Atomic DB transaction ───────────────────────────────┐
-    │  │  INSERT orders (status='pending', cartId=cart.cartId)         │
+    │  │  INSERT orders (status='pending', cartId=cart.cartId,        │
+    │  │    totalAmount, shippingFee, estimatedDeliveryMinutes)        │
     │  │  INSERT order_items (with modifiersPrice + modifiers JSONB)   │
     │  │  INSERT order_status_logs (fromStatus=null → 'pending')       │
     │  │  D5-B: UNIQUE(cartId) violation → 409 CONFLICT               │
@@ -1017,6 +1028,7 @@ POST /carts/my/checkout
     │
     │  ┌─ STEP 12: Publish OrderPlacedEvent ──────────────────────────┐
     │  │  EventBus.publish(new OrderPlacedEvent(...))                 │
+    │  │  Payload includes: shippingFee, distanceKm?, estimatedMinutes│
     │  └─────────────────────────────────────────────────────────────┘
     │
     │  ┌─ STEP 13: [C-1] Delete Redis cart — BEST EFFORT ──────────────┐
@@ -1025,7 +1037,7 @@ POST /carts/my/checkout
     │
     ▼ (finally) Release cart lock — .catch() wrapped; TTL self-expires
     │
-    ▼ Return CheckoutResponseDto { orderId, status, totalAmount, paymentMethod, paymentUrl? }
+    ▼ Return CheckoutResponseDto { orderId, status, totalAmount, shippingFee, paymentMethod, paymentUrl?, estimatedDeliveryMinutes? }
 ```
 
 **Idempotency (D5-A + D5-B — both active):**
@@ -1059,7 +1071,7 @@ VNPay: PENDING → Payment Context generates payment URL
 Timeout: expiresAt exceeded → OrderTimeoutTask (Phase 5) → CANCELLED
 ```
 
-**Deliverable:** Order created with frozen prices and modifier snapshots. `OrderPlacedEvent` published.
+**Deliverable:** Order created with frozen prices, modifier snapshots, shipping fee, and estimated delivery time. `OrderPlacedEvent` published with full delivery pricing data (`shippingFee`, `distanceKm?`, `estimatedDeliveryMinutes?`).
 
 ---
 

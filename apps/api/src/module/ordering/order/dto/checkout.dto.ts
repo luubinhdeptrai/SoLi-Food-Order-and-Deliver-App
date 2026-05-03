@@ -109,8 +109,11 @@ export class CheckoutResponseDto {
   @ApiProperty({ example: 'pending' })
   status!: string;
 
-  @ApiProperty({ example: 125.5 })
+  @ApiProperty({ description: 'Total amount = items total + shipping fee', example: 145.5 })
   totalAmount!: number;
+
+  @ApiProperty({ description: 'Delivery fee computed from the closest eligible zone', example: 20.0 })
+  shippingFee!: number;
 
   @ApiProperty({ enum: ['cod', 'vnpay'] })
   paymentMethod!: string;
@@ -120,6 +123,12 @@ export class CheckoutResponseDto {
     example: 'https://sandbox.vnpayment.vn/...',
   })
   paymentUrl?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Estimated delivery time in minutes. Null when location data is unavailable.',
+    example: 35,
+  })
+  estimatedDeliveryMinutes?: number | null;
 
   @ApiProperty({ description: 'ISO 8601 timestamp', example: '2025-01-01T00:00:00.000Z' })
   createdAt!: string;

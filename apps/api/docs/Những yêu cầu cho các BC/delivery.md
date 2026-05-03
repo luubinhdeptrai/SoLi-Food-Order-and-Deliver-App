@@ -1,8 +1,8 @@
 # Required Changes — Delivery Context
 
 **Document Type:** Integration Contract  
-**Ordering Phase Dependency:** Phase 5 (Order Lifecycle), Phase 6 (Downstream Events)  
-**Status:** Required before Phase 6 is considered end-to-end complete
+**Ordering Phase Dependency:** Phase 4 (Order Placement), Phase 5 (Order Lifecycle), Phase 6 (Downstream Events)  
+**Status:** Phase 4 delivery data now available in `OrderPlacedEvent` — Delivery BC integration pending
 
 ---
 
@@ -10,15 +10,44 @@
 
 The Ordering bounded context integrates with the Delivery context via **domain events only**.
 
-When an order reaches `READY_FOR_PICKUP` state, the Ordering context publishes
-`OrderReadyForPickupEvent`. The Delivery context consumes this to assign a shipper
-and begin the delivery workflow.
+Two key touchpoints:
+1. **`OrderPlacedEvent`** (Phase 4) — carries pre-computed `distanceKm` and `estimatedDeliveryMinutes`
+   so the Delivery BC can pre-warm shipper dispatch without redundant Haversine calculations.
+2. **`OrderReadyForPickupEvent`** (Phase 5) — triggers shipper assignment.
 
 ---
 
 ## 1. Events the Delivery Context Must Consume
 
-### 1.1 `OrderReadyForPickupEvent`
+### 1.1 `OrderPlacedEvent` (optional — for pre-warming dispatch)
+
+**File:** `src/shared/events/order-placed.event.ts`
+
+**Published when:** Customer successfully places an order.
+
+**Delivery BC can optionally consume this** to record delivery task metadata ahead of
+`READY_FOR_PICKUP`, reducing latency when actual dispatch is triggered.
+
+**Relevant fields for Delivery BC:**
+```typescript
+{
+  orderId: string,
+  restaurantId: string,
+  customerId: string,
+  deliveryAddress: { street, district, city, latitude?, longitude? },
+  distanceKm?: number,               // [Phase 4] pre-computed Haversine distance
+  estimatedDeliveryMinutes?: number, // [Phase 4] pre-computed ETA
+  shippingFee: number,               // [Phase 4] delivery fee agreed at checkout
+}
+```
+
+**Note:** `distanceKm` and `estimatedDeliveryMinutes` are `undefined` when either
+the restaurant or delivery address is missing GPS coordinates. Delivery BC must
+handle this gracefully (null-safe).
+
+---
+
+### 1.2 `OrderReadyForPickupEvent`
 
 **File:** `src/shared/events/order-ready-for-pickup.event.ts`
 
@@ -46,15 +75,9 @@ export class OrderReadyForPickupEvent {
 }
 ```
 
-**⚠️ UPSTREAM MISSING — `restaurantAddress`:**  
-The Ordering context stores `address` in `ordering_restaurant_snapshots`.  
-However, this field is only populated when `RestaurantUpdatedEvent` includes it.  
-The Restaurant Catalog BC must include `address` in every `RestaurantUpdatedEvent` payload.  
-→ See: `docs/Những yêu cầu cho các BC/restaurant-catalog.md`
-
 ---
 
-### 1.2 `OrderStatusChangedEvent` (secondary — for tracking)
+### 1.3 `OrderStatusChangedEvent` (secondary — for tracking)
 
 **File:** `src/shared/events/order-status-changed.event.ts`
 
@@ -89,15 +112,48 @@ These events are out of scope for the Ordering context — they are internal to 
 
 ## 3. Schema Requirements in Ordering
 
-The `ordering_restaurant_snapshots` table already includes the fields required
-by the Delivery context:
+### 3.1 `ordering_restaurant_snapshots` — fields for Delivery context
 
-| Field                 | Type   | Source                   | Used In                       |
-|-----------------------|--------|--------------------------|-------------------------------|
-| `address`             | TEXT   | restaurants.address      | `OrderReadyForPickupEvent.restaurantAddress` |
-| `latitude`            | REAL   | restaurants.latitude     | BR-3 delivery radius check (Phase 4) |
-| `longitude`           | REAL   | restaurants.longitude    | BR-3 delivery radius check (Phase 4) |
-| `delivery_radius_km`  | REAL   | **MISSING in upstream**  | BR-3 delivery radius check (Phase 4) |
+| Field       | Type   | Source               | Used In                             |
+|-------------|--------|----------------------|-------------------------------------|
+| `address`   | TEXT   | restaurants.address  | `OrderReadyForPickupEvent.restaurantAddress` |
+| `latitude`  | REAL   | restaurants.latitude | BR-3 Haversine + distanceKm computation |
+| `longitude` | REAL   | restaurants.longitude| BR-3 Haversine + distanceKm computation |
+
+> **Note:** `delivery_radius_km` has been removed from `ordering_restaurant_snapshots`.
+> Delivery radius enforcement is now handled via `ordering_delivery_zone_snapshots` (multi-zone).
+
+### 3.2 `orders` — fields for Delivery context
+
+| Field                        | Type          | Purpose                                             |
+|------------------------------|---------------|-----------------------------------------------------|
+| `delivery_address`           | JSONB         | Delivery destination (street, district, city, lat, lon) |
+| `shipping_fee`               | NUMERIC(12,2) | [Phase 4] Fee agreed at checkout — used in shipper payout |
+| `estimated_delivery_minutes` | REAL          | [Phase 4] ETA computed at checkout — shown to customer |
+
+### 3.3 `ordering_delivery_zone_snapshots` — zone data
+
+The `ordering_delivery_zone_snapshots` table stores all zone data needed for the
+Delivery BC to understand coverage areas. Fields of interest:
+
+| Field              | Type     | Purpose                                  |
+|--------------------|----------|------------------------------------------|
+| `zone_id`          | UUID     | Delivery zone identifier                 |
+| `restaurant_id`    | UUID     | Which restaurant this zone covers        |
+| `radius_km`        | FLOAT8   | Zone coverage radius                     |
+| `avg_speed_kmh`    | REAL     | Used for ETA computation                 |
+| `prep_time_minutes`| REAL     | Kitchen prep time added to ETA           |
+| `buffer_minutes`   | REAL     | Buffer added to ETA                      |
+
+---
+
+## 4. Phase Dependency
+
+| Phase | Dependency on Delivery Context                                       |
+|-------|----------------------------------------------------------------------|
+| Phase 4 | `OrderPlacedEvent` now carries `distanceKm` + `estimatedDeliveryMinutes` — Delivery can consume optionally |
+| Phase 5 | Ordering publishes `OrderReadyForPickupEvent` — Delivery must have a stub handler |
+| Phase 6 | Full event stubs wired, Delivery stub acknowledges the event         |
 
 All fields are nullable to remain forward-compatible until upstream provides them.
 
