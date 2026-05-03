@@ -7,6 +7,9 @@ import {
 import { randomUUID } from 'crypto';
 import { CartRedisRepository } from './cart.redis-repository';
 import { MenuItemSnapshotRepository } from '../acl/repositories/menu-item-snapshot.repository';
+import { AppSettingsService } from '../common/app-settings.service';
+import { APP_SETTING_KEYS } from '../common/app-settings.schema';
+import { CART_TTL_SECONDS } from '../common/ordering.constants';
 import type { Cart, CartItem, SelectedModifier } from './cart.types';
 import { buildFingerprintFromResolved } from './cart.types';
 import type {
@@ -38,6 +41,7 @@ export class CartService {
   constructor(
     private readonly cartRepo: CartRedisRepository,
     private readonly snapshotRepo: MenuItemSnapshotRepository,
+    private readonly appSettingsService: AppSettingsService,
   ) {}
 
   // -------------------------------------------------------------------------
@@ -120,7 +124,7 @@ export class CartService {
 
     // 6. Persist with TTL reset
     cart.updatedAt = new Date().toISOString();
-    await this.cartRepo.save(cart);
+    await this.cartRepo.save(cart, await this.getCartTtl());
 
     return cart;
   }
@@ -151,7 +155,7 @@ export class CartService {
 
     cart.items[itemIndex] = { ...cart.items[itemIndex], quantity: dto.quantity };
     cart.updatedAt = new Date().toISOString();
-    await this.cartRepo.save(cart);
+    await this.cartRepo.save(cart, await this.getCartTtl());
 
     return cart;
   }
@@ -199,7 +203,7 @@ export class CartService {
       // quantity: intentionally absent — never touched by modifier updates
     };
     cart.updatedAt = new Date().toISOString();
-    await this.cartRepo.save(cart);
+    await this.cartRepo.save(cart, await this.getCartTtl());
 
     return cart;
   }
@@ -279,8 +283,19 @@ export class CartService {
     }
 
     cart.updatedAt = new Date().toISOString();
-    await this.cartRepo.save(cart);
+    await this.cartRepo.save(cart, await this.getCartTtl());
     return cart;
+  }
+
+  /**
+   * Reads CART_ABANDONED_TTL_SECONDS from app_settings (D2-B configurable TTL).
+   * Falls back to CART_TTL_SECONDS when the DB row is absent or non-numeric.
+   */
+  private getCartTtl(): Promise<number> {
+    return this.appSettingsService.getNumber(
+      APP_SETTING_KEYS.CART_ABANDONED_TTL_SECONDS,
+      CART_TTL_SECONDS,
+    );
   }
 
   /**

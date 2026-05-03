@@ -14,6 +14,7 @@ import {
   ApiNotFoundResponse,
   ApiBadRequestResponse,
 } from '@nestjs/swagger';
+import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 import { AclService } from './acl.service';
 import {
   MenuItemSnapshotResponseDto,
@@ -37,6 +38,7 @@ import {
  *
  * Phase: 3 — ACL Layer
  */
+@AllowAnonymous()
 @ApiTags('Ordering — ACL Snapshots')
 @Controller('ordering')
 export class AclController {

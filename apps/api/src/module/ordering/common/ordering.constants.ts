@@ -12,8 +12,7 @@ export const IDEMPOTENCY_KEY_PREFIX = 'idempotency:order:' as const;
 /**
  * Fallback TTL (5 min) used when app_settings DB row is not yet seeded.
  * Matches the ORDER_IDEMPOTENCY_TTL_SECONDS seed value of 300s defined in
- * Phase 1 (app_settings table). The old value of 86400 (24h) was wrong and
- * would have blocked cart reuse for far longer than intended (M-3 fix).
+ * Phase 1 (app_settings table).
  */
 export const IDEMPOTENCY_TTL_FALLBACK_SECONDS = 300;
 
@@ -24,9 +23,12 @@ export const IDEMPOTENCY_TTL_FALLBACK_SECONDS = 300;
 export const CART_KEY_PREFIX = 'cart:' as const;
 
 /**
- * Cart TTL — 7 days. Items left in cart expire silently.
+ * Cart TTL fallback — 24 hours (86 400 s).
+ * Used by CartService when the CART_ABANDONED_TTL_SECONDS app_settings row is
+ * absent or non-numeric. Matches the seeded default value in
+ * app-settings.seed.ts so that the code and DB are consistent.
  */
-export const CART_TTL_SECONDS = 7 * 24 * 60 * 60;
+export const CART_TTL_SECONDS = 1 * 24 * 60 * 60;
 
 /**
  * Cart checkout lock (Phase 4).

@@ -5,6 +5,7 @@ import { CartController } from './cart.controller';
 import { CartService } from './cart.service';
 import { CartRedisRepository } from './cart.redis-repository';
 import { MenuItemSnapshotRepository } from '../acl/repositories/menu-item-snapshot.repository';
+import { AppSettingsService } from '../common/app-settings.service';
 
 /**
  * CartModule — Phase 2 implementation; extended in Phase 4 with checkout endpoint.
@@ -23,13 +24,13 @@ import { MenuItemSnapshotRepository } from '../acl/repositories/menu-item-snapsh
  *  - MenuItemSnapshotRepository → optional Phase 3 snapshot validation
  *
  * DatabaseModule is imported to provide DB_CONNECTION for
- * MenuItemSnapshotRepository.  RedisService is globally provided by
- * RedisModule (registered in AppModule) so no explicit import is needed.
+ * MenuItemSnapshotRepository and AppSettingsService.  RedisService is globally
+ * provided by RedisModule (registered in AppModule) so no explicit import is needed.
  */
 @Module({
   imports: [CqrsModule, DatabaseModule],
   controllers: [CartController],
-  providers: [CartService, CartRedisRepository, MenuItemSnapshotRepository],
+  providers: [CartService, CartRedisRepository, MenuItemSnapshotRepository, AppSettingsService],
   exports: [CartService, CartRedisRepository],
 })
 export class CartModule {}
