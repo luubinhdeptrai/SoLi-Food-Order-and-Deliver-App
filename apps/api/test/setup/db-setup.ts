@@ -22,6 +22,8 @@ import { inArray, sql } from 'drizzle-orm';
 import * as schema from '../../src/drizzle/schema';
 import { restaurants } from '../../src/module/restaurant-catalog/restaurant/restaurant.schema';
 import { orderingMenuItemSnapshots } from '../../src/module/ordering/acl/schemas/menu-item-snapshot.schema';
+import { orderingRestaurantSnapshots } from '../../src/module/ordering/acl/schemas/restaurant-snapshot.schema';
+import { orderingDeliveryZoneSnapshots } from '../../src/module/ordering/acl/schemas/delivery-zone-snapshot.schema';
 import { user } from '../../src/module/auth/auth.schema';
 
 // ─── Test user credentials ────────────────────────────────────────────────────
@@ -86,6 +88,8 @@ export async function resetUsers(): Promise<void> {
 export async function resetDb(): Promise<void> {
   const db = getTestDb();
   await db.delete(orderingMenuItemSnapshots);
+  await db.delete(orderingRestaurantSnapshots);
+  await db.delete(orderingDeliveryZoneSnapshots);
   await db.delete(restaurants);
   await resetUsers();
 }

@@ -9,6 +9,10 @@
 import { eq } from 'drizzle-orm';
 import type { OrderingMenuItemSnapshot } from '../../src/module/ordering/acl/schemas/menu-item-snapshot.schema';
 import { orderingMenuItemSnapshots } from '../../src/module/ordering/acl/schemas/menu-item-snapshot.schema';
+import type { OrderingRestaurantSnapshot } from '../../src/module/ordering/acl/schemas/restaurant-snapshot.schema';
+import { orderingRestaurantSnapshots } from '../../src/module/ordering/acl/schemas/restaurant-snapshot.schema';
+import type { OrderingDeliveryZoneSnapshot } from '../../src/module/ordering/acl/schemas/delivery-zone-snapshot.schema';
+import { orderingDeliveryZoneSnapshots } from '../../src/module/ordering/acl/schemas/delivery-zone-snapshot.schema';
 import { getTestDb } from '../setup/db-setup';
 
 /**
@@ -23,6 +27,38 @@ export async function getSnapshot(
     .select()
     .from(orderingMenuItemSnapshots)
     .where(eq(orderingMenuItemSnapshots.menuItemId, menuItemId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Reads the ordering_restaurant_snapshots row for a given restaurant ID.
+ * Returns null when the row does not exist.
+ */
+export async function getRestaurantSnapshot(
+  restaurantId: string,
+): Promise<OrderingRestaurantSnapshot | null> {
+  const db = getTestDb();
+  const rows = await db
+    .select()
+    .from(orderingRestaurantSnapshots)
+    .where(eq(orderingRestaurantSnapshots.restaurantId, restaurantId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Reads the ordering_delivery_zone_snapshots row for a given zone ID.
+ * Returns null when the row does not exist.
+ */
+export async function getDeliveryZoneSnapshot(
+  zoneId: string,
+): Promise<OrderingDeliveryZoneSnapshot | null> {
+  const db = getTestDb();
+  const rows = await db
+    .select()
+    .from(orderingDeliveryZoneSnapshots)
+    .where(eq(orderingDeliveryZoneSnapshots.zoneId, zoneId))
     .limit(1);
   return rows[0] ?? null;
 }
