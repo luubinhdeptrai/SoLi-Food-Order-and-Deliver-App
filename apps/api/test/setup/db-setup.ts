@@ -24,6 +24,7 @@ import { restaurants } from '../../src/module/restaurant-catalog/restaurant/rest
 import { orderingMenuItemSnapshots } from '../../src/module/ordering/acl/schemas/menu-item-snapshot.schema';
 import { orderingRestaurantSnapshots } from '../../src/module/ordering/acl/schemas/restaurant-snapshot.schema';
 import { orderingDeliveryZoneSnapshots } from '../../src/module/ordering/acl/schemas/delivery-zone-snapshot.schema';
+import { orders } from '../../src/module/ordering/order/order.schema';
 import { user } from '../../src/module/auth/auth.schema';
 
 // ─── Test user credentials ────────────────────────────────────────────────────
@@ -87,6 +88,8 @@ export async function resetUsers(): Promise<void> {
  */
 export async function resetDb(): Promise<void> {
   const db = getTestDb();
+  // orders cascade-deletes: order_items, order_status_logs
+  await db.delete(orders);
   await db.delete(orderingMenuItemSnapshots);
   await db.delete(orderingRestaurantSnapshots);
   await db.delete(orderingDeliveryZoneSnapshots);

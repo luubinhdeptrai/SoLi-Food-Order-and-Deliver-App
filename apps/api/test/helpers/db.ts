@@ -13,6 +13,8 @@ import type { OrderingRestaurantSnapshot } from '../../src/module/ordering/acl/s
 import { orderingRestaurantSnapshots } from '../../src/module/ordering/acl/schemas/restaurant-snapshot.schema';
 import type { OrderingDeliveryZoneSnapshot } from '../../src/module/ordering/acl/schemas/delivery-zone-snapshot.schema';
 import { orderingDeliveryZoneSnapshots } from '../../src/module/ordering/acl/schemas/delivery-zone-snapshot.schema';
+import type { Order, OrderItem } from '../../src/module/ordering/order/order.schema';
+import { orders, orderItems } from '../../src/module/ordering/order/order.schema';
 import { getTestDb } from '../setup/db-setup';
 
 /**
@@ -61,4 +63,26 @@ export async function getDeliveryZoneSnapshot(
     .where(eq(orderingDeliveryZoneSnapshots.zoneId, zoneId))
     .limit(1);
   return rows[0] ?? null;
+}
+
+/**
+ * Reads the orders row for a given order ID.
+ * Returns null when the row does not exist.
+ */
+export async function getOrder(orderId: string): Promise<Order | null> {
+  const db = getTestDb();
+  const rows = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Reads all order_items rows for a given order ID.
+ */
+export async function getOrderItems(orderId: string): Promise<OrderItem[]> {
+  const db = getTestDb();
+  return db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
 }
