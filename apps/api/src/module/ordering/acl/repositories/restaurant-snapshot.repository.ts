@@ -91,4 +91,23 @@ export class RestaurantSnapshotRepository {
       .limit(1);
     return result[0] ?? null;
   }
+
+  /**
+   * Resolve the restaurant owned by `ownerId`.
+   *
+   * Added in Phase 7 for the Order History query layer: the restaurant-owner
+   * endpoints receive no restaurantId in the request — the server resolves it
+   * from the snapshot using the authenticated user's ID.
+   *
+   * Returns null when the owner has no registered restaurant in the snapshot
+   * table (treat as forbidden at the service layer).
+   */
+  async findByOwnerId(ownerId: string): Promise<OrderingRestaurantSnapshot | null> {
+    const result = await this.db
+      .select()
+      .from(orderingRestaurantSnapshots)
+      .where(eq(orderingRestaurantSnapshots.ownerId, ownerId))
+      .limit(1);
+    return result[0] ?? null;
+  }
 }

@@ -27,8 +27,12 @@ import { AclModule } from './acl/acl.module';
     AclModule,
     CartModule,
     OrderModule,
-    OrderLifecycleModule,
+    // IMPORTANT: OrderHistoryModule MUST be registered before OrderLifecycleModule.
+    // NestJS resolves routes in module registration order. OrderHistoryModule
+    // exposes GET /orders/my and GET /orders/my/:id which would otherwise be
+    // swallowed by OrderLifecycleModule's catch-all GET /orders/:id (INCON-2).
     OrderHistoryModule,
+    OrderLifecycleModule,
   ],
 })
 export class OrderingModule {}
