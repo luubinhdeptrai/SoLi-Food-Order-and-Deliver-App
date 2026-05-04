@@ -1881,6 +1881,7 @@ async function seedOrderingRestaurantSnapshots() {
       cuisineType: 'Vietnamese',
       latitude: 10.762622,
       longitude: 106.660172,
+      ownerId: IDS.ownerUserId,
     },
     {
       restaurantId: IDS.restaurant2,
@@ -1891,6 +1892,7 @@ async function seedOrderingRestaurantSnapshots() {
       cuisineType: 'Vietnamese',
       latitude: 10.775,
       longitude: 106.701,
+      ownerId: IDS.ownerUserId,
     },
     {
       restaurantId: IDS.restaurant3,
@@ -1901,6 +1903,7 @@ async function seedOrderingRestaurantSnapshots() {
       cuisineType: 'Vietnamese',
       latitude: 10.768,
       longitude: 106.682,
+      ownerId: IDS.ownerUserId,
     },
     {
       restaurantId: IDS.restaurant4,
@@ -1911,6 +1914,7 @@ async function seedOrderingRestaurantSnapshots() {
       cuisineType: 'Korean',
       latitude: 10.736,
       longitude: 106.703,
+      ownerId: IDS.owner2UserId,
     },
     {
       restaurantId: IDS.restaurant5,
@@ -1921,6 +1925,7 @@ async function seedOrderingRestaurantSnapshots() {
       cuisineType: 'Japanese',
       latitude: 10.802,
       longitude: 106.706,
+      ownerId: IDS.owner2UserId,
     },
   ];
   await db.insert(orderingRestaurantSnapshots).values(rows);

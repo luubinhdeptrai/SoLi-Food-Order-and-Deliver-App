@@ -10,6 +10,7 @@ import { RedisModule } from './lib/redis/redis.module';
 import { OrderingModule } from './module/ordering/ordering.module';
 import { DevTestUserMiddleware } from './lib/dev-test-user.middleware';
 import { GeoModule } from './lib/geo/geo.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { GeoModule } from './lib/geo/geo.module';
     DatabaseModule,
     RedisModule,
     GeoModule,
+    ScheduleModule.forRoot(),
     RestaurantCatalogModule,
     OrderingModule,
 

@@ -50,6 +50,11 @@ export const orderingRestaurantSnapshots = pgTable(
     latitude: real('latitude'),
     longitude: real('longitude'),
 
+    // Owner of the restaurant — sourced from restaurants.owner_id.
+    // Used by OrderLifecycleService (Phase 5) to verify restaurant ownership
+    // without importing RestaurantModule (D3-B).
+    ownerId: uuid('owner_id').notNull(),
+
     lastSyncedAt: timestamp('last_synced_at').defaultNow().notNull(),
   },
 );

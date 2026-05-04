@@ -2,7 +2,10 @@
  * PaymentFailedEvent  ← INCOMING
  *
  * Published by: Payment Context
- * Consumed by: Ordering BC (triggers PENDING → CANCELLED + cart recovery)
+ * Consumed by: Ordering BC (triggers PENDING → CANCELLED)
+ *
+ * Cart recovery is a UI concern — the frontend prompts the customer to
+ * place a new order. The cart was already deleted at checkout (Phase 4).
  */
 export class PaymentFailedEvent {
   constructor(

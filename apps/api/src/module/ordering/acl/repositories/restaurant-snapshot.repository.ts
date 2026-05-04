@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DB_CONNECTION } from '@/drizzle/drizzle.constants';
 import * as schema from '@/drizzle/schema';
@@ -61,11 +61,34 @@ export class RestaurantSnapshotRepository {
           isOpen: data.isOpen,
           isApproved: data.isApproved,
           address: data.address,
+          ownerId: data.ownerId,
           cuisineType: data.cuisineType,
           latitude: data.latitude,
           longitude: data.longitude,
           lastSyncedAt: data.lastSyncedAt ?? new Date(),
         },
       });
+  }
+
+  /**
+   * Verify restaurant ownership for Phase 5 lifecycle permission checks (D3-B).
+   * Returns the snapshot only when the restaurant exists AND the given ownerId
+   * matches — null otherwise (treat as forbidden).
+   */
+  async findByRestaurantIdAndOwnerId(
+    restaurantId: string,
+    ownerId: string,
+  ): Promise<OrderingRestaurantSnapshot | null> {
+    const result = await this.db
+      .select()
+      .from(orderingRestaurantSnapshots)
+      .where(
+        and(
+          eq(orderingRestaurantSnapshots.restaurantId, restaurantId),
+          eq(orderingRestaurantSnapshots.ownerId, ownerId),
+        ),
+      )
+      .limit(1);
+    return result[0] ?? null;
   }
 }

@@ -1,6 +1,6 @@
 ﻿# Order Lifecycle — Phase 5 Implementation Proposal
 
-> **Status:** Ready for Implementation
+> **Status:** [IMPLEMENTED] ✅
 > **Target Module:** `src/module/ordering/order-lifecycle/`
 > **Depends on:** Phases 0–4 (all implemented ✅)
 > **Source of Truth:** `ORDERING_CONTEXT_PROPOSAL.md` (D6-A + §8)
@@ -79,18 +79,53 @@ Phase 5 implements the complete **order state machine**: every transition from `
 
 > Any ``from → to`` not in this table → **422 Unprocessable Entity**.
 
-### 2.3 COD vs VNPay Paths
+### 2.3 Full State Diagram
+
+**Happy path (all forward transitions):**
 
 ```
-COD:
-  PENDING ──(T-01 restaurant)──► CONFIRMED ──► PREPARING ──► ... ──► DELIVERED
-           ──(T-03 cancel)──► CANCELLED
-
-VNPay:
-  PENDING ──(T-02 system PaymentConfirmedEvent)──► PAID ──(T-04 restaurant)──► CONFIRMED ──► ...
-           ──(T-03 cancel/PaymentFailedEvent/timeout)──► CANCELLED
-                                                   PAID ──(T-05 cancel/timeout)──► CANCELLED
+          ┌── T-01 (restaurant/admin, COD only) ─────────────────────────────────────────────┐
+          │                                                                                   │
+PENDING ──┤                                                                                   ▼
+          └── T-02 (system, VNPay only) ──► PAID ──T-04 (restaurant/admin) ──────────► CONFIRMED
+                                                                                             │
+                                                                               T-06 (restaurant/admin)
+                                                                                             │
+                                                                                             ▼
+                                                                                         PREPARING
+                                                                                             │
+                                                                               T-08 (restaurant/admin)
+                                                                                             │
+                                                                                             ▼
+                                                                                    READY_FOR_PICKUP
+                                                                                             │
+                                                                               T-09 (shipper/admin)
+                                                                                             │
+                                                                                             ▼
+                                                                                         PICKED_UP
+                                                                                             │
+                                                                               T-10 (shipper/admin)
+                                                                                             │
+                                                                                             ▼
+                                                                                        DELIVERING
+                                                                                             │
+                                                                               T-11 (shipper/admin)
+                                                                                             │
+                                                                                             ▼
+                                                                      DELIVERED ──T-12 (admin)──► REFUNDED ⊘
 ```
+
+**Cancellation exits:**
+
+```
+PENDING   ──T-03 (customer/restaurant/admin/system)──────────────────────────────────► CANCELLED ⊘
+PAID      ──T-05 (customer/restaurant/admin/system)──────────────────────────────────► CANCELLED ⊘
+CONFIRMED ──T-07 (restaurant/admin)──────────────────────────────────────────────────► CANCELLED ⊘
+```
+
+> ``CANCELLED`` and ``REFUNDED`` are terminal — no further transitions.
+> ``PREPARING`` has no cancel path; cancellation at that stage requires an out-of-band process.
+> T-05 and T-07 additionally fire ``OrderCancelledAfterPaymentEvent`` when ``paymentMethod === 'vnpay'``.
 
 ### 2.4 ``ALLOWED_TRANSITIONS`` Map (D6-A — canonical)
 
@@ -501,18 +536,17 @@ Cart recovery is a UI concern — the frontend prompts the customer to place a n
 
 ### Prerequisites (complete before writing Phase 5 code)
 
-| # | Change | Why |
-|---|--------|-----|
-| 1 | Add ``ownerId: uuid('owner_id').notNull()`` to ``ordering_restaurant_snapshots`` schema | Restaurant ownership check in §4 |
-| 2 | Add ``ownerId: string`` to ``RestaurantUpdatedEvent`` constructor | Propagate ownerId to snapshot |
-| 3 | Update ``RestaurantSnapshotProjector`` to persist ``ownerId`` from event | Populate the new column |
-| 4 | Update ``RestaurantService`` to include ``ownerId`` in published ``RestaurantUpdatedEvent`` | Source the value |
-| 5 | Migration: ``ALTER TABLE orders ADD COLUMN version INTEGER NOT NULL DEFAULT 0`` | Optimistic locking (§8) |
-| 6 | Migration: ``ALTER TABLE orders ADD COLUMN shipper_id UUID`` | Shipper ownership (T-09–T-11) |
-| 7 | Extend ``OrderCancelledAfterPaymentEvent.cancelledByRole`` → ``'customer' \| 'restaurant' \| 'admin' \| 'system'`` | Admin triggers T-07; system triggers T-05 timeout |
-| 8 | Install: ``pnpm add @nestjs/schedule --filter api`` | Timeout cron required |
-| 9 | Add ``ScheduleModule.forRoot()`` to ``app.module.ts`` imports | Register cron scheduler |
-| 10 | Fix comment in ``payment-failed.event.ts`` — remove "cart recovery" reference | Cart is already deleted at checkout |
+| # | Change | Why | Status |
+|---|--------|-----|--------|
+| 1 | Add ``ownerId: uuid('owner_id').notNull()`` to ``ordering_restaurant_snapshots`` schema | Restaurant ownership check in §4 | [IMPLEMENTED] |
+| 2 | Add ``ownerId: string`` to ``RestaurantUpdatedEvent`` constructor | Propagate ownerId to snapshot | [IMPLEMENTED] |
+| 3 | Update ``RestaurantSnapshotProjector`` to persist ``ownerId`` from event | Populate the new column | [IMPLEMENTED] |
+| 4 | Update ``RestaurantService`` to include ``ownerId`` in published ``RestaurantUpdatedEvent`` | Source the value | [IMPLEMENTED] |
+
+| 7 | Extend ``OrderCancelledAfterPaymentEvent.cancelledByRole`` → ``'customer' \| 'restaurant' \| 'admin' \| 'system'`` | Admin triggers T-07; system triggers T-05 timeout | [IMPLEMENTED] |
+| 8 | Install: ``pnpm add @nestjs/schedule --filter api`` | Timeout cron required | [IMPLEMENTED] |
+| 9 | Add ``ScheduleModule.forRoot()`` to ``app.module.ts`` imports | Register cron scheduler | [IMPLEMENTED] |
+| 10 | Fix comment in ``payment-failed.event.ts`` — remove "cart recovery" reference | Cart is already deleted at checkout | [IMPLEMENTED] |
 
 ### Files to Create
 
@@ -725,14 +759,14 @@ async execute(cmd: TransitionOrderCommand): Promise<Order> {
 
 Build in this order to keep each step independently testable:
 
-1. `transitions.ts` — define ``TRANSITIONS`` and ``ALLOWED_TRANSITIONS``
-2. `order.repository.ts` — ``findById``, ``findExpiredPendingOrPaid``
-3. `transition-order.command.ts` + `transition-order.handler.ts` — core logic
-4. `order-lifecycle.service.ts` — ownership checks
-5. `order-lifecycle.controller.ts` — HTTP endpoints
-6. `payment-confirmed.handler.ts` + `payment-failed.handler.ts`
-7. `order-timeout.task.ts`
-8. `order-lifecycle.module.ts` — wire all providers, ``CqrsModule``, ``ScheduleModule``
+1. `transitions.ts` — define ``TRANSITIONS`` and ``ALLOWED_TRANSITIONS`` — [IMPLEMENTED]
+2. `order.repository.ts` — ``findById``, ``findExpiredPendingOrPaid`` — [IMPLEMENTED]
+3. `transition-order.command.ts` + `transition-order.handler.ts` — core logic — [IMPLEMENTED]
+4. `order-lifecycle.service.ts` — ownership checks — [IMPLEMENTED]
+5. `order-lifecycle.controller.ts` — HTTP endpoints — [IMPLEMENTED]
+6. `payment-confirmed.handler.ts` + `payment-failed.handler.ts` — [IMPLEMENTED]
+7. `order-timeout.task.ts` — [IMPLEMENTED]
+8. `order-lifecycle.module.ts` — wire all providers, ``CqrsModule``, ``ScheduleModule`` — [IMPLEMENTED]
 
 ---
 

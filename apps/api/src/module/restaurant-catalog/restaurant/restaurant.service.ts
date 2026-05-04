@@ -80,6 +80,7 @@ export class RestaurantService {
         false, // isOpen — treat as closed after deletion
         false, // isApproved — treat as not approved after deletion
         restaurant.address,
+        restaurant.ownerId,
         restaurant.latitude ?? null,
         restaurant.longitude ?? null,
         restaurant.cuisineType ?? null,
@@ -128,6 +129,7 @@ export class RestaurantService {
         restaurant.isOpen ?? false,
         restaurant.isApproved ?? false,
         restaurant.address,
+        restaurant.ownerId,
         restaurant.latitude ?? null,
         restaurant.longitude ?? null,
         restaurant.cuisineType ?? null,

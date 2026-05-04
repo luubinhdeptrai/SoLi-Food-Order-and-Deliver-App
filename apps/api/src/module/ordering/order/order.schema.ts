@@ -88,6 +88,10 @@ export const triggeredByRoleEnum = pgEnum('order_triggered_by_role', [
   'system',
 ]);
 
+/** Derived TypeScript types for use across the ordering BC. */
+export type OrderStatus = (typeof orderStatusEnum.enumValues)[number];
+export type TriggeredByRole = (typeof triggeredByRoleEnum.enumValues)[number];
+
 // ---------------------------------------------------------------------------
 // DeliveryAddress shape (JSONB — stored inline in orders row)
 // ---------------------------------------------------------------------------
@@ -160,6 +164,14 @@ export const orders = pgTable(
     // Set at creation = NOW() + RESTAURANT_ACCEPT_TIMEOUT_SECONDS (app_settings)
     // Used by OrderTimeoutTask (Phase 5) to find orders that restaurants ignored
     expiresAt: timestamp('expires_at', { withTimezone: true }),
+
+    // Optimistic locking — incremented on every status transition (Phase 5).
+    // Guards concurrent pickup races and any concurrent state change.
+    version: integer('version').notNull().default(0),
+
+    // Set during T-09 (ready_for_pickup → picked_up) when a shipper self-assigns.
+    // Null until a shipper claims the order (Phase 5).
+    shipperId: uuid('shipper_id'),
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdateFn(() => new Date()),

@@ -11,6 +11,7 @@
  *  - `cuisineType` is optional — carries the cuisine label for snapshot queries.
  *  - `deliveryRadiusKm` has been removed; delivery zones are now managed via the
  *    dedicated `delivery_zones` table and `DeliveryZoneSnapshotUpdatedEvent`.
+ *  - `ownerId` is required for Phase 5 ownership verification in the Ordering BC.
  */
 export class RestaurantUpdatedEvent {
   constructor(
@@ -19,6 +20,7 @@ export class RestaurantUpdatedEvent {
     public readonly isOpen: boolean,
     public readonly isApproved: boolean,
     public readonly address: string,
+    public readonly ownerId: string,
     /** Nullable because many restaurants may not have coordinates yet. */
     public readonly latitude?: number | null,
     public readonly longitude?: number | null,
