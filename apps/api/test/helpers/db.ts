@@ -6,7 +6,7 @@
  * API endpoint (e.g. confirm a record is truly deleted, or read raw JSONB).
  */
 
-import { eq } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import type { OrderingMenuItemSnapshot } from '../../src/module/ordering/acl/schemas/menu-item-snapshot.schema';
 import { orderingMenuItemSnapshots } from '../../src/module/ordering/acl/schemas/menu-item-snapshot.schema';
 import type { OrderingRestaurantSnapshot } from '../../src/module/ordering/acl/schemas/restaurant-snapshot.schema';
@@ -16,10 +16,12 @@ import { orderingDeliveryZoneSnapshots } from '../../src/module/ordering/acl/sch
 import type {
   Order,
   OrderItem,
+  OrderStatusLog,
 } from '../../src/module/ordering/order/order.schema';
 import {
   orders,
   orderItems,
+  orderStatusLogs,
 } from '../../src/module/ordering/order/order.schema';
 import { getTestDb } from '../setup/db-setup';
 
@@ -91,4 +93,19 @@ export async function getOrder(orderId: string): Promise<Order | null> {
 export async function getOrderItems(orderId: string): Promise<OrderItem[]> {
   const db = getTestDb();
   return db.select().from(orderItems).where(eq(orderItems.orderId, orderId));
+}
+
+/**
+ * Reads the full order_status_logs timeline for a given order.
+ * Returned in chronological order (oldest first).
+ */
+export async function getOrderTimeline(
+  orderId: string,
+): Promise<OrderStatusLog[]> {
+  const db = getTestDb();
+  return db
+    .select()
+    .from(orderStatusLogs)
+    .where(eq(orderStatusLogs.orderId, orderId))
+    .orderBy(asc(orderStatusLogs.createdAt));
 }
