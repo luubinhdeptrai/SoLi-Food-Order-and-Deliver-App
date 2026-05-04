@@ -2,7 +2,7 @@
 
 > **Document Type:** Living Design Document (Code-Verified)
 > **Author Role:** Senior Software Architect
-> **Status:** Phases 0–5 Complete — Production-Ready ✅
+> **Status:** Phases 0–7 Complete — Production-Ready ✅
 > **Target Project:** `SoLi-Food-Order-and-Deliver-App` / `apps/api`
 > **Last Verified Against:** Full codebase audit — all facts cross-checked with source files
 
@@ -1467,33 +1467,104 @@ OrderCancelledAfterPaymentEvent:   ← OUTGOING (published by Ordering)   ← [F
 
 ---
 
-### Phase 7 — Order History (Read Side)
+### Phase 7 — Order History (Read Side) **[IMPLEMENTED ✅]**
 
-**Goal:** Customers, Restaurant owners, and Shippers can query their order history.
+**Goal:** All actor roles can query their order history. Admin has full, unrestricted read access across the platform. Reorder flow supported via a dedicated endpoint.
 
 **Scope:**
 
-- `OrderHistoryRepository` — specialized query methods (no writes)
-- `OrderHistoryService` — query orchestration
-- `OrderHistoryController` — REST endpoints with pagination
-- `OrderHistoryModule`
+- `OrderHistoryModule` — pure read module; no `CqrsModule` (no commands or events)
+- `OrderHistoryRepository` — read-only queries, N+1 eliminated via correlated subqueries
+- `OrderHistoryService` — query orchestration, per-actor ownership enforcement, DTO mapping
+- 4 controller classes (`OrderHistoryCustomerController`, `OrderHistoryRestaurantController`, `OrderHistoryShipperController`, `OrderHistoryAdminController`)
 
-**REST Endpoints:**
+**REST Endpoints (10 total):**
 
 ```
-GET  /orders/my                       → Customer's own orders (paginated)
-GET  /orders/restaurant/:restaurantId → Restaurant's received orders
-GET  /orders/assigned                 → Shipper's assigned/completed orders
-GET  /orders/:id                      → Single order detail (with items + timeline)
+GET  /orders/my                    → Customer: paginated list of own orders
+GET  /orders/my/:id                → Customer: full detail (404 for cross-customer access — info-leak prevention)
+GET  /orders/my/:id/reorder        → Customer: items from past order for cart pre-fill (pure read)
+GET  /restaurant/orders            → Restaurant owner: paginated list (403 if no snapshot)
+GET  /restaurant/orders/active     → Restaurant kitchen view: confirmed/preparing/ready_for_pickup, oldest-first
+GET  /shipper/orders/available     → Shipper: ready_for_pickup pool (hard cap: 50 rows)
+GET  /shipper/orders/active        → Shipper: current in-progress delivery (returns [], not null — BUG-2 fix)
+GET  /shipper/orders/history       → Shipper: paginated delivered history
+GET  /admin/orders                 → Admin: all orders with composable filters + configurable sort
+GET  /admin/orders/:id             → Admin: full detail for any order (no ownership check)
 ```
+
+> **Route-order invariant (INCON-2):** `OrderHistoryModule` must be registered **before** `OrderLifecycleModule` in `OrderingModule.imports` so that `GET /orders/my` and `GET /orders/my/:id` routes take precedence over the `GET /orders/:id` catch-all in `OrderLifecycleController`.
 
 **Query Filters:**
 
-- `status` (filter by state)
-- `from` / `to` (date range)
-- `page` / `limit` (pagination)
+`OrderHistoryFiltersDto` (customer, restaurant, shipper list endpoints):
+- `status?` — filter by `OrderStatus` enum value
+- `from?` — ISO8601 date; include orders created at or after
+- `to?` — ISO8601 date; include orders created at or before
+- `limit?` — 1–100, default 20
+- `offset?` — default 0
 
-**Deliverable:** All actor roles can query order history. Reorder flow can be built on top.
+`AdminOrderFiltersDto` extends the above, adding:
+- `restaurantId?` — UUID filter
+- `customerId?` — UUID filter
+- `shipperId?` — UUID filter
+- `paymentMethod?` — `'cod'` | `'vnpay'`
+- `sortBy?` — `'created_at'` | `'updated_at'` | `'total_amount'` (default `'created_at'`)
+- `sortOrder?` — `'asc'` | `'desc'` (default `'desc'`)
+
+**Response DTO shapes (key types):**
+
+```typescript
+// Timeline entry — used in OrderDetailDto.timeline[]
+class OrderStatusLogEntryDto {
+  fromStatus: OrderStatus | null; // null for the initial creation log entry
+  toStatus: OrderStatus;
+  triggeredBy: string | null;     // UUID of the actor; null for system-triggered
+  triggeredByRole: TriggeredByRole;
+  note: string | null;
+  createdAt: string;              // ISO8601
+}
+
+// Paginated list item — all list endpoints
+class OrderListItemDto {
+  orderId, status, restaurantId, restaurantName, paymentMethod,
+  totalAmount, shippingFee, itemCount, firstItemName,
+  createdAt, updatedAt, estimatedDeliveryMinutes
+}
+
+// Full detail — GET /orders/my/:id and GET /admin/orders/:id
+class OrderDetailDto {
+  orderId, status, restaurantId, restaurantName, paymentMethod,
+  totalAmount, shippingFee, estimatedDeliveryMinutes, note, paymentUrl,
+  deliveryAddress, shipperId,
+  createdAt, updatedAt,
+  items: OrderItemResponseDto[],
+  timeline: OrderStatusLogEntryDto[]
+}
+
+// Reorder — GET /orders/my/:id/reorder
+class ReorderItemDto {
+  menuItemId, itemName, quantity,
+  selectedModifiers: ReorderModifierDto[] // groupId + optionId only (no price)
+}
+```
+
+**Key implementation decisions:**
+
+| Decision | Detail |
+| -------- | ------ |
+| No CqrsModule | Pure read side — no commands, no events, no `CommandBus` |
+| N+1 eliminated | List queries use correlated scalar subqueries for `itemCount` (COUNT) and `firstItemName` (MIN name) — one SQL round-trip per page |
+| Parallel detail load | `findDetailById` uses `Promise.all([orderQuery, itemsQuery, timelineQuery])` — 3 concurrent queries |
+| Parallel pagination | `paginatedListQuery` uses `Promise.all([dataPage, COUNT])` — data and total fetched concurrently |
+| Cross-customer 404 | Customer accessing another customer's order gets 404, not 403, to prevent order-existence leaks |
+| Shipper available cap | `AVAILABLE_FOR_PICKUP_LIMIT = 50` hard cap on the ready-pool endpoint |
+| BUG-2 fix | `getShipperActiveOrder()` returns `[]` (empty array), never `null` |
+| Restaurant access | `getRestaurantOrders()` resolves restaurant from snapshot by `ownerId`; throws 403 if no snapshot found |
+
+**`RestaurantSnapshotRepository` note:** Re-declared directly in `OrderHistoryModule.providers` (not imported via `AclModule`) to avoid circular dependency — mirrors the pattern used by `OrderLifecycleModule` (D3-B).
+
+**Deliverable:** All 10 history endpoints implemented, tested via 57-test E2E suite (`test/e2e/order-history.e2e-spec.ts`).
 
 ---
 
@@ -1550,7 +1621,16 @@ src/module/ordering/
 │       └── order-timeout.task.ts              ← @Cron(EVERY_MINUTE) auto-cancel expired orders
 │
 ├── order-history/
-│   └── order-history.module.ts           ← Phase 7 placeholder (controller/service/repo/dto not yet created)
+│   ├── order-history.module.ts           ← Phase 7: no CqrsModule (pure read side)
+│   ├── controllers/
+│   │   └── order-history.controller.ts   ← 4 controller classes (Customer/Restaurant/Shipper/Admin)
+│   ├── dto/
+│   │   └── order-history.dto.ts          ← OrderListItemDto, OrderDetailDto, OrderStatusLogEntryDto,
+│   │                                        ReorderItemDto, OrderHistoryFiltersDto, AdminOrderFiltersDto
+│   ├── repositories/
+│   │   └── order-history.repository.ts   ← read-only; correlated subqueries for N+1 prevention
+│   └── services/
+│       └── order-history.service.ts      ← orchestration, per-actor access control, DTO mapping
 │
 └── acl/
     ├── acl.module.ts
@@ -2088,19 +2168,19 @@ App boots    Tables in DB    Cart CRUD        Snapshots
 + events     + modifiers     modifiers        tombstone
 
 
-PHASE 4 ✅     PHASE 5 ✅     PHASE 6 🔲     PHASE 7 🔲
+PHASE 4 ✅     PHASE 5 ✅     PHASE 6 🔲     PHASE 7 ✅
 ─────────      ─────────      ─────────      ─────────
 Order          Lifecycle      Downstream     Order
 Placement      State          Events         History
                Machine        Stubs          Queries
 
-COMPLETE      COMPLETE       PENDING        PENDING
+COMPLETE      COMPLETE       PENDING        COMPLETE
    │               │               │               │
    ▼               ▼               ▼               ▼
-13-step        10 endpoints   Events          Paginated
-checkout       12 transitions reach other     history for
-13 fixes       optimistic     context stubs   all actors
-all applied    locking D6-A
+13-step        10 endpoints   Events          10 endpoints
+checkout       12 transitions reach other     4 controller
+13 fixes       optimistic     context stubs   classes, 57
+all applied    locking D6-A                   E2E tests pass
 ```
 
 ### 12.2 Dependencies Between Phases
