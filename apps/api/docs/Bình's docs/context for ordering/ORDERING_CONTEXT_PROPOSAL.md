@@ -1,8 +1,8 @@
-# Ordering Context — Architectural Proposal
+﻿# Ordering Context — Architectural Proposal
 
 > **Document Type:** Living Design Document (Code-Verified)
 > **Author Role:** Senior Software Architect
-> **Status:** Phases 0–4 Complete — Production-Ready ✅
+> **Status:** Phases 0–5 Complete — Production-Ready ✅
 > **Target Project:** `SoLi-Food-Order-and-Deliver-App` / `apps/api`
 > **Last Verified Against:** Full codebase audit — all facts cross-checked with source files
 
@@ -150,9 +150,11 @@ The **Ordering Context** is the **core domain** of the SoLi Food Delivery platfo
 │  │ note                │ ──────── │         OrderStatusLog             │  │
 │  │ paymentUrl          │          │────────────────────────────────────│  │
 │  │ expiresAt           │          │ id (PK)                            │  │
-│  │ createdAt           │          │ orderId (FK cascade)               │  │
-│  │ updatedAt           │          │ fromStatus (nullable — null=init)  │  │  ← [ADDED]
-│  └─────────────────────┘          │ toStatus                          │  │
+│  │ version (int)       │          │ orderId (FK cascade)               │  │  ← [ADDED Phase 5]
+│  │ shipperId (uuid?)   │          │ fromStatus (nullable — null=init)  │  │  ← [ADDED Phase 5]
+│  │ createdAt           │          │ toStatus                          │  │
+│  │ updatedAt           │          │ triggeredBy (nullable — null=sys) │  │  ← [UPDATED]
+│  └─────────────────────┘          │ triggeredByRole (enum)           │  │
 │                                   │ triggeredBy (nullable — null=sys) │  │  ← [UPDATED]
 │  ┌──────────────────────┐          │ triggeredByRole (enum)           │  │
 │  │   DeliveryAddress    │          │ note                              │  │
@@ -788,7 +790,7 @@ CART_LOCK_TTL_SECONDS = 30; // checkout lock duration
 
 | Table                              | Key Fields                                                                                                                                                                                                                                             |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `orders`                           | `id`, `customerId`, `restaurantId`, `restaurantName`\*, `cartId` (UNIQUE — D5-B), `status` (enum), `totalAmount` (NUMERIC(12,2)), `paymentMethod` (cod\|vnpay), `deliveryAddress` (JSONB), `note`, `paymentUrl`, `expiresAt`, `createdAt`, `updatedAt` |
+| `orders`                           | `id`, `customerId`, `restaurantId`, `restaurantName`\*, `cartId` (UNIQUE — D5-B), `status` (enum), `totalAmount` (NUMERIC(12,2)), `shippingFee` (NUMERIC(12,2), default 0), `estimatedDeliveryMinutes` (real, nullable), `paymentMethod` (cod\|vnpay), `deliveryAddress` (JSONB), `note`, `paymentUrl`, `expiresAt`, `version` (int, default 0 — Phase 5 optimistic locking), `shipperId` (uuid?, nullable — set by T-09 Phase 5), `createdAt`, `updatedAt` |
 | `order_items`                      | `id`, `orderId` (FK cascade), `menuItemId`, `itemName`_, `unitPrice`_ (NUMERIC(12,2)), `modifiersPrice` (NUMERIC(12,2), default 0), `quantity`, `subtotal` (NUMERIC(12,2)), `modifiers` (JSONB `OrderModifier[]`)                                      |
 | `order_status_logs`                | `id`, `orderId` (FK cascade), `fromStatus` (nullable — null = initial creation), `toStatus`, `triggeredBy` (nullable — null = system), `triggeredByRole` (enum), `note`, `createdAt`                                                                   |
 | `ordering_menu_item_snapshots`     | `menuItemId` (PK), `restaurantId`, `name`, `price` (NUMERIC(12,2)), `status` (enum), `modifiers` (JSONB), `lastSyncedAt`                                                                                                                               |
@@ -1141,17 +1143,146 @@ Timeout: expiresAt exceeded → OrderTimeoutTask (Phase 5) → CANCELLED
 
 ---
 
-### Phase 5 — Order Lifecycle (State Machine)
+### Phase 5 — Order Lifecycle (State Machine) **[IMPLEMENTED ✅]**
 
-**Goal:** All actors can transition order states according to defined rules.
+**Goal:** All actors can transition order states according to the `TRANSITIONS` map. Ownership, role, and note requirements are enforced atomically. All transitions are audited in `order_status_logs`. Domain events are published after each successful DB commit.
 
-**Scope:**
+**Architecture:**
 
-- `OrderLifecycleService` — state machine logic + permission check per actor role
-- `OrderLifecycleController` — REST endpoints for state transitions
-- `OrderLifecycleModule`
-- `OrderStatusLog` appended on every transition
-- `OrderTimeoutTask` — `@Cron` job that queries PENDING/PAID orders where `expiresAt < NOW()` and transitions them to `CANCELLED` with `triggeredBy = 'system'`, then publishes `OrderStatusChangedEvent` ← [FIXED][from MISSING]
+- **Single command for all transitions:** `TransitionOrderCommand` / `TransitionOrderHandler` (D1-C hybrid CQRS)
+- **Transition rules:** Hand-crafted `TRANSITIONS` map in `constants/transitions.ts` (D6-A) — single source of truth
+- **Ownership enforcement:** `OrderLifecycleService.assertOwnership()` — role-specific checks; admin/system bypass
+- **Optimistic locking:** `orders.version` column incremented on every transition; 0-row-update → `409 ConflictException`
+- **Audit trail:** Every transition appends a row to `order_status_logs` in the same DB transaction as the status update
+- **Events published post-commit:** `OrderStatusChangedEvent` on every transition; `OrderReadyForPickupEvent` on T-08; `OrderCancelledAfterPaymentEvent` on T-05/T-07 for VNPay orders
+
+**REST Endpoints:**
+
+```
+PATCH  /orders/:id/confirm          → T-01 (pending → confirmed, COD orders only)
+PATCH  /orders/:id/start-preparing  → T-06 (confirmed → preparing)
+PATCH  /orders/:id/ready            → T-08 (preparing → ready_for_pickup)
+PATCH  /orders/:id/pickup           → T-09 (ready_for_pickup → picked_up, shipper self-assign)
+PATCH  /orders/:id/en-route         → T-10 (picked_up → delivering)
+PATCH  /orders/:id/deliver          → T-11 (delivering → delivered)
+PATCH  /orders/:id/cancel           → T-03 / T-05 / T-07  (body: { reason: string })
+POST   /orders/:id/refund           → T-12 (delivered → refunded, body: { reason: string })
+GET    /orders/:id                  → order details (current status + items)
+GET    /orders/:id/timeline         → OrderStatusLog history (oldest-first)
+```
+
+All mutation endpoints dispatch `TransitionOrderCommand` via `CommandBus`. No state-machine logic lives in the controller.
+
+**`resolveRole()` — Actor Role Mapping:**
+
+The controller maps the session user's DB role to a `TriggeredByRole` with priority: `admin > restaurant > shipper > customer`. A user with multiple roles gets the most-privileged one. The `POST /orders/:id/refund` endpoint additionally calls `hasRole(session.user.role, 'admin')` as an early guard and throws `403` before dispatching the command.
+
+**`TransitionOrderCommand` signature:**
+
+```typescript
+new TransitionOrderCommand(
+  orderId: string,            // UUID of the order to transition
+  toStatus: OrderStatus,      // target state (inferred from the endpoint URL)
+  actorId: string | null,     // session.user.id (null for system actors only)
+  actorRole: TriggeredByRole, // resolved by resolveRole()
+  note?: string,              // required for cancel/refund transitions
+)
+```
+
+**`TRANSITIONS` map — `constants/transitions.ts` (D6-A):**
+
+```typescript
+export type TransitionRule = {
+  /** Roles that are allowed to trigger this transition. */
+  allowedRoles: TriggeredByRole[];
+  /** If true, a non-empty `note` must be provided (cancel/refund reasons). */
+  requireNote?: boolean;
+  /** If true AND order.paymentMethod === 'vnpay', publish OrderCancelledAfterPaymentEvent. */
+  triggersRefundIfVnpay?: boolean;
+  /** If true, publish OrderReadyForPickupEvent after the transition. */
+  triggersReadyForPickup?: boolean;
+};
+
+export const TRANSITIONS: Partial<Record<`${OrderStatus}→${OrderStatus}`, TransitionRule>> = {
+  'pending→confirmed':          { allowedRoles: ['restaurant', 'admin'] },                                              // T-01
+  'pending→paid':               { allowedRoles: ['system'] },                                                           // T-02
+  'pending→cancelled':          { allowedRoles: ['customer','restaurant','admin','system'], requireNote: true },        // T-03
+  'paid→confirmed':             { allowedRoles: ['restaurant', 'admin'] },                                              // T-04
+  'paid→cancelled':             { allowedRoles: ['customer','restaurant','admin','system'], requireNote: true,
+                                   triggersRefundIfVnpay: true },                                                       // T-05
+  'confirmed→preparing':        { allowedRoles: ['restaurant', 'admin'] },                                              // T-06
+  'confirmed→cancelled':        { allowedRoles: ['restaurant', 'admin'], requireNote: true,
+                                   triggersRefundIfVnpay: true },                                                       // T-07
+  'preparing→ready_for_pickup': { allowedRoles: ['restaurant', 'admin'], triggersReadyForPickup: true },               // T-08
+  'ready_for_pickup→picked_up': { allowedRoles: ['shipper', 'admin'] },                                                // T-09
+  'picked_up→delivering':       { allowedRoles: ['shipper', 'admin'] },                                                // T-10
+  'delivering→delivered':       { allowedRoles: ['shipper', 'admin'] },                                                // T-11
+  'delivered→refunded':         { allowedRoles: ['admin'], requireNote: true },                                        // T-12
+};
+```
+
+**`TransitionOrderHandler` — 9-Step Execution Flow:**
+
+```
+1. Load order by ID                               → 404 NotFoundException if missing
+2. Idempotency: order.status === toStatus         → return order as-is (safe no-op for system actors)
+3. Validate transition key exists in TRANSITIONS  → 422 UnprocessableEntityException if not
+4. Check actorRole in rule.allowedRoles           → 403 ForbiddenException if not
+5. Ownership check (OrderLifecycleService):
+     admin / system  → bypass
+     customer        → order.customerId === actorId
+     restaurant      → RestaurantSnapshotRepository.findByRestaurantIdAndOwnerId must find row
+     shipper         → no ownership check at T-09 (self-assign is intentional)
+   5b. Shipper continuity (T-10/T-11, inline check):
+     order.shipperId must equal actorId           → 403 if not
+   5c. T-01 precondition (actorRole='restaurant' only):
+     order.paymentMethod must be 'cod'            → 422 for VNPay orders
+6. Note requirement: rule.requireNote && !note    → 400 BadRequestException
+7. DB transaction (atomic):
+     UPDATE orders SET status=toStatus, version=version+1, updatedAt=NOW()
+       [T-09 only: also SET shipperId=actorId]
+     WHERE id=orderId AND version=order.version   ← optimistic locking
+     → 0 rows updated                             → 409 ConflictException
+     INSERT order_status_logs (fromStatus, toStatus, triggeredBy, triggeredByRole, note)
+8. Publish domain events AFTER the transaction commits (failures → ERROR log, never re-thrown):
+     Always:              OrderStatusChangedEvent
+     T-08 (ready):        OrderReadyForPickupEvent (loads restaurant snapshot for address)
+     T-05/T-07 + VNPay:   OrderCancelledAfterPaymentEvent
+9. Return updated Order
+```
+
+**Transition Permission Table:**
+
+| Transition                      | ID   | Allowed Roles                       | requireNote | Side Effect                        |
+| ------------------------------- | ---- | ----------------------------------- | ----------- | ---------------------------------- |
+| `pending → confirmed`           | T-01 | restaurant, admin                   | —           | COD only; VNPay → 422              |
+| `pending → paid`                | T-02 | system                              | —           | Via PaymentConfirmedEvent only      |
+| `pending → cancelled`           | T-03 | customer, restaurant, admin, system | ✅          | —                                  |
+| `paid → confirmed`              | T-04 | restaurant, admin                   | —           | —                                  |
+| `paid → cancelled`              | T-05 | customer, restaurant, admin, system | ✅          | Refund event if VNPay              |
+| `confirmed → preparing`         | T-06 | restaurant, admin                   | —           | —                                  |
+| `confirmed → cancelled`         | T-07 | restaurant, admin                   | ✅          | Refund event if VNPay              |
+| `preparing → ready_for_pickup`  | T-08 | restaurant, admin                   | —           | OrderReadyForPickupEvent           |
+| `ready_for_pickup → picked_up`  | T-09 | shipper, admin                      | —           | Sets orders.shipperId = actorId    |
+| `picked_up → delivering`        | T-10 | shipper (assigned only), admin      | —           | —                                  |
+| `delivering → delivered`        | T-11 | shipper (assigned only), admin      | —           | —                                  |
+| `delivered → refunded`          | T-12 | admin                               | ✅          | —                                  |
+
+> **Shipper continuity rule (T-10/T-11):** T-09 is open self-assignment — any authenticated shipper may claim a `ready_for_pickup` order. Once claimed, `order.shipperId` is set. T-10 and T-11 then require `order.shipperId === actorId`. Admin always bypasses this check.
+
+**`OrderLifecycleService` — Ownership Verification Only:**
+
+```
+assertOwnership(order, actorId, actorRole):
+  admin, system  → pass (bypass all checks)
+  customer       → order.customerId === actorId  (403 if not)
+  restaurant     → RestaurantSnapshotRepository.findByRestaurantIdAndOwnerId(
+                     order.restaurantId, actorId) must find a row  (403 if not)
+  shipper        → no check at T-09 (self-assign is intentional);
+                   T-10/T-11 check is handled inline in TransitionOrderHandler (step 5b)
+```
+
+Note: `OrderLifecycleService` does **not** contain transition logic — that lives entirely in `TransitionOrderHandler`.
 
 **State Machine:**
 
@@ -1164,73 +1295,112 @@ Timeout: expiresAt exceeded → OrderTimeoutTask (Phase 5) → CANCELLED
          │
          ▼
       PENDING ──────────────────────────────────────────────────► CANCELLED
-         │                                                         ▲ (Customer or Restaurant)
-         │                                                         │
-         ├── COD: Restaurant confirms ──────────────────────────► CONFIRMED
-         │                                                         │
-         └── VNPay: PaymentConfirmedEvent (system) ─────────────► PAID
-                                                                   │
-                                                                   │ Restaurant confirms
-                                                                   ▼
-                                                               CONFIRMED ──────────────► CANCELLED
-                                                                   │                    ▲ (Restaurant only)
-                                                                   │ Restaurant starts cooking
-                                                                   ▼
-                                                               PREPARING
-                                                                   │
-                                                                   │ Restaurant marks done
-                                                                   ▼
-                                                          READY_FOR_PICKUP
-                                                                   │
-                                                                   │ Shipper picks up
-                                                                   ▼
-                                                               PICKED_UP
-                                                                   │
-                                                                   │ Shipper starts delivery
-                                                                   ▼
-                                                              DELIVERING
-                                                                   │
-                                                                   │ Shipper marks delivered
-                                                                   ▼
-                                                             DELIVERED ──────────────────► REFUNDED
-                                                                                           (Admin only)
+         │                                              (T-03: customer/restaurant/admin/system)
+         │
+         ├── COD: Restaurant confirms (T-01) ──────────────────────────────────► CONFIRMED
+         │                                                                            │
+         └── VNPay: PaymentConfirmedEvent (T-02, system) ────► PAID                  │
+                                                                 │ T-04: Restaurant   │
+                                                                 │       confirms     │
+                                                    T-05: cancel ▼                   │
+                                                       CANCELLED  ──────────────► CONFIRMED
+                                                                                      │
+                                                      T-07: restaurant cancels ──► CANCELLED
+                                                                                      │
+                                                                         T-06: Restaurant starts cooking
+                                                                                      │
+                                                                                      ▼
+                                                                                 PREPARING
+                                                                                      │
+                                                                  T-08: Restaurant marks ready (→ OrderReadyForPickupEvent)
+                                                                                      │
+                                                                                      ▼
+                                                                            READY_FOR_PICKUP
+                                                                                      │
+                                                                  T-09: Shipper self-assigns (→ shipperId set)
+                                                                                      │
+                                                                                      ▼
+                                                                                 PICKED_UP
+                                                                                      │
+                                                                         T-10: Shipper starts delivery
+                                                                                      │
+                                                                                      ▼
+                                                                                DELIVERING
+                                                                                      │
+                                                                         T-11: Shipper confirms handoff
+                                                                                      │
+                                                                                      ▼
+                                                                                DELIVERED ──(T-12)──► REFUNDED
+                                                                                              (admin only)
 ```
 
-**Transition Permission Table:**
+**Event Handlers:**
 
-| Transition                     | Triggered By             | Notes                                                                                                                                      |
-| ------------------------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `PENDING → PAID`               | System (Payment Context) | VNPay payment confirmed via `PaymentConfirmedEvent`                                                                                        |
-| `PENDING → CONFIRMED`          | Restaurant               | COD orders only — direct restaurant confirmation                                                                                           |
-| `PENDING → CANCELLED`          | Customer, Restaurant     | Before payment (VNPay) or before restaurant confirms (COD)                                                                                 |
-| `PAID → CONFIRMED`             | Restaurant               | VNPay orders — restaurant confirms after payment                                                                                           |
-| `PAID → CANCELLED`             | Customer, Restaurant     | After VNPay payment but before restaurant confirms — publishes `OrderCancelledAfterPaymentEvent` to trigger refund ← [FIXED][from WARNING] |
-| `CONFIRMED → PREPARING`        | Restaurant               | Cooking started                                                                                                                            |
-| `CONFIRMED → CANCELLED`        | Restaurant               | Cannot fulfill                                                                                                                             |
-| `PREPARING → READY_FOR_PICKUP` | Restaurant               | Ready for shipper                                                                                                                          |
-| `READY_FOR_PICKUP → PICKED_UP` | Shipper                  | Shipper collected order                                                                                                                    |
-| `PICKED_UP → DELIVERING`       | Shipper                  | En route to customer                                                                                                                       |
-| `DELIVERING → DELIVERED`       | Shipper                  | Confirmed delivery                                                                                                                         |
-| `DELIVERED → REFUNDED`         | Admin                    | Post-delivery refund                                                                                                                       |
+- **`PaymentConfirmedEventHandler`** — dispatches `TransitionOrderCommand(orderId, 'paid', null, 'system', 'PaymentConfirmed')` (T-02). Guards: order must exist, `paymentMethod = 'vnpay'`, `|paidAmount − totalAmount| ≤ 0.01` (ε-comparison). If order already cancelled (timeout fired first), idempotency guard returns silently.
+- **`PaymentFailedEventHandler`** — dispatches `TransitionOrderCommand(orderId, 'cancelled', null, 'system', reason)` (T-03). Logs and discards if order no longer exists or transition is rejected.
 
-**REST Endpoints:**
+**`OrderTimeoutTask` (`@Cron(EVERY_MINUTE)`):**
 
 ```
-PATCH  /orders/:id/status    → body: { toStatus: 'CONFIRMED', note?: string }
-GET    /orders/:id/timeline  → get OrderStatusLog history
+1. Query: WHERE status IN ('pending', 'paid') AND expires_at < NOW()
+2. For each expired order:
+     dispatch TransitionOrderCommand(id, 'cancelled', null, 'system',
+       'Order expired — no restaurant confirmation within timeout')
+     → pending orders → T-03 (no refund event)
+     → paid orders    → T-05 (triggers OrderCancelledAfterPaymentEvent if VNPay)
+3. Per-order failures logged at ERROR; batch continues
+Multi-pod safety: second instance finds order already 'cancelled' → idempotency no-op
 ```
 
-**Events Published on Each Transition:**
+**HTTP Response Codes:**
 
-- Every transition → `OrderStatusChangedEvent` → Notification Context reacts
-- `READY_FOR_PICKUP` → `OrderReadyForPickupEvent` → Delivery Context reacts
+| Code | Scenario                                                                |
+| ---- | ----------------------------------------------------------------------- |
+| 200  | Transition succeeded (or idempotent no-op — already in target state)   |
+| 400  | Missing required note for cancel/refund                                 |
+| 401  | Not authenticated                                                       |
+| 403  | Role not in allowedRoles, or ownership check failed                     |
+| 404  | Order does not exist                                                    |
+| 409  | Concurrent modification (optimistic locking — version mismatch)        |
+| 422  | Transition key not in TRANSITIONS map, or T-01 VNPay precondition fails |
 
-> � **[FIXED][from MISSING]** Restaurant accept timeout implemented via **both** mechanisms:
->
-> - `orders.expiresAt` set at order creation to `NOW() + RESTAURANT_ACCEPT_TIMEOUT_SECONDS` (see Phase 1 schema)
-> - `OrderTimeoutTask` (`@Cron`) in `OrderLifecycleModule` periodically queries `WHERE status IN ('PENDING','PAID') AND expiresAt < NOW()` and transitions matching orders to `CANCELLED` with `triggeredBy = 'system'`, publishing `OrderStatusChangedEvent` for each
+> **Initial status log entry:** `PlaceOrderHandler` (Phase 4, Step 10) inserts the first `order_status_logs` row (`fromStatus=null → toStatus='pending'`) in the same DB transaction as the order itself. A full happy-path COD lifecycle therefore produces **7 audit entries**: `null→pending`, `pending→confirmed`, `confirmed→preparing`, `preparing→ready_for_pickup`, `ready_for_pickup→picked_up`, `picked_up→delivering`, `delivering→delivered`.
 
-**Deliverable:** Full state machine works. History is logged. Events are published.
+> **Optimistic locking:** The DB update is `WHERE id=$orderId AND version=$currentVersion`. If 0 rows are updated (another request won the race), a `409 ConflictException` is thrown. Most relevant for T-09 (two shippers simultaneously claiming the same `ready_for_pickup` order).
+
+**`OrderLifecycleModule` providers:**
+
+```
+TransitionOrderHandler          ← core state machine (CommandHandler)
+PaymentConfirmedEventHandler    ← T-02 (pending → paid)
+PaymentFailedEventHandler       ← T-03 (payment failure path)
+OrderTimeoutTask                ← @Cron auto-cancel expired orders
+OrderLifecycleService           ← ownership verification only
+OrderRepository                 ← findById, findExpiredPendingOrPaid, findWithItems, findTimeline
+RestaurantSnapshotRepository    ← declared directly (D3-B — avoids circular import with AclModule)
+```
+
+**Deliverable:** Full state machine works. All 12 transitions implemented. History logged atomically. Events published post-commit. Optimistic locking guards concurrent races. Timeout cron auto-cancels stale orders.
+
+---
+
+### Implementation Notes — Phase 5
+
+1. **No generic `PATCH /orders/:id/status` endpoint.** Each semantic action has its own URL (`/confirm`, `/start-preparing`, `/ready`, `/pickup`, `/en-route`, `/deliver`, `/cancel`, and `POST /refund`). This improves API discoverability, allows per-endpoint Swagger documentation, and makes authorization intent explicit in the URL.
+
+2. **`TransitionOrderHandler` is the single state machine.** `OrderLifecycleService` only handles ownership verification — it contains no transition logic. This keeps the DB transaction (status update + log entry) inside a single handler with an explicit, readable step sequence.
+
+3. **Events are published AFTER the DB transaction commits.** If event publishing fails after a successful commit, the failure is logged at ERROR level but never re-thrown. The DB state is authoritative. Downstream misses are observable via monitoring.
+
+4. **`shipperId` is set atomically inside the T-09 DB transaction.** The `version` check guards against two shippers simultaneously claiming the same order — only one `UPDATE` wins; the second gets a 409.
+
+5. **`OrderTimeoutTask` dispatches `TransitionOrderCommand` for each expired order.** Expired `paid` orders (VNPay, restaurant never confirmed) go through T-05 and automatically emit `OrderCancelledAfterPaymentEvent`, triggering a refund — no special cron logic needed for the VNPay case.
+
+6. **`PaymentConfirmedEventHandler` uses ε=0.01 comparison** for `paidAmount` vs `totalAmount` to avoid IEEE-754 floating-point equality failures. Amount mismatch is logged as WARN and the event is silently discarded.
+
+7. **T-09 self-assign is intentionally open.** Any authenticated shipper can claim a `ready_for_pickup` order. Ownership only kicks in for T-10 and T-11 (assigned shipper must match `order.shipperId`).
+
+
 
 ---
 
@@ -1255,9 +1425,12 @@ GET    /orders/:id/timeline  → get OrderStatusLog history
 ```
 OrderPlacedEvent:
   orderId, customerId, restaurantId, restaurantName,
-  totalAmount, paymentMethod (cod | vnpay),
+  totalAmount, shippingFee,
+  paymentMethod (cod | vnpay),
   items: [{ menuItemId, name, quantity, unitPrice }],
-  deliveryAddress: { ... }
+  deliveryAddress: { ... },
+  distanceKm?,              ← undefined if zone lookup skipped
+  estimatedDeliveryMinutes? ← undefined if zone lookup skipped
 
 OrderStatusChangedEvent:
   orderId, customerId, restaurantId,
@@ -1287,7 +1460,7 @@ OrderCancelledAfterPaymentEvent:   ← OUTGOING (published by Ordering)   ← [F
   paymentMethod,         ← 'vnpay'
   paidAmount,            ← amount to refund
   cancelledAt,
-  cancelledByRole        ← 'customer' | 'restaurant'
+  cancelledByRole        ← 'customer' | 'restaurant' | 'admin' | 'system'
 ```
 
 **Deliverable:** Events are published and received by stub handlers. Event bus wiring confirmed.
@@ -1356,7 +1529,25 @@ src/module/ordering/
 │       └── checkout.dto.ts               ← CheckoutDto, CheckoutResponseDto
 │
 ├── order-lifecycle/
-│   └── order-lifecycle.module.ts         ← Phase 5 placeholder (controller/service/dto not yet created)
+│   ├── order-lifecycle.module.ts
+│   ├── commands/
+│   │   ├── transition-order.command.ts        ← toStatus, actorId, actorRole, note
+│   │   └── transition-order.handler.ts        ← core state machine (9-step flow)
+│   ├── constants/
+│   │   └── transitions.ts                     ← TRANSITIONS map (D6-A) + TransitionRule type
+│   ├── controllers/
+│   │   └── order-lifecycle.controller.ts      ← 10 endpoints; resolveRole() helper
+│   ├── dto/
+│   │   └── cancel-order.dto.ts                ← CancelOrderDto, RefundOrderDto
+│   ├── events/
+│   │   ├── payment-confirmed.handler.ts       ← T-02 (pending → paid)
+│   │   └── payment-failed.handler.ts          ← T-03 (pending → cancelled, payment failure)
+│   ├── repositories/
+│   │   └── order.repository.ts                ← findById, findExpiredPendingOrPaid, findWithItems, findTimeline
+│   ├── services/
+│   │   └── order-lifecycle.service.ts         ← ownership verification only
+│   └── tasks/
+│       └── order-timeout.task.ts              ← @Cron(EVERY_MINUTE) auto-cancel expired orders
 │
 ├── order-history/
 │   └── order-history.module.ts           ← Phase 7 placeholder (controller/service/repo/dto not yet created)
@@ -1576,7 +1767,7 @@ For paymentMethod = 'vnpay':
          │
          │  [Restaurant reviews and confirms order]
          │
-         ▼  Restaurant calls PATCH /orders/:id/status { toStatus: 'CONFIRMED' }
+         ▼  Restaurant calls PATCH /orders/:id/confirm
     CONFIRMED ── Ordering proceeds normally (PREPARING → ... → DELIVERED)
 
 For paymentMethod = 'cod':
@@ -1589,7 +1780,7 @@ For paymentMethod = 'cod':
          │
          │  [Restaurant reviews and confirms order]
          │
-         ▼  Restaurant calls PATCH /orders/:id/status { toStatus: 'CONFIRMED' }
+         ▼  Restaurant calls PATCH /orders/:id/confirm
     CONFIRMED ── Ordering proceeds normally (PREPARING → ... → DELIVERED)
 
 VNPay Payment Failure / Timeout:
@@ -1610,9 +1801,9 @@ VNPay Payment Failure / Timeout:
 
 ## 9. Pricing Model **[ADDED]**
 
-### 9.1 Current Implementation
+### 9.1 Current Implementation (Phase 4 — Fully Implemented)
 
-The current pricing model covers **item costs only**. Shipping fees are architecturally designed for (via delivery zone `baseFee` + `perKmRate`) but **not yet applied to `orders.totalAmount`**.
+The pricing model covers **item costs AND shipping fee**. Shipping fee is computed from delivery zones at checkout time and included in `orders.totalAmount`.
 
 **Per-line item calculation:**
 
@@ -1624,18 +1815,20 @@ subtotal       = (unitPrice + modifiersPrice) × quantity
 **Order total:**
 
 ```
-totalAmount = SUM(subtotal) for all order_items
+shippingFee = zone.baseFee + (zone.perKmRate × distanceKm)
+totalAmount = SUM(subtotal for all order_items) + shippingFee
 ```
 
-> **No shipping fee in `totalAmount`.** The `deliveryZones` table has `baseFee` and `perKmRate` columns, and `ZonesService.estimateDelivery()` computes delivery fee + ETA for display purposes. However, **checkout does not add any delivery fee to `totalAmount`**. This is an intentional phase decision — shipping fee collection will be added in a future phase.
+`orders.shippingFee` is stored separately so clients can display an itemised receipt. `orders.estimatedDeliveryMinutes` is stored alongside it.
 
 **Price authority at checkout:**
 
 - `unitPrice` is sourced from `ordering_menu_item_snapshots.price` (ACL snapshot), NOT from the cart's add-time price
 - Cart add-time prices are informational only — overwritten by the authoritative snapshot price at checkout
 - This prevents stale pricing if the restaurant updates menu prices between add-to-cart and checkout
+- `shippingFee` is computed live by `ZonesService.estimateDelivery()` during `PlaceOrderHandler` (not stored in the cart)
 
-### 9.2 Delivery Estimate (Available via API, Not in Checkout)
+### 9.2 Delivery Estimate (Computed at Checkout)
 
 `ZonesService.estimateDelivery()` computes:
 
@@ -1648,16 +1841,6 @@ etaMinutes     = (distanceKm / zone.avgSpeedKmh) × 60
 ```
 
 Endpoint: `GET /restaurants/:restaurantId/delivery-zones/estimate?latitude=...&longitude=...`
-
-### 9.3 Future: Shipping Fee in Checkout
-
-When shipping fee is added to checkout, the `PlaceOrderCommand` will need to carry the selected zone or customer coordinates, and `PlaceOrderHandler` will compute the delivery fee from `DeliveryZoneSnapshotRepository` data. `totalAmount` will then be:
-
-```
-totalAmount = SUM(item subtotals) + deliveryFee
-```
-
-A new `deliveryFee` column will be needed on `orders` for receipt display.
 
 ---
 
@@ -1905,19 +2088,19 @@ App boots    Tables in DB    Cart CRUD        Snapshots
 + events     + modifiers     modifiers        tombstone
 
 
-PHASE 4      PHASE 5 🔲     PHASE 6 🔲     PHASE 7 🔲
+PHASE 4 ✅     PHASE 5 ✅     PHASE 6 🔲     PHASE 7 🔲
 ─────────      ─────────      ─────────      ─────────
 Order          Lifecycle      Downstream     Order
 Placement      State          Events         History
                Machine        Stubs          Queries
 
-PARTIAL       PENDING        PENDING        PENDING
+COMPLETE      COMPLETE       PENDING        PENDING
    │               │               │               │
    ▼               ▼               ▼               ▼
-13-step        Transitions    Events          Paginated
-checkout       per actor      reach other     history for
-13 fixes       role D6-A      context stubs   all actors
-all applied
+13-step        10 endpoints   Events          Paginated
+checkout       12 transitions reach other     history for
+13 fixes       optimistic     context stubs   all actors
+all applied    locking D6-A
 ```
 
 ### 12.2 Dependencies Between Phases
@@ -1950,7 +2133,7 @@ Phases 0–4 are complete. These checklist items are preserved for reference and
 - [x] **D3** — ✅ B (Projections): Validation via `MenuItemProjector`, `RestaurantSnapshotProjector`, `DeliveryZoneSnapshotProjector`; no direct service calls
 - [x] **D4** — ✅ B (DB table): Snapshots in `ordering_menu_item_snapshots`, `ordering_restaurant_snapshots`, `ordering_delivery_zone_snapshots` tables
 - [x] **D5** — ✅ A + B (both): `X-Idempotency-Key` header (Redis, TTL from `app_settings`) + `UNIQUE(cartId)` on `orders` table
-- [x] **D6** — ✅ A (Transition table): Hand-crafted `ALLOWED_TRANSITIONS` map in `OrderLifecycleService`
+- [x] **D6** — ✅ A (Transition table): Hand-crafted `TRANSITIONS` map (`TransitionRule` type) in `constants/transitions.ts`, consumed by `TransitionOrderHandler`
 
 ### 13.2 Restaurant Catalog Blockers Status **[UPDATED]**
 
