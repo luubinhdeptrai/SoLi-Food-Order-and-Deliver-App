@@ -321,7 +321,9 @@ Both fire for the same T-08 transition. The Notification context should respond 
 
 ---
 
-## 4. Design Options: In-Process EventBus Only
+## 4. Design Options
+
+### 4.1 Option A — In-Process EventBus Only
 
 Keep all event handling inside the NestJS monolith using `@EventsHandler`. Downstream context modules live in `src/module/payment/`, `src/module/delivery/`, `src/module/notification/`, each with their own `@EventsHandler` classes consuming events from `src/shared/events/`.
 
@@ -364,6 +366,72 @@ Keep all event handling inside the NestJS monolith using `@EventsHandler`. Downs
 - If downstream handler throws and is not caught, it propagates back to the EventBus call site (mitigated by try/catch in all handlers)
 - All consumers run in the same transaction/request cycle unless they spawn their own async work
 - Migrating to a broker later requires a refactor of all handler registrations
+
+---
+
+### 4.2 Option B — External Message Broker (Kafka / RabbitMQ)
+
+Publish events to an external broker topic/queue after the DB transaction commits. Downstream contexts run in separate processes (or separate queue consumers) and pull from the broker.
+
+```
+  Ordering BC                                         Payment Process
+  ─────────       ┌──────────────────┐               ─────────────────
+  Transition  ───►│  Message Broker  │──────────────►OrderPlacedConsumer
+  OrderHandler    │  (Kafka/RabbitMQ)│               DeliveryProcess
+  (after commit)  │                  │──────────────►OrderReadyConsumer
+                  └──────────────────┘               NotificationProcess
+                                                     ──────────────────
+                                                     ►OrderStatusConsumer
+```
+
+**Pros:**
+- True async decoupling — Ordering never waits for downstream handlers
+- Natural backpressure and replay on broker failure
+- Ready for microservice split with no Ordering code change
+- Consumer groups: multiple Notification instances consume same event without duplication
+
+**Cons:**
+- Requires Docker services: Kafka (+ Zookeeper) or RabbitMQ — significant local dev complexity
+- Serialization: TypeScript class constructors don't survive JSON round-trips; need DTO layer
+- At-least-once delivery: consumers must be idempotent (orderId deduplication table)
+- Observability: distributed tracing required across process boundaries
+- **Overkill for current team size and deployment target** (single-server VPS implied by `docker-compose.yml`)
+
+---
+
+### 4.3 Option C — Hybrid (Recommended for Phase 6)
+
+Use the **in-process EventBus now**, but design every stub handler as if it will be replaced by an external consumer later:
+
+1. Stub handlers receive the event and immediately call a `{Context}IntegrationService` method
+2. The `IntegrationService` logs + (in Phase 6) returns early
+3. In a future phase, the `IntegrationService` publishes to a broker instead — **without touching the handler**
+
+```
+  EventBus publishes OrderPlacedEvent
+         │
+         ▼
+  PaymentOrderPlacedHandler     ← @EventsHandler (in-process, Phase 6)
+         │
+         ▼
+  PaymentIntegrationService.handleOrderPlaced(event)
+         │
+         ├─ Phase 6:  logger.log(...) + return   (stub)
+         └─ Phase N:  kafkaProducer.send(...)     (real)
+```
+
+**The key insight:** the `@EventsHandler` class never changes — only the service it calls changes. This is the **adapter pattern**: the handler is the port, the service is the adapter.
+
+**Pros:**
+- No broker infrastructure now (zero dev friction)
+- Integration boundary is real and tested today
+- Swap to broker with a single-file change per context
+- TypeScript safety maintained throughout
+- Consistent with the `PaymentConfirmedEventHandler` pattern already in the codebase
+
+**Cons:**
+- Still in-process — a crash in one handler can affect event ordering if not properly guarded
+- Requires discipline to keep handlers thin and delegate to services
 
 ---
 
