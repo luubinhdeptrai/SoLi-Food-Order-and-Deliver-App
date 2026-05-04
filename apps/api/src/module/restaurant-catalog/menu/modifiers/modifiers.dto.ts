@@ -1,4 +1,9 @@
-import { ApiProperty, ApiPropertyOptional, PartialType, OmitType } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  PartialType,
+  OmitType,
+} from '@nestjs/swagger';
 import {
   IsBoolean,
   IsInt,
@@ -14,13 +19,17 @@ import {
 // ---------------------------------------------------------------------------
 
 export class CreateModifierGroupDto {
-  @ApiProperty({ description: 'Group label shown to customer', example: 'Size' })
+  @ApiProperty({
+    description: 'Group label shown to customer',
+    example: 'Size',
+  })
   @IsString()
   @MinLength(1)
   name!: string;
 
   @ApiPropertyOptional({
-    description: 'Minimum number of options customer must select (0 = optional)',
+    description:
+      'Minimum number of options customer must select (0 = optional)',
     example: 1,
     default: 0,
   })
@@ -30,7 +39,8 @@ export class CreateModifierGroupDto {
   minSelections?: number;
 
   @ApiPropertyOptional({
-    description: 'Maximum number of options customer can select (0 = no upper limit)',
+    description:
+      'Maximum number of options customer can select (0 = no upper limit)',
     example: 1,
     default: 1,
   })
@@ -46,7 +56,9 @@ export class CreateModifierGroupDto {
   displayOrder?: number;
 }
 
-export class UpdateModifierGroupDto extends PartialType(CreateModifierGroupDto) {}
+export class UpdateModifierGroupDto extends PartialType(
+  CreateModifierGroupDto,
+) {}
 
 export class ModifierGroupResponseDto {
   @ApiProperty({ format: 'uuid' })
@@ -82,7 +94,10 @@ export class ModifierGroupResponseDto {
 // ---------------------------------------------------------------------------
 
 export class CreateModifierOptionDto {
-  @ApiProperty({ description: 'Option label shown to customer', example: 'Large' })
+  @ApiProperty({
+    description: 'Option label shown to customer',
+    example: 'Large',
+  })
   @IsString()
   @MinLength(1)
   name!: string;
@@ -122,7 +137,9 @@ export class CreateModifierOptionDto {
   isAvailable?: boolean;
 }
 
-export class UpdateModifierOptionDto extends PartialType(CreateModifierOptionDto) {}
+export class UpdateModifierOptionDto extends PartialType(
+  CreateModifierOptionDto,
+) {}
 
 export class ModifierOptionResponseDto {
   @ApiProperty({ format: 'uuid' })

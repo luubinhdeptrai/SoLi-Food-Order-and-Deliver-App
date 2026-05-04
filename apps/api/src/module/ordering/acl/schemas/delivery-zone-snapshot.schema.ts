@@ -67,7 +67,9 @@ export const orderingDeliveryZoneSnapshots = pgTable(
   },
   (table) => [
     // Fast lookup: all active non-deleted zones for a restaurant (BR-3 at checkout).
-    index('ordering_delivery_zone_snapshots_restaurant_idx').on(table.restaurantId),
+    index('ordering_delivery_zone_snapshots_restaurant_idx').on(
+      table.restaurantId,
+    ),
   ],
 );
 

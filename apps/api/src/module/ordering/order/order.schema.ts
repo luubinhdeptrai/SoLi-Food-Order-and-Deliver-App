@@ -174,7 +174,10 @@ export const orders = pgTable(
     shipperId: uuid('shipper_id'),
 
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdateFn(() => new Date()),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdateFn(() => new Date()),
   },
   (t) => [
     // D5-B idempotency — one cart can produce exactly one order
@@ -202,7 +205,7 @@ export const orderItems = pgTable('order_items', {
 
   // Cross-context reference — snapshot, NOT a FK to restaurant-catalog
   menuItemId: uuid('menu_item_id').notNull(),
-  itemName: text('item_name').notNull(),         // snapshot
+  itemName: text('item_name').notNull(), // snapshot
   unitPrice: moneyColumn('unit_price').notNull(), // base price snapshot (modifiers excluded)
   /**
    * Sum of all selected modifier option prices, re-resolved from ACL snapshot at checkout.
@@ -217,10 +220,7 @@ export const orderItems = pgTable('order_items', {
    * Re-resolved from the ACL snapshot — NOT copied from the cart's add-time data.
    * This is the authoritative record of what the customer actually ordered.
    */
-  modifiers: jsonb('modifiers')
-    .$type<OrderModifier[]>()
-    .notNull()
-    .default([]),
+  modifiers: jsonb('modifiers').$type<OrderModifier[]>().notNull().default([]),
 });
 
 export type OrderItem = typeof orderItems.$inferSelect;
@@ -244,9 +244,9 @@ export const orderStatusLogs = pgTable('order_status_logs', {
     .notNull()
     .references(() => orders.id, { onDelete: 'cascade' }),
 
-  fromStatus: orderStatusEnum('from_status'),          // null = initial creation
+  fromStatus: orderStatusEnum('from_status'), // null = initial creation
   toStatus: orderStatusEnum('to_status').notNull(),
-  triggeredBy: uuid('triggered_by'),                   // null = system
+  triggeredBy: uuid('triggered_by'), // null = system
   triggeredByRole: triggeredByRoleEnum('triggered_by_role').notNull(),
   note: text('note'),
 

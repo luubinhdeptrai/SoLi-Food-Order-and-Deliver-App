@@ -104,4 +104,3 @@ export class ZonesRepository {
     await this.db.delete(deliveryZones).where(eq(deliveryZones.id, id));
   }
 }
-

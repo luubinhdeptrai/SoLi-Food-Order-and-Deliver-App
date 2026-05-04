@@ -103,7 +103,8 @@ export class AddItemToCartDto {
   unitPrice!: number;
 
   @ApiProperty({
-    description: 'Quantity to add (≥ 1).  If item already in cart, quantities merge.',
+    description:
+      'Quantity to add (≥ 1).  If item already in cart, quantities merge.',
     example: 2,
     minimum: 1,
     maximum: 99,
@@ -196,12 +197,16 @@ export class SelectedModifierResponseDto {
 export class CartItemResponseDto {
   @ApiProperty({
     format: 'uuid',
-    description: 'Stable per-line-item ID.  Use this as the :cartItemId parameter in PATCH/DELETE endpoints.',
+    description:
+      'Stable per-line-item ID.  Use this as the :cartItemId parameter in PATCH/DELETE endpoints.',
     example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
   })
   cartItemId!: string;
 
-  @ApiProperty({ format: 'uuid', example: '22222222-2222-2222-2222-222222222222' })
+  @ApiProperty({
+    format: 'uuid',
+    example: '22222222-2222-2222-2222-222222222222',
+  })
   menuItemId!: string;
 
   @ApiProperty({ example: 'Margherita Pizza' })
@@ -213,7 +218,10 @@ export class CartItemResponseDto {
   @ApiProperty({ example: 2 })
   quantity!: number;
 
-  @ApiProperty({ description: 'subtotal = (unitPrice + modifiers total) × quantity', example: 28.0 })
+  @ApiProperty({
+    description: 'subtotal = (unitPrice + modifiers total) × quantity',
+    example: 28.0,
+  })
   subtotal!: number;
 
   @ApiProperty({ type: [SelectedModifierResponseDto] })
@@ -221,7 +229,10 @@ export class CartItemResponseDto {
 }
 
 export class CartResponseDto {
-  @ApiProperty({ format: 'uuid', description: 'Stable cart ID (D5-B idempotency key for order placement)' })
+  @ApiProperty({
+    format: 'uuid',
+    description: 'Stable cart ID (D5-B idempotency key for order placement)',
+  })
   cartId!: string;
 
   @ApiProperty({ format: 'uuid' })
@@ -245,5 +256,3 @@ export class CartResponseDto {
   @ApiProperty({ description: 'ISO 8601 UTC last-updated timestamp' })
   updatedAt!: string;
 }
-
-

@@ -12,6 +12,7 @@
 > Sprint C (Unified SERP endpoint) also completed in the same pass.
 
 **What was built:**
+
 - ✅ **Unified SERP endpoint** `GET /api/search` replacing the old `GET /api/restaurants/search`
 - ✅ **Menu item name search** (`item` param — accent-insensitive via `unaccent`)
 - ✅ **General search** (`q` param — searches restaurant names + item names in one call)
@@ -24,6 +25,7 @@
 - ✅ **Zero TypeScript/lint errors** across all search module files
 
 **Files changed:**
+
 - `search/search.controller.ts` — fully rewritten (`@Controller('search')`, 11 query params)
 - `search/search.service.ts` — fully rewritten (`search()` unified method)
 - `search/search.repository.ts` — fully rewritten (`findRestaurants` + `findItems` + helpers)
@@ -44,22 +46,22 @@ The current implementation is a **restaurant-discovery tool**, not a food search
 
 ## 2. Current Capabilities (After Refactor)
 
-| Feature | Status | How |
-|---------|--------|-----|
-| Search by restaurant name | ✅ Works | `unaccent(name) ILIKE unaccent('%q%')` |
-| Search by menu item name | ✅ **NEW** | `unaccent(mi.name) ILIKE unaccent('%item%')` via JOIN |
-| General search `q` (both sections) | ✅ **NEW** | Splits between restaurant + item sub-queries |
-| Filter by menu category name | ✅ Works | `EXISTS` subquery against `menu_categories.name` |
-| Filter by cuisine type | ✅ **NEW** | `unaccent(cuisineType) ILIKE unaccent('%type%')` |
-| Filter by tag | ✅ **NEW** | `tag = ANY(menu_items.tags)` (GIN index) |
-| Accent-insensitive matching | ✅ **NEW** | `unaccent()` extension on all text filters |
-| Unified SERP response | ✅ **NEW** | `{ restaurants, items, total }` |
-| Geo radius filter (Haversine) | ✅ Works | Bounding-box pre-filter + Haversine exact check |
-| Sort by distance | ✅ Works | `distanceExpr` in `ORDER BY` when coords present |
-| Pagination with cap | ✅ Works | `DEFAULT=20`, `MAX=100`, enforced in service |
-| Filter by `isApproved + isOpen` | ✅ Works | Hardcoded WHERE conditions |
-| Column projection (no sensitive fields) | ✅ Works | Explicit `select({})` — no ownerId/isApproved |
-| Total count (both sections) | ✅ Works | Parallel `COUNT(*)` queries |
+| Feature                                 | Status     | How                                                   |
+| --------------------------------------- | ---------- | ----------------------------------------------------- |
+| Search by restaurant name               | ✅ Works   | `unaccent(name) ILIKE unaccent('%q%')`                |
+| Search by menu item name                | ✅ **NEW** | `unaccent(mi.name) ILIKE unaccent('%item%')` via JOIN |
+| General search `q` (both sections)      | ✅ **NEW** | Splits between restaurant + item sub-queries          |
+| Filter by menu category name            | ✅ Works   | `EXISTS` subquery against `menu_categories.name`      |
+| Filter by cuisine type                  | ✅ **NEW** | `unaccent(cuisineType) ILIKE unaccent('%type%')`      |
+| Filter by tag                           | ✅ **NEW** | `tag = ANY(menu_items.tags)` (GIN index)              |
+| Accent-insensitive matching             | ✅ **NEW** | `unaccent()` extension on all text filters            |
+| Unified SERP response                   | ✅ **NEW** | `{ restaurants, items, total }`                       |
+| Geo radius filter (Haversine)           | ✅ Works   | Bounding-box pre-filter + Haversine exact check       |
+| Sort by distance                        | ✅ Works   | `distanceExpr` in `ORDER BY` when coords present      |
+| Pagination with cap                     | ✅ Works   | `DEFAULT=20`, `MAX=100`, enforced in service          |
+| Filter by `isApproved + isOpen`         | ✅ Works   | Hardcoded WHERE conditions                            |
+| Column projection (no sensitive fields) | ✅ Works   | Explicit `select({})` — no ownerId/isApproved         |
+| Total count (both sections)             | ✅ Works   | Parallel `COUNT(*)` queries                           |
 
 ---
 
@@ -112,6 +114,7 @@ This is now clearly documented in the Swagger API description.
 The query **never touches `menu_items.name`**. `SearchRepository.search()` only queries the `restaurants` table with an optional `EXISTS` gate on `menu_categories.name`.
 
 **What this means in practice:**
+
 ```
 User searches: "bánh mì"
 System checks:
@@ -170,6 +173,7 @@ PostgreSQL has the `unaccent` extension built-in — it's a one-SQL-function fix
 ### ❌ #5 — No Combined / Unified Search Response
 
 GrabFood returns a unified SERP (search engine results page) containing:
+
 - **Dish cards** — individual menu items that match the query
 - **Restaurant cards** — restaurants whose name matches
 
@@ -197,20 +201,20 @@ when a restaurant has a category literally called "Pizza". For cuisine-type disc
 
 ## 4. Industry Gap Analysis (Updated)
 
-| Feature | GrabFood | ShopeeFood | Uber Eats | **This System** |
-|---------|----------|------------|-----------|------------------|
-| Search by restaurant name | ✅ | ✅ | ✅ | ✅ |
-| Search by menu item name | ✅ | ✅ | ✅ | ✅ **FIXED** |
-| Combined SERP (items + restaurants) | ✅ | ✅ | ✅ | ✅ **FIXED** |
-| Cuisine type filter | ✅ | ✅ | ✅ | ✅ **FIXED** |
-| Accent-insensitive (Vietnamese) | ✅ | ✅ | N/A | ✅ **FIXED** |
-| Tag search (spicy, vegan, etc.) | ✅ | ✅ | ✅ | ✅ **FIXED** |
-| Relevance ranking | ✅ | ✅ | ✅ | ⚠️ Distance only (no popularity) |
-| Fuzzy / typo tolerance | ✅ | ✅ | ✅ | ❌ (future: pg_trgm similarity threshold) |
-| Price range filter | ✅ | ✅ | ✅ | ❌ (future sprint) |
-| Sort by popularity | ✅ | ✅ | ✅ | ❌ (future sprint) |
-| Dietary filter (vegan, halal) | ✅ | ✅ | ✅ | ✅ Via `tag` param |
-| Autocomplete / suggestions | ✅ | ✅ | ✅ | ❌ (future sprint) |
+| Feature                             | GrabFood | ShopeeFood | Uber Eats | **This System**                           |
+| ----------------------------------- | -------- | ---------- | --------- | ----------------------------------------- |
+| Search by restaurant name           | ✅       | ✅         | ✅        | ✅                                        |
+| Search by menu item name            | ✅       | ✅         | ✅        | ✅ **FIXED**                              |
+| Combined SERP (items + restaurants) | ✅       | ✅         | ✅        | ✅ **FIXED**                              |
+| Cuisine type filter                 | ✅       | ✅         | ✅        | ✅ **FIXED**                              |
+| Accent-insensitive (Vietnamese)     | ✅       | ✅         | N/A       | ✅ **FIXED**                              |
+| Tag search (spicy, vegan, etc.)     | ✅       | ✅         | ✅        | ✅ **FIXED**                              |
+| Relevance ranking                   | ✅       | ✅         | ✅        | ⚠️ Distance only (no popularity)          |
+| Fuzzy / typo tolerance              | ✅       | ✅         | ✅        | ❌ (future: pg_trgm similarity threshold) |
+| Price range filter                  | ✅       | ✅         | ✅        | ❌ (future sprint)                        |
+| Sort by popularity                  | ✅       | ✅         | ✅        | ❌ (future sprint)                        |
+| Dietary filter (vegan, halal)       | ✅       | ✅         | ✅        | ✅ Via `tag` param                        |
+| Autocomplete / suggestions          | ✅       | ✅         | ✅        | ❌ (future sprint)                        |
 
 ---
 
@@ -248,6 +252,7 @@ With 500 restaurants and 100 items each, this scans ~50,000 rows per search requ
 — it's always a sequential scan.
 
 **Fix:** Add a `pg_trgm` GIN index on `menu_categories.name` and `menu_items.name`:
+
 ```sql
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
@@ -271,6 +276,7 @@ ILIKE to be fast. Currently absent.
 ## 6. UX Gaps (Updated)
 
 ### ✅ Scenario A — Vietnamese user on mobile (FIXED)
+
 ```
 User types: "com tam"
 Expected:   Cơm Tấm Sườn Nướng at nearby restaurants
@@ -278,6 +284,7 @@ Actual:     ✅ Works — unaccent("com tam") matches unaccent("Cơm Tấm") in 
 ```
 
 ### ✅ Scenario B — Tourist in Saigon (FIXED)
+
 ```
 User types: "pho"
 Expected:   Phở restaurants nearby
@@ -285,6 +292,7 @@ Actual:     ✅ Works — unaccent("pho") matches unaccent("Phở Hà Nội")
 ```
 
 ### ✅ Scenario C — Looking for a specific dish (FIXED)
+
 ```
 User types: "pizza"
 Expected:   Pizza dishes from all nearby restaurants
@@ -293,11 +301,13 @@ Actual:     ✅ Works — items section returns pizza menu items from all matchi
 ```
 
 ### ✅ Scenario D — Dietary requirement (FIXED)
+
 ```
 User types: ?tag=vegetarian
 Expected:   Items tagged "vegetarian" or restaurants with vegan options
 Actual:     ✅ Works — tag = ANY(menu_items.tags) with GIN index
 ```
+
 ```
 User types: "com tam"
 Expected:   Cơm Tấm Sườn Nướng at nearby restaurants
@@ -305,6 +315,7 @@ Actual:     0 results  (accent mismatch + item name never searched)
 ```
 
 ### Scenario B — Tourist in Saigon
+
 ```
 User types: "pho"
 Expected:   Phở restaurants nearby
@@ -312,6 +323,7 @@ Actual:     0 results  (ILIKE 'o' ≠ 'ở')
 ```
 
 ### Scenario C — Looking for a specific dish
+
 ```
 User types: "pizza"
 Expected:   Pizza dishes from all nearby restaurants
@@ -321,6 +333,7 @@ Actual:     Only restaurants literally named "pizza"
 ```
 
 ### Scenario D — Dietary requirement
+
 ```
 User types: "vegan"
 Expected:   Items tagged "vegan" or restaurants with vegan options
@@ -353,6 +366,7 @@ All ILIKE conditions in `findRestaurants()` and `findItems()` wrapped with `unac
 ### ✅ Priority 5 — Trigram Indexes (DONE)
 
 Migration `0007_search_indexes.sql` creates:
+
 - `restaurants_name_trgm_idx`
 - `menu_items_name_trgm_idx`
 - `menu_categories_name_trgm_idx`
@@ -370,12 +384,14 @@ Add a new `item` query param that searches `menu_items.name` and returns restaur
 carry a matching item:
 
 **Controller addition:**
+
 ```ts
 @ApiQuery({ name: 'item', required: false, description: 'Menu item name (e.g. "bánh mì")' })
 @Query('item') item?: string,
 ```
 
 **Service addition:**
+
 ```ts
 async searchRestaurants(
   name?: string,
@@ -385,6 +401,7 @@ async searchRestaurants(
 ```
 
 **Repository addition:**
+
 ```ts
 // Add to SearchFilters interface
 item?: string;
@@ -413,17 +430,19 @@ exposes as the primary search surface.
 Enable the `unaccent` PostgreSQL extension (bundled with Postgres, zero install):
 
 **Migration:**
+
 ```sql
 CREATE EXTENSION IF NOT EXISTS unaccent;
 ```
 
 **Repository — replace ILIKE with unaccent-aware version:**
+
 ```ts
 // Before:
-ilike(restaurants.name, `%${filters.name}%`)
+ilike(restaurants.name, `%${filters.name}%`);
 
 // After:
-sql`unaccent(${restaurants.name}) ILIKE unaccent(${'%' + filters.name + '%'})`
+sql`unaccent(${restaurants.name}) ILIKE unaccent(${'%' + filters.name + '%'})`;
 ```
 
 Apply the same pattern to `menu_items.name`, `menu_categories.name`.
@@ -436,12 +455,14 @@ This makes: `"pho"` match `"Phở"`, `"com"` match `"Cơm"`, `"bun"` match `"Bú
 ### Priority 3 — Expose `cuisineType` Filter ⭐ Trivial effort
 
 **Controller:**
+
 ```ts
 @ApiQuery({ name: 'cuisineType', required: false, example: 'Vietnamese' })
 @Query('cuisineType') cuisineType?: string,
 ```
 
 **Repository:**
+
 ```ts
 if (filters.cuisineType) {
   conditions.push(ilike(restaurants.cuisineType, `%${filters.cuisineType}%`));
@@ -516,17 +537,17 @@ if (filters.lat !== undefined && filters.lon !== undefined) {
 
 ---
 
-### Priority 7  — Unified SERP Endpoint (OK dùng endpoint này đi)
+### Priority 7 — Unified SERP Endpoint (OK dùng endpoint này đi)
 
 Add `GET /search` (no `/restaurants` prefix) that returns a combined response:
 
 ```ts
 interface UnifiedSearchResult {
-  restaurants: RestaurantSearchRow[];   // matched by restaurant name / cuisine
+  restaurants: RestaurantSearchRow[]; // matched by restaurant name / cuisine
   items: {
     item: MenuItem;
     restaurant: RestaurantSummary;
-  }[];                                  // matched by item name / tag
+  }[]; // matched by item name / tag
   total: {
     restaurants: number;
     items: number;
@@ -546,17 +567,18 @@ This matches the UX pattern of GrabFood/ShopeeFood where the SERP shows both
 All 7 priorities from the original analysis have been implemented. The search system
 now covers the core feature set of GrabFood / ShopeeFood for Vietnamese food delivery.
 
-| Gap | Previous Status | Current Status |
-|-----|-----------------|----------------|
-| No menu item name search | 🔴 Critical | ✅ Fixed |
-| No accent-insensitive search | 🔴 Critical for VN | ✅ Fixed |
-| `cuisineType` filter not exposed | 🟡 High | ✅ Fixed |
-| Tag filter not exposed | 🟡 High | ✅ Fixed |
-| No combined SERP | 🟡 High | ✅ Fixed |
-| No trigram indexes | 🟡 Performance | ✅ Fixed |
-| No bounding box pre-filter | 🟢 Perf at scale | ✅ Fixed |
+| Gap                              | Previous Status    | Current Status |
+| -------------------------------- | ------------------ | -------------- |
+| No menu item name search         | 🔴 Critical        | ✅ Fixed       |
+| No accent-insensitive search     | 🔴 Critical for VN | ✅ Fixed       |
+| `cuisineType` filter not exposed | 🟡 High            | ✅ Fixed       |
+| Tag filter not exposed           | 🟡 High            | ✅ Fixed       |
+| No combined SERP                 | 🟡 High            | ✅ Fixed       |
+| No trigram indexes               | 🟡 Performance     | ✅ Fixed       |
+| No bounding box pre-filter       | 🟢 Perf at scale   | ✅ Fixed       |
 
 **Remaining gaps (future sprint):**
+
 - Fuzzy / typo-tolerant search (`pg_trgm` similarity threshold already available)
 - Price range filter (`?minPrice=&maxPrice=`)
 - Sort by popularity (requires an order-count denorm column)
@@ -567,15 +589,15 @@ The system is ready as a **restaurant directory** (find a restaurant by name), b
 accent-insensitive matching. Without them, Vietnamese users searching for actual food will
 consistently get 0 results.
 
-| Gap | Severity | Effort to Fix |
-|-----|----------|---------------|
-| No menu item name search | 🔴 Critical | Medium — 2–3 days |
-| No accent-insensitive search | 🔴 Critical for VN | Low — 1 day |
-| `cuisineType` filter not exposed | 🟡 High | Trivial — 1 hour |
-| Tag filter not exposed | 🟡 High | Low — half day |
-| No combined SERP (items + restaurants) | 🟡 High | Large — 1 week |
-| No trigram indexes | 🟡 Performance | Low — migration only |
-| No bounding box pre-filter | 🟢 Perf at scale | Low — half day |
+| Gap                                    | Severity           | Effort to Fix        |
+| -------------------------------------- | ------------------ | -------------------- |
+| No menu item name search               | 🔴 Critical        | Medium — 2–3 days    |
+| No accent-insensitive search           | 🔴 Critical for VN | Low — 1 day          |
+| `cuisineType` filter not exposed       | 🟡 High            | Trivial — 1 hour     |
+| Tag filter not exposed                 | 🟡 High            | Low — half day       |
+| No combined SERP (items + restaurants) | 🟡 High            | Large — 1 week       |
+| No trigram indexes                     | 🟡 Performance     | Low — migration only |
+| No bounding box pre-filter             | 🟢 Perf at scale   | Low — half day       |
 
 **Minimum viable for launch:** Priorities 1 + 2 + 3 above.
 
@@ -607,10 +629,10 @@ consistently get 0 results.
 10. ♂️ Relevance scoring: distance-first when geo provided; recency otherwise (no ML ranking yet)
 11. ❌ Autocomplete endpoint — future sprint
 
-1. `CREATE EXTENSION unaccent` (migration)
-2. Apply `unaccent()` wrapper to all ILIKE conditions in `search.repository.ts`
-3. Add `item` param — search `menu_items.name`
-4. Add `cuisineType` param — filter `restaurants.cuisineType`
+12. `CREATE EXTENSION unaccent` (migration)
+13. Apply `unaccent()` wrapper to all ILIKE conditions in `search.repository.ts`
+14. Add `item` param — search `menu_items.name`
+15. Add `cuisineType` param — filter `restaurants.cuisineType`
 
 **Deliverable:** A Vietnamese user can search "pho", "com tam", "banh mi" and get real results.
 
@@ -622,7 +644,7 @@ consistently get 0 results.
 
 **Deliverable:** Search works at scale; dietary/tag filtering available.
 
-### Sprint C — Unified SERP 
+### Sprint C — Unified SERP
 
 8. `GET /search` endpoint returning combined restaurant + item results
 9. Relevance scoring (name exact match > substring > category match)

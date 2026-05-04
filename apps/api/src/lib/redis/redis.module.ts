@@ -21,7 +21,9 @@ import { RedisService } from './redis.service.js';
         });
 
         client.on('connect', () => logger.log('Redis connected'));
-        client.on('error', (err: Error) => logger.error('Redis error', err.message));
+        client.on('error', (err: Error) =>
+          logger.error('Redis error', err.message),
+        );
         client.on('close', () => logger.warn('Redis connection closed'));
 
         return client;

@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from 'react-router-dom';
 import {
   UtensilsCrossed,
   LayoutGrid,
@@ -6,7 +6,7 @@ import {
   Utensils,
   CircleHelp,
   LogOut,
-} from "lucide-react";
+} from 'lucide-react';
 
 import {
   Sidebar,
@@ -16,37 +16,37 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar";
+} from '@/components/ui/sidebar';
 
 const mainNavItems = [
   {
-    title: "Dashboard",
-    url: "/dashboard",
+    title: 'Dashboard',
+    url: '/dashboard',
     icon: LayoutGrid,
   },
   {
-    title: "Orders",
-    url: "/orders",
+    title: 'Orders',
+    url: '/orders',
     icon: ClipboardList,
   },
   {
-    title: "Menu",
-    url: "/menu",
+    title: 'Menu',
+    url: '/menu',
     icon: Utensils,
   },
 ];
 
 const footerNavItems = [
   {
-    title: "Help",
-    url: "/help",
+    title: 'Help',
+    url: '/help',
     icon: CircleHelp,
   },
   {
-    title: "Logout",
-    url: "/logout",
+    title: 'Logout',
+    url: '/logout',
     icon: LogOut,
-    className: "text-error",
+    className: 'text-error',
   },
 ];
 
@@ -82,14 +82,14 @@ export function AppSidebar() {
                   isActive={isActive}
                   className={
                     isActive
-                      ? "bg-primary-200 text-primary hover:bg-primary-200 hover:text-primary"
-                      : "text-on-surface-variant"
+                      ? 'bg-primary-200 text-primary hover:bg-primary-200 hover:text-primary'
+                      : 'text-on-surface-variant'
                   }
                 >
                   <Link to={item.url} className="flex items-center gap-3 py-6">
                     <item.icon
                       className={
-                        isActive ? "text-primary" : "text-on-surface-variant"
+                        isActive ? 'text-primary' : 'text-on-surface-variant'
                       }
                     />
                     <span className="font-medium">{item.title}</span>
@@ -111,9 +111,9 @@ export function AppSidebar() {
               >
                 <Link to={item.url} className="flex items-center gap-3">
                   <item.icon
-                    className={item.className || "text-on-surface-variant"}
+                    className={item.className || 'text-on-surface-variant'}
                   />
-                  <span className={item.className || "font-medium"}>
+                  <span className={item.className || 'font-medium'}>
                     {item.title}
                   </span>
                 </Link>

@@ -17,58 +17,58 @@ Phase 5 implements the complete order lifecycle state machine for the SoLi Food 
 
 ### Module Entry
 
-| File | Description |
-|------|-------------|
+| File                        | Description                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------------- |
 | `order-lifecycle.module.ts` | Registers all providers, controllers, event handlers, and imports `CqrsModule` + `DatabaseModule` |
 
 ### Constants
 
-| File | Description |
-|------|-------------|
+| File                       | Description                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------- |
 | `constants/transitions.ts` | Single source of truth — `TRANSITIONS` map and `ALLOWED_TRANSITIONS` set (D6-A) |
 
 ### Commands
 
-| File | Description |
-|------|-------------|
-| `commands/transition-order.command.ts` | `TransitionOrderCommand` — carries orderId, targetStatus, actorId, actorRole, optional note |
+| File                                   | Description                                                                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `commands/transition-order.command.ts` | `TransitionOrderCommand` — carries orderId, targetStatus, actorId, actorRole, optional note                   |
 | `commands/transition-order.handler.ts` | Core state machine — validates transition, checks ownership, optimistic-lock DB transaction, publishes events |
 
 ### Event Handlers
 
-| File | Description |
-|------|-------------|
+| File                                  | Description                                              |
+| ------------------------------------- | -------------------------------------------------------- |
 | `events/payment-confirmed.handler.ts` | T-02: `PaymentConfirmedEvent` → `paid` state (skips COD) |
-| `events/payment-failed.handler.ts` | T-03: `PaymentFailedEvent` → `cancelled` state |
+| `events/payment-failed.handler.ts`    | T-03: `PaymentFailedEvent` → `cancelled` state           |
 
 ### Tasks
 
-| File | Description |
-|------|-------------|
+| File                          | Description                                                              |
+| ----------------------------- | ------------------------------------------------------------------------ |
 | `tasks/order-timeout.task.ts` | `@Cron(EVERY_MINUTE)` — auto-cancels expired `pending` and `paid` orders |
 
 ### Controllers
 
-| File | Description |
-|------|-------------|
+| File                                        | Description                                                  |
+| ------------------------------------------- | ------------------------------------------------------------ |
 | `controllers/order-lifecycle.controller.ts` | HTTP endpoints for all lifecycle transitions (see API below) |
 
 ### DTOs
 
-| File | Description |
-|------|-------------|
+| File                      | Description                                           |
+| ------------------------- | ----------------------------------------------------- |
 | `dto/cancel-order.dto.ts` | `CancelOrderDto` (reason) + `RefundOrderDto` (reason) |
 
 ### Repositories
 
-| File | Description |
-|------|-------------|
+| File                               | Description                                                             |
+| ---------------------------------- | ----------------------------------------------------------------------- |
 | `repositories/order.repository.ts` | `findById`, `findExpiredPendingOrPaid`, `findWithItems`, `findTimeline` |
 
 ### Services
 
-| File | Description |
-|------|-------------|
+| File                                  | Description                                                                   |
+| ------------------------------------- | ----------------------------------------------------------------------------- |
 | `services/order-lifecycle.service.ts` | `assertOwnership` — verifies restaurant/customer ownership before transitions |
 
 ---
@@ -89,18 +89,18 @@ ALTER TABLE ordering_restaurant_snapshots ALTER COLUMN owner_id DROP DEFAULT;
 
 ## Prerequisite Changes Applied
 
-| File | Change |
-|------|--------|
-| `order/order.schema.ts` | Added `version integer NOT NULL DEFAULT 0`, `shipperId uuid`; exported `OrderStatus`, `TriggeredByRole` types |
-| `acl/schemas/restaurant-snapshot.schema.ts` | Added `ownerId: uuid('owner_id').notNull()` |
-| `acl/repositories/restaurant-snapshot.repository.ts` | Persist `ownerId` in upsert; added `findByRestaurantIdAndOwnerId()` |
-| `acl/projections/restaurant-snapshot.projector.ts` | Destructure and pass `ownerId` from `RestaurantUpdatedEvent` |
-| `shared/events/restaurant-updated.event.ts` | Added `ownerId: string` as 6th constructor parameter |
-| `restaurant-catalog/restaurant/restaurant.service.ts` | Pass `restaurant.ownerId` in both `publishRestaurantEvent` and `remove()` calls |
-| `shared/events/order-cancelled-after-payment.event.ts` | Extended `cancelledByRole` to `'customer' \| 'restaurant' \| 'admin' \| 'system'` |
-| `shared/events/payment-failed.event.ts` | Removed incorrect "cart recovery" comment |
-| `app.module.ts` | Added `ScheduleModule.forRoot()` |
-| `drizzle/seeds/seed.ts` | Added `ownerId` to all `ordering_restaurant_snapshots` seed rows |
+| File                                                   | Change                                                                                                        |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `order/order.schema.ts`                                | Added `version integer NOT NULL DEFAULT 0`, `shipperId uuid`; exported `OrderStatus`, `TriggeredByRole` types |
+| `acl/schemas/restaurant-snapshot.schema.ts`            | Added `ownerId: uuid('owner_id').notNull()`                                                                   |
+| `acl/repositories/restaurant-snapshot.repository.ts`   | Persist `ownerId` in upsert; added `findByRestaurantIdAndOwnerId()`                                           |
+| `acl/projections/restaurant-snapshot.projector.ts`     | Destructure and pass `ownerId` from `RestaurantUpdatedEvent`                                                  |
+| `shared/events/restaurant-updated.event.ts`            | Added `ownerId: string` as 6th constructor parameter                                                          |
+| `restaurant-catalog/restaurant/restaurant.service.ts`  | Pass `restaurant.ownerId` in both `publishRestaurantEvent` and `remove()` calls                               |
+| `shared/events/order-cancelled-after-payment.event.ts` | Extended `cancelledByRole` to `'customer' \| 'restaurant' \| 'admin' \| 'system'`                             |
+| `shared/events/payment-failed.event.ts`                | Removed incorrect "cart recovery" comment                                                                     |
+| `app.module.ts`                                        | Added `ScheduleModule.forRoot()`                                                                              |
+| `drizzle/seeds/seed.ts`                                | Added `ownerId` to all `ordering_restaurant_snapshots` seed rows                                              |
 
 ---
 
@@ -108,18 +108,18 @@ ALTER TABLE ordering_restaurant_snapshots ALTER COLUMN owner_id DROP DEFAULT;
 
 All endpoints require authentication. Role permissions are enforced per the `TRANSITIONS` map.
 
-| Method | Path | Transition | Notes |
-|--------|------|-----------|-------|
-| `PATCH` | `/orders/:id/confirm` | T-01: `pending/paid → confirmed` | restaurant, admin |
-| `PATCH` | `/orders/:id/start-preparing` | T-06: `confirmed → preparing` | restaurant, admin |
-| `PATCH` | `/orders/:id/ready` | T-08: `preparing → ready_for_pickup` | restaurant, admin |
-| `PATCH` | `/orders/:id/pickup` | T-09: `ready_for_pickup → picked_up` | shipper, admin |
-| `PATCH` | `/orders/:id/en-route` | T-10: `picked_up → delivering` | shipper, admin |
-| `PATCH` | `/orders/:id/deliver` | T-11: `delivering → delivered` | shipper, admin |
-| `PATCH` | `/orders/:id/cancel` | T-03/T-05/T-07: any cancelable → `cancelled` | requires reason |
-| `POST` | `/orders/:id/refund` | T-12: `delivered → refunded` | admin only |
-| `GET` | `/orders/:id` | — | get order with items |
-| `GET` | `/orders/:id/timeline` | — | get full event timeline |
+| Method  | Path                          | Transition                                   | Notes                   |
+| ------- | ----------------------------- | -------------------------------------------- | ----------------------- |
+| `PATCH` | `/orders/:id/confirm`         | T-01: `pending/paid → confirmed`             | restaurant, admin       |
+| `PATCH` | `/orders/:id/start-preparing` | T-06: `confirmed → preparing`                | restaurant, admin       |
+| `PATCH` | `/orders/:id/ready`           | T-08: `preparing → ready_for_pickup`         | restaurant, admin       |
+| `PATCH` | `/orders/:id/pickup`          | T-09: `ready_for_pickup → picked_up`         | shipper, admin          |
+| `PATCH` | `/orders/:id/en-route`        | T-10: `picked_up → delivering`               | shipper, admin          |
+| `PATCH` | `/orders/:id/deliver`         | T-11: `delivering → delivered`               | shipper, admin          |
+| `PATCH` | `/orders/:id/cancel`          | T-03/T-05/T-07: any cancelable → `cancelled` | requires reason         |
+| `POST`  | `/orders/:id/refund`          | T-12: `delivered → refunded`                 | admin only              |
+| `GET`   | `/orders/:id`                 | —                                            | get order with items    |
+| `GET`   | `/orders/:id/timeline`        | —                                            | get full event timeline |
 
 ---
 

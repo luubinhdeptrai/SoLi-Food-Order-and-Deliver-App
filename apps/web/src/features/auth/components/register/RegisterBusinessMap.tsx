@@ -5,8 +5,8 @@ import {
   Plus,
   Minus,
   Lightbulb,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function RegisterBusinessMap() {
   return (

@@ -19,6 +19,10 @@ export class OrderCancelledAfterPaymentEvent {
     public readonly paymentMethod: 'vnpay',
     public readonly paidAmount: number,
     public readonly cancelledAt: Date,
-    public readonly cancelledByRole: 'customer' | 'restaurant' | 'admin' | 'system',
+    public readonly cancelledByRole:
+      | 'customer'
+      | 'restaurant'
+      | 'admin'
+      | 'system',
   ) {}
 }

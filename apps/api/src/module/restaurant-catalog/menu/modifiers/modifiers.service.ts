@@ -4,11 +4,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ModifierGroupRepository, ModifierOptionRepository } from './modifiers.repository';
+import {
+  ModifierGroupRepository,
+  ModifierOptionRepository,
+} from './modifiers.repository';
 import { MenuRepository } from '@/module/restaurant-catalog/menu/menu.repository';
 import { RestaurantService } from '@/module/restaurant-catalog/restaurant/restaurant.service';
 import { MenuService } from '@/module/restaurant-catalog/menu/menu.service';
-import type { ModifierGroup, ModifierOption } from '@/module/restaurant-catalog/menu/menu.schema';
+import type {
+  ModifierGroup,
+  ModifierOption,
+} from '@/module/restaurant-catalog/menu/menu.schema';
 import type {
   CreateModifierGroupDto,
   UpdateModifierGroupDto,
@@ -35,7 +41,9 @@ export class ModifiersService {
   /**
    * Returns all modifier groups for a menu item, each with their options embedded.
    */
-  async findGroupsByMenuItem(menuItemId: string): Promise<ModifierGroupResponseDto[]> {
+  async findGroupsByMenuItem(
+    menuItemId: string,
+  ): Promise<ModifierGroupResponseDto[]> {
     await this.requireMenuItem(menuItemId);
     return this.buildGroupsWithOptions(menuItemId);
   }
@@ -60,7 +68,10 @@ export class ModifiersService {
    * Returns a single modifier group with its options embedded.
    * Used by GET /:groupId controller endpoint.
    */
-  async findGroupWithOptions(groupId: string, menuItemId: string): Promise<ModifierGroupResponseDto> {
+  async findGroupWithOptions(
+    groupId: string,
+    menuItemId: string,
+  ): Promise<ModifierGroupResponseDto> {
     const group = await this.findGroup(groupId, menuItemId); // validates group belongs to item
     const options = await this.optionRepo.findByGroup(groupId);
     return { ...group, options };
@@ -70,7 +81,10 @@ export class ModifiersService {
    * Returns all options belonging to a modifier group.
    * Used by GET /:groupId/options controller endpoint.
    */
-  async findOptionsByGroup(groupId: string, menuItemId: string): Promise<ModifierOption[]> {
+  async findOptionsByGroup(
+    groupId: string,
+    menuItemId: string,
+  ): Promise<ModifierOption[]> {
     await this.findGroup(groupId, menuItemId); // validates group belongs to menu item
     return this.optionRepo.findByGroup(groupId);
   }
@@ -234,7 +248,9 @@ export class ModifiersService {
    * Groups are fetched first; then all options are fetched in a single inArray
    * query and grouped in memory by groupId.
    */
-  private async buildGroupsWithOptions(menuItemId: string): Promise<ModifierGroupResponseDto[]> {
+  private async buildGroupsWithOptions(
+    menuItemId: string,
+  ): Promise<ModifierGroupResponseDto[]> {
     const groups = await this.groupRepo.findByMenuItem(menuItemId);
     if (groups.length === 0) return [];
     const allOptions = await this.optionRepo.findAllByMenuItem(menuItemId);

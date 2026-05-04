@@ -16,7 +16,11 @@ export class RedisService implements OnModuleDestroy {
     await this.client.set(key, value);
   }
 
-  async setWithExpiry(key: string, value: string, ttlSeconds: number): Promise<void> {
+  async setWithExpiry(
+    key: string,
+    value: string,
+    ttlSeconds: number,
+  ): Promise<void> {
     await this.client.set(key, value, 'EX', ttlSeconds);
   }
 
@@ -25,7 +29,11 @@ export class RedisService implements OnModuleDestroy {
    * Returns true if the key was set (did not exist), false if key already existed.
    * Used for: idempotency keys (D5-A), cart checkout locks (Phase 4).
    */
-  async setNx(key: string, value: string, ttlSeconds: number): Promise<boolean> {
+  async setNx(
+    key: string,
+    value: string,
+    ttlSeconds: number,
+  ): Promise<boolean> {
     const result = await this.client.set(key, value, 'EX', ttlSeconds, 'NX');
     return result === 'OK';
   }

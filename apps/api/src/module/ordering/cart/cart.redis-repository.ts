@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { RedisService } from '@/lib/redis/redis.service';
-import { CART_KEY_PREFIX, CART_TTL_SECONDS } from '../common/ordering.constants';
+import {
+  CART_KEY_PREFIX,
+  CART_TTL_SECONDS,
+} from '../common/ordering.constants';
 import type { Cart } from './cart.types';
 import { buildFingerprintFromResolved } from './cart.types';
 
@@ -55,7 +58,8 @@ export class CartRedisRepository {
     // Back-fill: assign cartItemId and modifierFingerprint if missing (old cart format).
     let needsBackfill = false;
     cart.items = cart.items.map((item) => {
-      if (item.cartItemId && item.modifierFingerprint !== undefined) return item;
+      if (item.cartItemId && item.modifierFingerprint !== undefined)
+        return item;
       needsBackfill = true;
       return {
         ...item,

@@ -16,6 +16,7 @@
 - ✅ **Verification report:** [`RESTAURANT_CATALOG_POST_FIX_REVIEW.md`](./RESTAURANT_CATALOG_POST_FIX_REVIEW.md)
 
 **Key fixes applied:**
+
 1. **Search:** `ParseIntPipe` → `ParseFloatPipe` on coordinates (Issue #1)
 2. **Approval event:** `setApproved()` now emits `RestaurantUpdatedEvent` (Issue #2)
 3. **Category filter:** Implemented as `EXISTS` subquery (Issue #3)
@@ -26,6 +27,7 @@
 8. **Enrichment fields:** `cuisineType`, `logoUrl`, `coverImageUrl` added (Issue #10)
 
 **Type-safety fixes:**
+
 - `RestaurantRepository.update()` return type corrected to `Promise<Restaurant | undefined>` (V-1)
 - Misleading comment in `setApproved()` corrected (V-2)
 - Unnecessary `restaurant.id!` assertion removed (V-3)
@@ -40,6 +42,7 @@ The `restaurant-catalog` BC is structurally sound at the module boundary level. 
 **This audit identified 19 functional issues in initial implementation, all of which have now been corrected:**
 
 **Critical bugs (now fixed):**
+
 - ✅ `ParseIntPipe` on float coordinates → corrected to `ParseFloatPipe`
 - ✅ `setApproved()` missing event emission → now emits `RestaurantUpdatedEvent`
 - ✅ `category` filter dead code → implemented as `EXISTS` subquery
@@ -47,6 +50,7 @@ The `restaurant-catalog` BC is structurally sound at the module boundary level. 
 - ✅ Menu item listing lacking pagination → `offset`/`limit` added
 
 **Additional improvements:**
+
 - ✅ Type-safety enhancements (4 issues found during verification)
 - ✅ Indexes added for performance (`is_approved`, `is_open`, GIN on tags)
 - ✅ Unique constraints added to prevent category duplication
@@ -79,6 +83,7 @@ is every real-world request. A customer at `lat=10.762622,lon=106.660172` is eff
 searching from `lat=10,lon=106`.
 
 **Evidence:**
+
 ```ts
 // search.controller.ts
 @Query('lat', new ParseIntPipe({ optional: true })) lat?: number,
@@ -88,11 +93,13 @@ searching from `lat=10,lon=106`.
 
 **Solution:**
 Replace `ParseIntPipe` with `ParseFloatPipe` for all three parameters:
+
 ```ts
 @Query('lat', new ParseFloatPipe({ optional: true })) lat?: number,
 @Query('lon', new ParseFloatPipe({ optional: true })) lon?: number,
 @Query('radiusKm', new ParseFloatPipe({ optional: true })) radiusKm?: number,
 ```
+
 `ParseFloatPipe` is built into `@nestjs/common` — zero new dependencies.
 
 ---
@@ -107,6 +114,7 @@ approves or unapproves a restaurant, the snapshot retains the old `isApproved` v
 until the next unrelated restaurant update.
 
 **Impact:**
+
 - A freshly approved restaurant cannot receive orders because the ordering BC still sees
   `isApproved=false` in its snapshot → `PlaceOrderHandler` throws 422.
 - A unapproved restaurant continues to accept orders if it was previously approved and is
@@ -115,6 +123,7 @@ until the next unrelated restaurant update.
   behaves incorrectly.
 
 **Evidence:**
+
 ```ts
 // restaurant.service.ts
 async setApproved(id: string, isApproved: boolean): Promise<Restaurant> {
@@ -122,10 +131,12 @@ async setApproved(id: string, isApproved: boolean): Promise<Restaurant> {
   return this.repo.update(id, { isApproved }); // ← no eventBus.publish()
 }
 ```
+
 Compare with `create()` and `update()` which both call `this.eventBus.publish(new RestaurantUpdatedEvent(...))`.
 
 **Solution:**
 Emit `RestaurantUpdatedEvent` after the DB write:
+
 ```ts
 async setApproved(id: string, isApproved: boolean): Promise<Restaurant> {
   const updated = await this.repo.update(id, { isApproved });
@@ -144,6 +155,7 @@ async setApproved(id: string, isApproved: boolean): Promise<Restaurant> {
   return updated;
 }
 ```
+
 `findOne` first — which is already implicit since `repo.update` follows `findOne`. Use the
 returned `updated` record so the event always reflects the persisted state.
 
@@ -158,22 +170,30 @@ returned `updated` record so the event always reflects the persisted state.
 no WHERE condition, nothing. The filter is silently discarded.
 
 Additionally, the controller hardcodes `undefined` as the category argument:
+
 ```ts
 return this.service.searchRestaurants(
   name,
   undefined, // ← category is never read from query params
-  lat, lon, radiusKm, offset, limit,
+  lat,
+  lon,
+  radiusKm,
+  offset,
+  limit,
 );
 ```
+
 There is also no `@ApiQuery({ name: 'category' })` decorator — so customers have no way
 to pass it at all. This is dead code at every layer.
 
 **Impact:**
+
 - Category-based restaurant discovery is completely absent from the customer experience.
 - The Swagger API doc makes no mention of category filtering, misleading API consumers.
 - The dead parameter silently pollutes all three layers (controller → service → repository).
 
 **Evidence:**
+
 ```ts
 // search.repository.ts — SearchFilters has category but it's never used
 export interface SearchFilters {
@@ -194,6 +214,7 @@ return this.service.searchRestaurants(
 `menu_categories` is per-restaurant, not a global enum. "Category" in a restaurant search
 context means: _show restaurants that have at least one menu item in a category matching
 the query_. This requires a JOIN:
+
 ```sql
 SELECT DISTINCT r.*
 FROM restaurants r
@@ -202,7 +223,6 @@ JOIN menu_categories mc ON mc.id = mi.category_id
 WHERE mc.name ILIKE '%Burgers%'
   AND r.is_approved = true
 ```
-
 
 ---
 
@@ -213,10 +233,12 @@ WHERE mc.name ILIKE '%Burgers%'
 endpoint returns all restaurants including pending, rejected, and unapproved ones.
 
 **Impact:**
+
 - Customers see restaurants they cannot order from (checkout will fail with 422).
 - Unapproved restaurants get free exposure — business logic violation.
 
 **Evidence:**
+
 ```ts
 // restaurant.repository.ts
 async findAll(offset?: number, limit?: number): Promise<Restaurant[]> {
@@ -228,6 +250,7 @@ async findAll(offset?: number, limit?: number): Promise<Restaurant[]> {
 
 **Solution:**
 Add a filter for public listing. Keep an admin-facing unfiltered endpoint if needed:
+
 ```ts
 // repository: add optional filter
 async findAll(opts: { offset?: number; limit?: number; approvedOnly?: boolean }): Promise<Restaurant[]> {
@@ -235,6 +258,7 @@ async findAll(opts: { offset?: number; limit?: number; approvedOnly?: boolean })
   ...
 }
 ```
+
 The public `GET /restaurants` controller should pass `approvedOnly: true`. A future
 admin-only `GET /admin/restaurants` can pass `approvedOnly: false`.
 
@@ -248,11 +272,13 @@ default or maximum `limit`. A request with no `limit` query param returns the **
 table** in one response.
 
 **Impact:**
+
 - DoS risk: a single unauthenticated request to `GET /restaurants/search` fetches every
   row in `restaurants`.
 - Memory pressure: 10 000 restaurants × full row → hundreds of MB in a single HTTP response.
 
 **Evidence:**
+
 ```ts
 // search.repository.ts
 const withLimit =
@@ -261,6 +287,7 @@ const withLimit =
 
 **Solution:**
 Apply a default and a ceiling in the service layer:
+
 ```ts
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
@@ -278,6 +305,7 @@ tries to place an order from a closed restaurant gets a 422 error from the order
 a confusing UX failure that should have been prevented at the catalog layer.
 
 **Evidence:**
+
 ```ts
 // search.repository.ts — only isApproved is filtered
 const conditions = [sql`${restaurants.isApproved} = true`];
@@ -298,10 +326,12 @@ search endpoint the default should be `isOpen = true`.
 offset/limit support. A large restaurant with 200+ items returns every row.
 
 **Impact:**
+
 - Mobile clients load hundreds of items on initial render.
 - Query performance degrades linearly with item count.
 
 **Evidence:**
+
 ```ts
 // menu.repository.ts
 return await this.db
@@ -325,18 +355,20 @@ status `unavailable`, `out_of_stock`, and `available` — no filter applied. Cus
 see items they cannot add to cart.
 
 **Impact:**
+
 - UX degradation: "Unavailable" items visible on the public menu.
 - Front-end must implement client-side filtering, duplicating backend logic.
 
 **Evidence:**
+
 ```ts
 // menu.repository.ts — no status filter in findByRestaurant
 const conditions = [eq(menuItems.restaurantId, restaurantId)];
-if (categoryId) { conditions.push(eq(menuItems.categoryId, categoryId)); }
+if (categoryId) {
+  conditions.push(eq(menuItems.categoryId, categoryId));
+}
 // ← no status filter
 ```
-
-
 
 **Solution — (Query param):**
 Expose `?status=available|unavailable|out_of_stock|all` on the public endpoint. Default
@@ -360,6 +392,7 @@ artefacts still reference it:
 All three call sites in `RestaurantService` already pass `undefined` for this parameter.
 
 **Impact:**
+
 - Schema carries a dead column consuming storage.
 - Event contract carries a misleading nullable field.
 - Code reviewers/new engineers must understand the `@deprecated` annotation to know it's
@@ -368,6 +401,7 @@ All three call sites in `RestaurantService` already pass `undefined` for this pa
   instead of querying `ordering_delivery_zone_snapshots`.
 
 **Evidence:**
+
 ```ts
 // restaurant-updated.event.ts — parameter still present
 public readonly deliveryRadiusKm?: number | null,
@@ -381,6 +415,7 @@ new RestaurantUpdatedEvent(id, name, isOpen, isApproved, address, undefined, lat
 ```
 
 **Solution:**
+
 1. Remove `deliveryRadiusKm` from `RestaurantUpdatedEvent` constructor.
 2. Remove `deliveryRadiusKm` column from `ordering_restaurant_snapshots` schema + migration.
 3. Remove `deliveryRadiusKm` from `RestaurantSnapshotProjector.handle()` and `RestaurantSnapshotRepository.upsert()`.
@@ -395,27 +430,41 @@ The `restaurants` table has no cuisine type, logo, or cover image fields. These 
 standard restaurant-catalog attributes used in every food delivery app.
 
 **Impact:**
+
 - Mobile/web UI cannot show restaurant branding.
 - Search cannot filter by cuisine (Vietnamese, Italian, etc.) — critical for UX.
 - Without `cuisineType`, category-based discovery requires menu item joins (heavier queries).
 
 **Evidence:**
+
 ```ts
 // restaurant.schema.ts — fields absent
 export const restaurants = pgTable('restaurants', {
-  id, ownerId, name, description, address, phone, isOpen, isApproved, latitude, longitude,
-  createdAt, updatedAt,
+  id,
+  ownerId,
+  name,
+  description,
+  address,
+  phone,
+  isOpen,
+  isApproved,
+  latitude,
+  longitude,
+  createdAt,
+  updatedAt,
   // ← no cuisineType, logoUrl, coverImageUrl
 });
 ```
 
 **Solution:**
 Add to the schema and migration:
+
 ```ts
 cuisineType: text('cuisine_type'),          // e.g. 'Vietnamese', 'Italian'
 logoUrl:     text('logo_url'),
 coverImageUrl: text('cover_image_url'),
 ```
+
 Also update `CreateRestaurantDto`, `UpdateRestaurantDto`, `RestaurantResponseDto`, and
 `RestaurantUpdatedEvent` to carry `cuisineType` so the ordering BC snapshot and search can
 use it.
@@ -434,6 +483,7 @@ The nearest restaurant to the user may appear last in the result set. This is th
 UX expectation of proximity-based search.
 
 **Evidence:**
+
 ```ts
 // search.repository.ts
 const baseQuery = this.db
@@ -445,6 +495,7 @@ const baseQuery = this.db
 
 **Solution:**
 When `lat` and `lon` are provided, add the Haversine distance expression as an ORDER BY:
+
 ```ts
 if (filters.lat !== undefined && filters.lon !== undefined) {
   const distanceExpr = sql`(2 * 6371 * ASIN(SQRT(
@@ -466,12 +517,11 @@ There is no `total`, `page`, or `hasMore` in the response. Clients cannot render
 controls or know when they have fetched all data.
 
 **Impact:**
+
 - Mobile infinite-scroll relies on knowing when to stop fetching.
 - Admin dashboards cannot show "Page 3 of 12".
 
-**Solution:**: (minimal):** Return `{ data: [...], total: N }` — requires a `COUNT(*)` query alongside the data query. (I agree this solution)
-
-
+**Solution:**: (minimal):\*_ Return `{ data: [...], total: N }` — requires a `COUNT(_)` query alongside the data query. (I agree this solution)
 
 ---
 
@@ -483,10 +533,12 @@ can end up with two "Burgers" categories — one for display, one orphaned from 
 data entry.
 
 **Impact:**
+
 - Data integrity violation; category de-duplication becomes the UI's problem.
 - Items assigned to either "Burgers" category cannot be easily consolidated.
 
 **Evidence:**
+
 ```ts
 // menu.schema.ts
 export const menuCategories = pgTable('menu_categories', {
@@ -499,6 +551,7 @@ export const menuCategories = pgTable('menu_categories', {
 
 **Solution:**
 Add a unique constraint:
+
 ```ts
 import { uniqueIndex } from 'drizzle-orm/pg-core';
 
@@ -506,6 +559,7 @@ export const menuCategories = pgTable('menu_categories', { ... }, (table) => [
   uniqueIndex('menu_categories_restaurant_name_uidx').on(table.restaurantId, table.name),
 ]);
 ```
+
 Handle the conflict in `createCategory` as a `ConflictException`.
 
 ---
@@ -522,6 +576,7 @@ Every search query does a sequential scan of the entire `restaurants` table befo
 applying the Haversine radius filter.
 
 **Solution (Drizzle + PostgreSQL):**
+
 ```ts
 // restaurant.schema.ts
 import { index } from 'drizzle-orm/pg-core';
@@ -531,6 +586,7 @@ export const restaurants = pgTable('restaurants', { ... }, (table) => [
     .on(table.isApproved, table.isOpen),
 ]);
 ```
+
 A partial index `WHERE is_approved = true AND is_open = true` would be even faster for
 the customer search path.
 
@@ -547,6 +603,7 @@ GIN index.
 Tag-based search (a common food-delivery feature) cannot be efficient at scale.
 
 **Solution:**
+
 ```ts
 // menu.schema.ts
 import { index } from 'drizzle-orm/pg-core';
@@ -566,6 +623,7 @@ export const menuItems = pgTable('menu_items', { ... }, (table) => [
 file `@/shared/events` will not find the new event.
 
 **Evidence:**
+
 ```ts
 // shared/events/index.ts — missing entry
 export * from './menu-item-updated.event';
@@ -575,6 +633,7 @@ export * from './restaurant-updated.event';
 
 **Solution:**
 Add:
+
 ```ts
 export * from './delivery-zone-snapshot-updated.event';
 ```
@@ -589,6 +648,7 @@ also with `@ApiUnauthorizedResponse`. The unauthorized response can never be ret
 this endpoint, misleading API consumers reading the Swagger docs.
 
 **Evidence:**
+
 ```ts
 // search.controller.ts
 @AllowAnonymous()
@@ -614,9 +674,12 @@ Subtle UX confusion: the client believes it sent a geo search but got name-only 
 
 **Solution:**
 Add a guard in `SearchService`:
+
 ```ts
 if ((lat !== undefined) !== (lon !== undefined)) {
-  throw new BadRequestException('lat and lon must both be provided for geo search');
+  throw new BadRequestException(
+    'lat and lon must both be provided for geo search',
+  );
 }
 ```
 
@@ -631,6 +694,7 @@ search endpoint.
 
 **Solution:**
 Use a typed select projection:
+
 ```ts
 this.db.select({
   id: restaurants.id,
@@ -642,6 +706,7 @@ this.db.select({
   longitude: restaurants.longitude,
 }).from(restaurants)...
 ```
+
 Alternatively, create a `RestaurantSummaryDto` response and map on the service layer.
 
 ---
@@ -650,18 +715,18 @@ Alternatively, create a `RestaurantSummaryDto` response and map on the service l
 
 ### 3.1 Current Capabilities
 
-| Feature | Status |
-|---|---|
-| Search by restaurant name (substring) | ✅ Works |
-| Geo radius filter (Haversine) | ⚠️ Formula correct; broken by ParseIntPipe |
-| Filter by `isApproved` | ✅ Applied |
-| Filter by `isOpen` | ❌ Missing |
-| Filter by category/cuisine | ❌ Dead code (never applied) |
-| Sort by distance | ❌ Always `createdAt` |
-| Pagination limit enforcement | ❌ No default/max |
-| Total count in response | ❌ Missing |
-| Search by menu item name | ❌ Not implemented |
-| Search by tag | ❌ Not implemented |
+| Feature                               | Status                                     |
+| ------------------------------------- | ------------------------------------------ |
+| Search by restaurant name (substring) | ✅ Works                                   |
+| Geo radius filter (Haversine)         | ⚠️ Formula correct; broken by ParseIntPipe |
+| Filter by `isApproved`                | ✅ Applied                                 |
+| Filter by `isOpen`                    | ❌ Missing                                 |
+| Filter by category/cuisine            | ❌ Dead code (never applied)               |
+| Sort by distance                      | ❌ Always `createdAt`                      |
+| Pagination limit enforcement          | ❌ No default/max                          |
+| Total count in response               | ❌ Missing                                 |
+| Search by menu item name              | ❌ Not implemented                         |
+| Search by tag                         | ❌ Not implemented                         |
 
 ### 3.2 Critical Bug: ParseIntPipe on Float Coordinates
 
@@ -672,20 +737,24 @@ This alone makes the geo search feature non-functional. See Issue #1.
 **Full-table scan on every search request:**
 The Haversine SQL expression is computed for every row in `restaurants` before the
 radius filter eliminates non-matching rows. With 10,000 restaurants:
+
 - No index is used for the distance calculation (PostgreSQL cannot use a B-tree on a
   computed expression by default).
 - The `isApproved = true` condition has no index (Issue #14), so the filter scan is
   sequential.
 
 **Recommended fix:**
+
 1. Add index on `(is_approved, is_open)` (Issue #14).
 2. Add a bounding-box pre-filter before the Haversine expression to dramatically reduce
    the candidate set:
+
 ```sql
 WHERE latitude  BETWEEN :lat - (:radiusKm / 111.0) AND :lat + (:radiusKm / 111.0)
   AND longitude BETWEEN :lon - (:radiusKm / (111.0 * COS(RADIANS(:lat))))
                     AND :lon + (:radiusKm / (111.0 * COS(RADIANS(:lat))))
 ```
+
 This uses simple arithmetic the planner can index-scan on, then the Haversine exact check
 runs only on the (much smaller) bounding-box candidates.
 
@@ -705,6 +774,7 @@ runs only on the (much smaller) bounding-box candidates.
 
 The search returns raw `Restaurant` DB rows. A dedicated `RestaurantSearchResultDto` should
 be returned that:
+
 - Excludes `ownerId`, `isApproved` (internal fields).
 - Includes a computed `distanceKm` field (when geo search is used).
 - Includes `cuisineType`, `logoUrl`, `coverImageUrl` (once added, Issue #10).
@@ -716,9 +786,11 @@ be returned that:
 ### 4.1 `SearchRepository` Directly Imports `restaurant.schema.ts`
 
 The search repository imports the schema from the restaurant sub-module path:
+
 ```ts
 import { restaurants } from '@/module/restaurant-catalog/restaurant/restaurant.schema';
 ```
+
 This is acceptable within the same BC (intra-BC import). However, if `SearchModule` ever
 needs to join across `menu_items` (for menu-item search), it will also need to import
 `menu.schema.ts`. The existing pattern allows this — it is fine as long as it stays
@@ -754,37 +826,37 @@ explicit typing — a one-line fix.
 
 ### 🔴 Critical (must fix before production) — ✅ ALL COMPLETED
 
-| # | Issue | File |
-|---|---|---|
-| 1 | ParseIntPipe on float coordinates | search.controller.ts |
-| 2 | setApproved() missing event emit | restaurant.service.ts |
-| 3 | Category filter dead code | search.repository.ts, search.controller.ts |
-| 4 | Public listing returns unapproved restaurants | restaurant.repository.ts |
-| 5 | No default page limit | search.repository.ts, restaurant.repository.ts |
-| 6 | isOpen not filtered in search | search.repository.ts |
+| #   | Issue                                         | File                                           |
+| --- | --------------------------------------------- | ---------------------------------------------- |
+| 1   | ParseIntPipe on float coordinates             | search.controller.ts                           |
+| 2   | setApproved() missing event emit              | restaurant.service.ts                          |
+| 3   | Category filter dead code                     | search.repository.ts, search.controller.ts     |
+| 4   | Public listing returns unapproved restaurants | restaurant.repository.ts                       |
+| 5   | No default page limit                         | search.repository.ts, restaurant.repository.ts |
+| 6   | isOpen not filtered in search                 | search.repository.ts                           |
 
 ### 🟡 Important (fix within next sprint) — ✅ ALL COMPLETED
 
-| # | Issue | File |
-|---|---|---|
-| 7 | Menu item listing — no pagination | menu.repository.ts |
-| 8 | Menu item listing — all statuses returned | menu.repository.ts |
-| 9 | deliveryRadiusKm not cleaned up | restaurant-updated.event.ts, snapshot schema/projector |
-| 10 | Missing cuisineType / logoUrl / coverImageUrl | restaurant.schema.ts |
-| 11 | Search not sorted by distance | search.repository.ts |
-| 12 | No total count in paginated responses | all repositories |
-| 13 | menu_categories missing unique(restaurant_id, name) | menu.schema.ts |
-| 14 | No index on is_approved / is_open | restaurant.schema.ts |
-| 15 | No GIN index on menu_items.tags | menu.schema.ts |
+| #   | Issue                                               | File                                                   |
+| --- | --------------------------------------------------- | ------------------------------------------------------ |
+| 7   | Menu item listing — no pagination                   | menu.repository.ts                                     |
+| 8   | Menu item listing — all statuses returned           | menu.repository.ts                                     |
+| 9   | deliveryRadiusKm not cleaned up                     | restaurant-updated.event.ts, snapshot schema/projector |
+| 10  | Missing cuisineType / logoUrl / coverImageUrl       | restaurant.schema.ts                                   |
+| 11  | Search not sorted by distance                       | search.repository.ts                                   |
+| 12  | No total count in paginated responses               | all repositories                                       |
+| 13  | menu_categories missing unique(restaurant_id, name) | menu.schema.ts                                         |
+| 14  | No index on is_approved / is_open                   | restaurant.schema.ts                                   |
+| 15  | No GIN index on menu_items.tags                     | menu.schema.ts                                         |
 
 ### 🟢 Nice-to-have (backlog) — ✅ MOSTLY COMPLETED
 
-| # | Issue | Status |
-|---|-------|--------|
-| 16 | events/index.ts missing new event export | ✅ Completed |
-| 17 | Incorrect @ApiUnauthorizedResponse on public endpoints | ✅ Completed |
-| 18 | No validation: lat+lon must be provided together | ✅ Completed |
-| 19 | Search returns all DB columns incl. sensitive fields | ✅ Completed |
+| #   | Issue                                                  | Status       |
+| --- | ------------------------------------------------------ | ------------ |
+| 16  | events/index.ts missing new event export               | ✅ Completed |
+| 17  | Incorrect @ApiUnauthorizedResponse on public endpoints | ✅ Completed |
+| 18  | No validation: lat+lon must be provided together       | ✅ Completed |
+| 19  | Search returns all DB columns incl. sensitive fields   | ✅ Completed |
 
 ---
 
@@ -824,7 +896,6 @@ explicit typing — a one-line fix.
 19. Design `RestaurantSearchResultDto` with `distanceKm` field.
 20. Export `DeliveryZoneSnapshotUpdatedEvent` from barrel (Issue #16).
 
-
 ## ✅ Fix Summary (Post-Implementation + Post-Verification)
 
 > All 19 original issues implemented. Post-fix verification completed 2026-05-02.
@@ -833,40 +904,41 @@ explicit typing — a one-line fix.
 
 ### Original 19 Issues — Verification Status
 
-| # | Issue | Verified | Notes |
-|---|-------|----------|-------|
-| 1 | ParseIntPipe on float coordinates | ✅ Correct | `ParseFloatPipe` applied on all three params |
-| 2 | `setApproved()` missing event publish | ✅ Correct | `publishRestaurantEvent()` helper called after `repo.update()` |
-| 3 | Category filter dead code | ✅ Correct | `EXISTS` subquery against `menu_categories` |
-| 4 | Unapproved restaurants in public listing | ✅ Correct | `approvedOnly: true` passed from service |
-| 5 | No default/max page limit | ✅ Correct | `DEFAULT_PAGE_SIZE=20`, `MAX_PAGE_SIZE=100` in all services |
-| 6 | `isOpen` not filtered in search | ✅ Correct | Condition added to search WHERE clause |
-| 7 | Menu items — no pagination | ✅ Correct | `offset`/`limit` wired through all layers |
-| 8 | Menu items — all statuses returned | ✅ Correct | Defaults to `status='available'`; `'all'` bypasses filter |
-| 9 | `deliveryRadiusKm` deprecated field cleanup | ✅ Correct | Removed from event, schema, projector, repository, ACL DTO |
-| 10 | Missing `cuisineType`/`logoUrl`/`coverImageUrl` | ✅ Correct | Added to all layers including Ordering BC snapshot |
-| 11 | Search not sorted by distance | ✅ Correct | Haversine `distanceExpr` in `ORDER BY` when coords provided |
-| 12 | No total count in paginated responses | ✅ Correct | Parallel `COUNT(*)` queries; `{ data, total }` response shape |
-| 13 | Duplicate category names per restaurant | ✅ Correct | `uniqueIndex` + `ConflictException` on PG error `23505` |
-| 14 | No composite index on `is_approved`/`is_open` | ✅ Correct | `restaurants_approved_open_idx` in schema + migration |
-| 15 | No GIN index on `menu_items.tags` | ✅ Correct | `menu_items_tags_gin_idx` GIN index in schema + migration |
-| 16 | `events/index.ts` missing export | ✅ Correct | `delivery-zone-snapshot-updated.event` now exported |
-| 17 | False `@ApiUnauthorizedResponse` on public endpoints | ✅ Correct | Removed from all `@AllowAnonymous` handlers |
-| 18 | `lat`/`lon` co-validation missing | ✅ Correct | `BadRequestException` thrown when only one is provided |
-| 19 | Search returns all DB columns | ✅ Correct | Explicit projection; `ownerId`/`isApproved` excluded |
+| #   | Issue                                                | Verified   | Notes                                                          |
+| --- | ---------------------------------------------------- | ---------- | -------------------------------------------------------------- |
+| 1   | ParseIntPipe on float coordinates                    | ✅ Correct | `ParseFloatPipe` applied on all three params                   |
+| 2   | `setApproved()` missing event publish                | ✅ Correct | `publishRestaurantEvent()` helper called after `repo.update()` |
+| 3   | Category filter dead code                            | ✅ Correct | `EXISTS` subquery against `menu_categories`                    |
+| 4   | Unapproved restaurants in public listing             | ✅ Correct | `approvedOnly: true` passed from service                       |
+| 5   | No default/max page limit                            | ✅ Correct | `DEFAULT_PAGE_SIZE=20`, `MAX_PAGE_SIZE=100` in all services    |
+| 6   | `isOpen` not filtered in search                      | ✅ Correct | Condition added to search WHERE clause                         |
+| 7   | Menu items — no pagination                           | ✅ Correct | `offset`/`limit` wired through all layers                      |
+| 8   | Menu items — all statuses returned                   | ✅ Correct | Defaults to `status='available'`; `'all'` bypasses filter      |
+| 9   | `deliveryRadiusKm` deprecated field cleanup          | ✅ Correct | Removed from event, schema, projector, repository, ACL DTO     |
+| 10  | Missing `cuisineType`/`logoUrl`/`coverImageUrl`      | ✅ Correct | Added to all layers including Ordering BC snapshot             |
+| 11  | Search not sorted by distance                        | ✅ Correct | Haversine `distanceExpr` in `ORDER BY` when coords provided    |
+| 12  | No total count in paginated responses                | ✅ Correct | Parallel `COUNT(*)` queries; `{ data, total }` response shape  |
+| 13  | Duplicate category names per restaurant              | ✅ Correct | `uniqueIndex` + `ConflictException` on PG error `23505`        |
+| 14  | No composite index on `is_approved`/`is_open`        | ✅ Correct | `restaurants_approved_open_idx` in schema + migration          |
+| 15  | No GIN index on `menu_items.tags`                    | ✅ Correct | `menu_items_tags_gin_idx` GIN index in schema + migration      |
+| 16  | `events/index.ts` missing export                     | ✅ Correct | `delivery-zone-snapshot-updated.event` now exported            |
+| 17  | False `@ApiUnauthorizedResponse` on public endpoints | ✅ Correct | Removed from all `@AllowAnonymous` handlers                    |
+| 18  | `lat`/`lon` co-validation missing                    | ✅ Correct | `BadRequestException` thrown when only one is provided         |
+| 19  | Search returns all DB columns                        | ✅ Correct | Explicit projection; `ownerId`/`isApproved` excluded           |
 
 ### Additional Issues Found and Fixed During Verification
 
-| # | Issue | Severity | Files Fixed |
-|---|-------|----------|-------------|
-| V-1 | `RestaurantRepository.update()` return type declared `Promise<Restaurant>` but can return `undefined` — type safety gap in callers | Medium | `restaurant.repository.ts` — return type → `Promise<Restaurant \| undefined>`; `restaurant.service.ts update()` — defensive null guard added |
-| V-2 | Misleading comment in `setApproved()` claimed "`findOne` is called implicitly by `update`" — false; `repo.update()` never calls `findOne` internally | Minor | `restaurant.service.ts` — comment corrected |
-| V-3 | Unnecessary non-null assertion `restaurant.id!` in `publishRestaurantEvent()` — `id` is a primary key and always non-null | Minor | `restaurant.service.ts` — `!` removed |
-| V-4 | Unnecessary type cast `parseFloat(value as string)` in `zoneFeeColumn.fromDriver()` — cast not required | Minor | `restaurant.schema.ts` — cast removed |
+| #   | Issue                                                                                                                                                | Severity | Files Fixed                                                                                                                                  |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| V-1 | `RestaurantRepository.update()` return type declared `Promise<Restaurant>` but can return `undefined` — type safety gap in callers                   | Medium   | `restaurant.repository.ts` — return type → `Promise<Restaurant \| undefined>`; `restaurant.service.ts update()` — defensive null guard added |
+| V-2 | Misleading comment in `setApproved()` claimed "`findOne` is called implicitly by `update`" — false; `repo.update()` never calls `findOne` internally | Minor    | `restaurant.service.ts` — comment corrected                                                                                                  |
+| V-3 | Unnecessary non-null assertion `restaurant.id!` in `publishRestaurantEvent()` — `id` is a primary key and always non-null                            | Minor    | `restaurant.service.ts` — `!` removed                                                                                                        |
+| V-4 | Unnecessary type cast `parseFloat(value as string)` in `zoneFeeColumn.fromDriver()` — cast not required                                              | Minor    | `restaurant.schema.ts` — cast removed                                                                                                        |
 
 ### Migration
 
 `apps/api/src/drizzle/out/0006_catalog_enrichment.sql` applies:
+
 - `restaurants.cuisine_type`, `restaurants.logo_url`, `restaurants.cover_image_url`
 - `restaurants_approved_open_idx` composite index
 - Drops `ordering_restaurant_snapshots.delivery_radius_km`

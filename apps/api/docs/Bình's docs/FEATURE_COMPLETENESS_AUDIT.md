@@ -1,7 +1,7 @@
 # Feature Completeness Audit: `restaurant-catalog`
 
 > Reviewed by: Senior Backend Architect (AI)
-> Date: 2026-04-28 *(updated — re-audited against current codebase)*
+> Date: 2026-04-28 _(updated — re-audited against current codebase)_
 > Scope: `apps/api/src/module/restaurant-catalog/**`
 > Based on: actual source code (schema, service, controller, dto)
 
@@ -12,6 +12,7 @@
 What actually exists in code right now:
 
 **`restaurant` module:**
+
 - `GET /restaurants` — list all (paginated: `?offset=&limit=`)
 - `GET /restaurants/:id` — get one
 - `POST /restaurants` — create (admin/restaurant role)
@@ -21,10 +22,12 @@ What actually exists in code right now:
 - `DELETE /restaurants/:id` — delete (admin only)
 
 **`delivery-zones` sub-module** ✅ NEW — `restaurants/:restaurantId/delivery-zones`:
+
 - Full CRUD: `GET`, `GET /:id`, `POST`, `PATCH /:id`, `DELETE /:id`
 - Schema: `id, restaurantId, name, radiusKm, deliveryFee, estimatedMinutes, isActive`
 
 **`menu` module:**
+
 - `GET /menu-items?restaurantId=` — list by restaurant (with optional category filter)
 - `GET /menu-items/:id` — get one
 - `GET /menu-items/categories` — list category enum
@@ -34,21 +37,25 @@ What actually exists in code right now:
 - `DELETE /menu-items/:id` — delete item
 
 **`modifiers` sub-module** ✅ NEW — `/menu-items/:menuItemId/modifiers`:
+
 - Full CRUD: `GET`, `GET /:id`, `POST`, `PATCH /:id`, `DELETE /:id`
 - Schema: `id, menuItemId, name, description, price, isRequired` (single price per modifier)
 
 **`search` module** ✅ NEW — `/restaurants/search`:
+
 - `GET /restaurants/search?name=&lat=&lon=&radiusKm=&offset=&limit=`
 - Filters: name (ILIKE), geo (Euclidean approximation), offset/limit pagination
 - Always filters `isApproved = true`
 
 **Schema fields:**
+
 - Restaurant: `id, ownerId, name, description, address, phone, isOpen, isApproved, latitude, longitude, createdAt, updatedAt`
 - DeliveryZone: `id, restaurantId, name, radiusKm, deliveryFee, estimatedMinutes, isActive, createdAt, updatedAt`
 - MenuItem: `id, restaurantId, name, description, price, sku, category, status, imageUrl, isAvailable, tags, createdAt, updatedAt`
 - MenuItemModifier: `id, menuItemId, name, description, price, isRequired, createdAt, updatedAt`
 
 **Events published:**
+
 - `MenuItemUpdatedEvent` — on create/update/toggleSoldOut/delete (status only, no isAvailable)
 - `RestaurantUpdatedEvent` — on create/update/delete (⚠️ NOT on approve/unapprove)
 
@@ -58,31 +65,31 @@ What actually exists in code right now:
 
 ### Complete feature map for a production restaurant-catalog:
 
-| Feature Area | Required | Current Status |
-|---|---|---|
-| Restaurant CRUD | ✅ | ✅ Implemented |
-| Restaurant approval flow | ✅ | ✅ `PATCH /approve` + `PATCH /unapprove` (admin only) — ⚠️ `setApproved()` does NOT fire `RestaurantUpdatedEvent` |
-| Restaurant open/close toggle | ✅ | ⚠️ Via `PATCH /restaurants/:id { isOpen }` — no dedicated toggle endpoint |
-| Operating hours schedule | ✅ | ❌ Missing entirely |
-| Temporary closure / maintenance | ✅ | ❌ Missing entirely |
-| Delivery zone / service radius | ✅ | ✅ `delivery_zones` table + full Zones CRUD sub-module — ⚠️ NOT connected to `RestaurantUpdatedEvent` or Ordering snapshot |
-| Restaurant category / cuisine type | ✅ | ❌ Missing entirely |
-| Restaurant cover image / logo | ✅ | ❌ Missing entirely |
-| Menu item CRUD | ✅ | ✅ Implemented |
-| Menu item sold-out toggle | ✅ | ✅ Implemented |
-| Menu item categories | ✅ | ⚠️ Flat global enum, no dedicated table |
-| Menu item modifiers (size, toppings) | ✅ | ⚠️ `menu_item_modifiers` table + full CRUD — simplified (single price, no groups/options model, no isDefault) |
-| Menu item image upload | ⚠️ | ⚠️ `imageUrl` field only, no upload endpoint |
-| Menu item price snapshot for orders | ✅ | ✅ Handled by Ordering BC ACL projectors via `MenuItemUpdatedEvent` |
-| Menu section / grouping | ⚠️ | ❌ No concept of menu sections |
-| Search by name | ✅ | ✅ `SearchModule` with `GET /restaurants/search?name=` (ILIKE) |
-| Geo-based search | ✅ | ⚠️ Euclidean approximation, not Haversine — `radius/111` degree conversion |
-| Filter by cuisine / category | ✅ | ❌ `category` param accepted but silently ignored (always `undefined` passed) |
-| Ordering integration contract | ✅ | ✅ Fully wired: `MenuItemUpdatedEvent` + `RestaurantUpdatedEvent` + snapshot projectors |
-| Item availability check for Ordering | ✅ | ✅ `MenuService.assertItemAvailable()` implemented |
-| Pagination on `/restaurants` list | ✅ | ✅ `offset` + `limit` query params supported |
-| Pagination on `/menu-items` list | ✅ | ❌ `findByRestaurant()` returns all items — no offset/limit |
-| Soft delete | ⚠️ | ❌ Hard delete only |
+| Feature Area                         | Required | Current Status                                                                                                             |
+| ------------------------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Restaurant CRUD                      | ✅       | ✅ Implemented                                                                                                             |
+| Restaurant approval flow             | ✅       | ✅ `PATCH /approve` + `PATCH /unapprove` (admin only) — ⚠️ `setApproved()` does NOT fire `RestaurantUpdatedEvent`          |
+| Restaurant open/close toggle         | ✅       | ⚠️ Via `PATCH /restaurants/:id { isOpen }` — no dedicated toggle endpoint                                                  |
+| Operating hours schedule             | ✅       | ❌ Missing entirely                                                                                                        |
+| Temporary closure / maintenance      | ✅       | ❌ Missing entirely                                                                                                        |
+| Delivery zone / service radius       | ✅       | ✅ `delivery_zones` table + full Zones CRUD sub-module — ⚠️ NOT connected to `RestaurantUpdatedEvent` or Ordering snapshot |
+| Restaurant category / cuisine type   | ✅       | ❌ Missing entirely                                                                                                        |
+| Restaurant cover image / logo        | ✅       | ❌ Missing entirely                                                                                                        |
+| Menu item CRUD                       | ✅       | ✅ Implemented                                                                                                             |
+| Menu item sold-out toggle            | ✅       | ✅ Implemented                                                                                                             |
+| Menu item categories                 | ✅       | ⚠️ Flat global enum, no dedicated table                                                                                    |
+| Menu item modifiers (size, toppings) | ✅       | ⚠️ `menu_item_modifiers` table + full CRUD — simplified (single price, no groups/options model, no isDefault)              |
+| Menu item image upload               | ⚠️       | ⚠️ `imageUrl` field only, no upload endpoint                                                                               |
+| Menu item price snapshot for orders  | ✅       | ✅ Handled by Ordering BC ACL projectors via `MenuItemUpdatedEvent`                                                        |
+| Menu section / grouping              | ⚠️       | ❌ No concept of menu sections                                                                                             |
+| Search by name                       | ✅       | ✅ `SearchModule` with `GET /restaurants/search?name=` (ILIKE)                                                             |
+| Geo-based search                     | ✅       | ⚠️ Euclidean approximation, not Haversine — `radius/111` degree conversion                                                 |
+| Filter by cuisine / category         | ✅       | ❌ `category` param accepted but silently ignored (always `undefined` passed)                                              |
+| Ordering integration contract        | ✅       | ✅ Fully wired: `MenuItemUpdatedEvent` + `RestaurantUpdatedEvent` + snapshot projectors                                    |
+| Item availability check for Ordering | ✅       | ✅ `MenuService.assertItemAvailable()` implemented                                                                         |
+| Pagination on `/restaurants` list    | ✅       | ✅ `offset` + `limit` query params supported                                                                               |
+| Pagination on `/menu-items` list     | ✅       | ❌ `findByRestaurant()` returns all items — no offset/limit                                                                |
+| Soft delete                          | ⚠️       | ❌ Hard delete only                                                                                                        |
 
 ---
 
@@ -105,6 +112,7 @@ What actually exists in code right now:
 **⚠️ Remaining issue:** `RestaurantService.setApproved()` — the underlying method — does **not fire `RestaurantUpdatedEvent`**. The Ordering BC snapshot will not reflect approval changes until this is fixed.
 
 **Fix needed (`restaurant.service.ts`):**
+
 ```typescript
 async setApproved(id: string, isApproved: boolean): Promise<Restaurant> {
   const restaurant = await this.findOne(id);
@@ -124,6 +132,7 @@ async setApproved(id: string, isApproved: boolean): Promise<Restaurant> {
 Currently `isOpen` is a manual boolean that restaurant owners toggle by hand. In production, restaurants open and close on a schedule. A customer checking at 2am should see the restaurant as closed automatically.
 
 **What you need:**
+
 ```typescript
 // operating_hours table
 {
@@ -136,6 +145,7 @@ Currently `isOpen` is a manual boolean that restaurant owners toggle by hand. In
 ```
 
 **Service method:**
+
 ```typescript
 // Called by a cron job or lazily on read
 async isCurrentlyOpen(restaurantId: string): Promise<boolean>
@@ -150,6 +160,7 @@ Without this, `isOpen` is unreliable — restaurant owners must manually open/cl
 The bounded context doc mentions this context is responsible for **search/discovery**, but there is no `cuisineType` or `category` on the restaurant. A customer cannot filter restaurants by "Vietnamese", "Pizza", "Burgers", etc.
 
 **Fix — add to schema:**
+
 ```typescript
 cuisineTypes: text('cuisine_types').array(), // ['vietnamese', 'fast_food']
 ```
@@ -163,6 +174,7 @@ Or a proper join table if categories need to be admin-managed.
 `MenuItem` has `imageUrl`, but `Restaurant` has none. The customer-facing catalog shows restaurant logos and banners. Without this, the UI cannot display branded restaurant cards.
 
 **Fix — add to schema:**
+
 ```typescript
 logoUrl: text('logo_url'),
 coverImageUrl: text('cover_image_url'),
@@ -175,11 +187,13 @@ coverImageUrl: text('cover_image_url'),
 The `delivery_zones` table and full CRUD sub-module (`ZonesModule`) are implemented. Each restaurant can have multiple named zones with `radiusKm`, `deliveryFee`, and `estimatedMinutes`.
 
 **⚠️ Remaining integration gap:**
+
 - `RestaurantUpdatedEvent` does not carry zone data — the Ordering BC cannot read per-zone delivery fees or ETA at checkout
 - `restaurants` table still lacks a `delivery_radius_km` column — BR-3 (simple radius enforcement at checkout) requires this simpler field to be added separately
 - The two radius approaches (delivery_zones vs delivery_radius_km) are not connected
 
 **Fix needed for BR-3:** Add `delivery_radius_km` column to `restaurants` table and publish it in `RestaurantUpdatedEvent`:
+
 ```typescript
 // restaurant.schema.ts
 deliveryRadiusKm: real('delivery_radius_km'),  // nullable
@@ -195,6 +209,7 @@ Currently `isOpen` is changed via the generic `PATCH /restaurants/:id` endpoint 
 2. No audit trail for open/close events
 
 **Fix — add dedicated endpoint:**
+
 ```typescript
 @Patch(':id/toggle-open')
 @Roles('admin', 'restaurant')
@@ -208,6 +223,7 @@ toggleOpen(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: JwtPaylo
 ### ❌ Missing: Temporary Closure / Maintenance Mode
 
 `isOpen` is a binary flag. There is no way to express:
+
 - "Closed today for a holiday"
 - "Under maintenance until 6pm"
 - "Suspended by admin due to violation"
@@ -242,11 +258,15 @@ closureReason: text('closure_reason'),          // 'holiday', 'maintenance', 'ad
 `menu_item_modifiers` table and full `ModifiersModule` CRUD are implemented.
 
 Current modifier schema:
+
 ```typescript
-{ id, menuItemId, name, description, price, isRequired }
+{
+  (id, menuItemId, name, description, price, isRequired);
+}
 ```
 
 **⚠️ Remaining limitations:**
+
 - Single flat modifier (e.g. "Large") — no modifier groups ("Size: Small/Medium/Large")
 - No `maxSelect` / `minSelect` — cannot model "choose exactly one size"
 - No `isDefault` flag
@@ -254,12 +274,14 @@ Current modifier schema:
 - Modifier prices are NOT included in `MenuItemUpdatedEvent` — Ordering BC snapshots do not know about modifier prices
 
 **⚠️ Security bug in `ModifiersService.getRestaurantForItem()`:**
+
 ```typescript
 // WRONG — returns restaurantId as ownerId:
 private async getRestaurantForItem(restaurantId: string) {
   return { ownerId: restaurantId }; // any restaurant-role user can mutate any modifier
 }
 ```
+
 Fix: call `RestaurantService.findOne(restaurantId)` to get the real `ownerId`.
 
 ---
@@ -267,6 +289,7 @@ Fix: call `RestaurantService.findOne(restaurantId)` to get the real `ownerId`.
 ### ✅ DONE: Price Snapshot for Ordering
 
 The snapshot mechanism is fully implemented in the Ordering BC's ACL layer via event-driven projectors:
+
 - `MenuItemUpdatedEvent` published on every mutation carries `name`, `price`, `status`
 - `MenuItemProjector` in `ordering/acl/projections/` upserts `ordering_menu_item_snapshots`
 - `PlaceOrderHandler` reads from the local snapshot table — never calls `MenuService`
@@ -280,11 +303,13 @@ The snapshot mechanism is fully implemented in the Ordering BC's ACL layer via e
 `MenuService.assertItemAvailable()` is implemented (`menu.service.ts`).
 
 **⚠️ Minor inconsistency:** The implementation checks the `isAvailable` boolean AND the `status` enum:
+
 ```typescript
 if (!item.isAvailable) throw ConflictException('Item is not available for ordering');
 if (item.status === 'out_of_stock') throw ConflictException(...);
 if (item.status === 'unavailable') throw ConflictException(...);
 ```
+
 The contract (`restaurant-catalog.md`) says `status` should be the **single source of truth** and `isAvailable` should be deprecated. `toggleSoldOut()` only updates `status`, not `isAvailable` — these two can get out of sync.
 
 ---
@@ -292,19 +317,24 @@ The contract (`restaurant-catalog.md`) says `status` should be the **single sour
 ### ⚠️ Partially Implemented: Category System
 
 Categories are a flat enum hardcoded in the schema:
+
 ```typescript
-'salads', 'desserts', 'breads', 'mains', 'drinks', 'sides'
+('salads', 'desserts', 'breads', 'mains', 'drinks', 'sides');
 ```
 
 **Problems:**
+
 1. Cannot add new categories without a schema migration
 2. All restaurants share the same categories — a "Pho restaurant" and a "Pizza restaurant" have the same options
 3. No per-restaurant custom sections (e.g., "Lunch Special", "Chef's Recommendation")
 
 For MVP this is acceptable. For production, categories should be a separate table per restaurant:
+
 ```typescript
 // menu_categories table
-{ id, restaurantId, name, displayOrder }
+{
+  (id, restaurantId, name, displayOrder);
+}
 ```
 
 ---
@@ -314,6 +344,7 @@ For MVP this is acceptable. For production, categories should be a separate tabl
 `MenuRepository.findByRestaurant()` still returns ALL menu items with no limit. `RestaurantRepository.findAll()` now supports `offset`/`limit` — the same pattern needs to be applied to the menu.
 
 **Fix:**
+
 ```typescript
 async findByRestaurant(
   restaurantId: string,
@@ -332,6 +363,7 @@ async findByRestaurant(
 `SearchModule` is now present with `GET /restaurants/search`.
 
 **What works:**
+
 - Name filter: `ILIKE %name%` substring match
 - Geo filter: lat/lon/radiusKm with offset/limit pagination
 - Always filters `isApproved = true`
@@ -339,10 +371,13 @@ async findByRestaurant(
 **⚠️ Remaining issues:**
 
 1. **Euclidean distance, not Haversine** — `SearchRepository` uses:
+
    ```typescript
-   SQRT(POWER(lat1-lat2, 2) + POWER(lon1-lon2, 2)) <= radius / 111
+   SQRT(POWER(lat1 - lat2, 2) + POWER(lon1 - lon2, 2)) <= radius / 111;
    ```
+
    The `/ 111` km-to-degree conversion is a flat-earth approximation. For Vietnam (~10° N) the error is small (~0.4%) but this is not standard. Haversine via SQL is:
+
    ```sql
    6371 * acos(
      cos(radians($lat)) * cos(radians(latitude)) *
@@ -352,10 +387,12 @@ async findByRestaurant(
    ```
 
 2. **Cuisine/category filter silently ignored** — `SearchController` always passes `undefined` for the category parameter:
+
    ```typescript
    return this.service.searchRestaurants(name, undefined, lat, lon, ...);
    //                                         ^^^^^^^^^ always undefined
    ```
+
    The `SearchService` and `SearchRepository` accept the parameter but it never arrives.
 
 3. **No `isOpenNow` filter** — results include closed restaurants.
@@ -366,15 +403,15 @@ async findByRestaurant(
 
 ### Missing Entities
 
-| Entity | Status | Impact |
-|--------|--------|--------|
-| `OperatingHours` | ❌ Missing | Restaurants cannot auto open/close by schedule |
-| `ServiceZone` | ❌ Missing | No delivery area enforcement |
-| `MenuCategory` (custom per restaurant) | ❌ Missing | All restaurants share global enum |
-| `ModifierGroup` | ❌ Missing | No customization on menu items |
-| `ModifierOption` | ❌ Missing | No add-ons or size variants |
-| `MenuItemSnapshot` (value object) | ❌ Missing | No price isolation contract for Ordering |
-| `RestaurantImage` | ❌ Missing | No logo/cover for catalog display |
+| Entity                                 | Status     | Impact                                         |
+| -------------------------------------- | ---------- | ---------------------------------------------- |
+| `OperatingHours`                       | ❌ Missing | Restaurants cannot auto open/close by schedule |
+| `ServiceZone`                          | ❌ Missing | No delivery area enforcement                   |
+| `MenuCategory` (custom per restaurant) | ❌ Missing | All restaurants share global enum              |
+| `ModifierGroup`                        | ❌ Missing | No customization on menu items                 |
+| `ModifierOption`                       | ❌ Missing | No add-ons or size variants                    |
+| `MenuItemSnapshot` (value object)      | ❌ Missing | No price isolation contract for Ordering       |
+| `RestaurantImage`                      | ❌ Missing | No logo/cover for catalog display              |
 
 ### Missing Business Invariants
 
@@ -388,14 +425,14 @@ async findByRestaurant(
 
 ## 6. Integration Readiness with Ordering
 
-| What Ordering Needs | Available Now | Status |
-|---|---|---|
-| Check if restaurant is open & approved | `ordering_restaurant_snapshots` (via `RestaurantUpdatedEvent`) | ✅ Fully wired — checked in `PlaceOrderHandler` step 5 |
-| Check if menu item is available | `ordering_menu_item_snapshots.status` (via `MenuItemUpdatedEvent`) | ✅ Fully wired — checked in `PlaceOrderHandler` step 5 |
-| Get item price at order creation time | `ordering_menu_item_snapshots.price` | ✅ Snapshot projector keeps it in sync |
-| Check if item is within delivery radius | `ordering_restaurant_snapshots.delivery_radius_km` | ❌ Always null — `restaurants` table lacks `delivery_radius_km` column |
-| Get item with modifiers for cart | `menu_item_modifiers` (but no event published) | ⚠️ Modifier CRUD exists but not included in `MenuItemUpdatedEvent`; Ordering cannot snapshot modifier prices |
-| Approve/unapprove snapshot sync | `RestaurantUpdatedEvent` from `setApproved()` | ❌ Missing — `setApproved()` does not fire the event |
+| What Ordering Needs                     | Available Now                                                      | Status                                                                                                       |
+| --------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Check if restaurant is open & approved  | `ordering_restaurant_snapshots` (via `RestaurantUpdatedEvent`)     | ✅ Fully wired — checked in `PlaceOrderHandler` step 5                                                       |
+| Check if menu item is available         | `ordering_menu_item_snapshots.status` (via `MenuItemUpdatedEvent`) | ✅ Fully wired — checked in `PlaceOrderHandler` step 5                                                       |
+| Get item price at order creation time   | `ordering_menu_item_snapshots.price`                               | ✅ Snapshot projector keeps it in sync                                                                       |
+| Check if item is within delivery radius | `ordering_restaurant_snapshots.delivery_radius_km`                 | ❌ Always null — `restaurants` table lacks `delivery_radius_km` column                                       |
+| Get item with modifiers for cart        | `menu_item_modifiers` (but no event published)                     | ⚠️ Modifier CRUD exists but not included in `MenuItemUpdatedEvent`; Ordering cannot snapshot modifier prices |
+| Approve/unapprove snapshot sync         | `RestaurantUpdatedEvent` from `setApproved()`                      | ❌ Missing — `setApproved()` does not fire the event                                                         |
 
 **Verdict:** Core Ordering flow (Phase 4) is operational. Two remaining blockers for full correctness: (1) `setApproved` not firing event, (2) `delivery_radius_km` missing from restaurant schema.
 
@@ -456,6 +493,7 @@ This logic belongs in the **Ordering context's CartModule**, not here. But it re
 **Current behavior:** `isApproved` is not toggleable (no endpoint). Even if it were, there is no mechanism to notify active orders.
 
 **Fix requires:**
+
 1. Admin `PATCH /restaurants/:id/suspend` endpoint
 2. `RestaurantSuspended` domain event
 3. OrderModule cancels affected in-flight orders and notifies users
@@ -466,13 +504,13 @@ This logic belongs in the **Ordering context's CartModule**, not here. But it re
 
 ### What will break when splitting to microservices:
 
-| Issue | Why | Fix Now |
-|---|---|---|
-| `menu.schema.ts` imports `restaurant.schema.ts` directly | DB FK cannot span service boundaries | Remove FK, use soft reference |
-| `MenuService` injects `RestaurantService` directly | Becomes a network call with failure risk | Introduce `RestaurantLookupPort` interface |
-| DB cascade delete for `restaurant → menu_items` | Cannot do cross-DB cascade | Replace with `RestaurantDeleted` domain event |
-| No domain events anywhere | Every integration becomes a synchronous call | Add `EventEmitter2` for internal events now |
-| `findAll()` with no pagination | Full table scan at scale | Add cursor/offset pagination now |
+| Issue                                                    | Why                                          | Fix Now                                       |
+| -------------------------------------------------------- | -------------------------------------------- | --------------------------------------------- |
+| `menu.schema.ts` imports `restaurant.schema.ts` directly | DB FK cannot span service boundaries         | Remove FK, use soft reference                 |
+| `MenuService` injects `RestaurantService` directly       | Becomes a network call with failure risk     | Introduce `RestaurantLookupPort` interface    |
+| DB cascade delete for `restaurant → menu_items`          | Cannot do cross-DB cascade                   | Replace with `RestaurantDeleted` domain event |
+| No domain events anywhere                                | Every integration becomes a synchronous call | Add `EventEmitter2` for internal events now   |
+| `findAll()` with no pagination                           | Full table scan at scale                     | Add cursor/offset pagination now              |
 
 ### Design now to avoid refactoring later:
 
@@ -488,23 +526,23 @@ This logic belongs in the **Ordering context's CartModule**, not here. But it re
 
 ## 9. Final Verdict
 
-| Module / Area | Verdict | Summary |
-|---|---|---|
-| Restaurant CRUD | ✅ Complete | Basic operations are there |
-| Restaurant approval flow | ❌ Not production-ready | No approve endpoint — feature is broken |
-| Operating hours | ❌ Not production-ready | Manual `isOpen` toggle is not a real schedule |
-| Restaurant images | ❌ Not production-ready | No logo/cover — UI cannot render catalog cards |
-| Delivery zone | ❌ Not production-ready | No area enforcement — any customer can order from anywhere |
-| Restaurant cuisine type | ❌ Not production-ready | No filter/discovery capability |
-| Menu item CRUD | ✅ Complete | Solid implementation |
-| Menu item sold-out toggle | ✅ Complete | Works correctly |
-| Menu item modifiers | ❌ Not production-ready | No size/topping support — cannot model real menus |
-| Menu categories | ⚠️ Acceptable for MVP | Flat enum works short-term |
-| Price snapshot contract | ⚠️ Missing contract | Works by accident, not by design |
-| Ordering integration | ❌ Not production-ready | `assertItemAvailable()` missing, `assertOpenAndApproved()` never called |
-| Search & discovery | ❌ Not production-ready | `SearchModule` entirely absent |
-| Pagination | ❌ Not production-ready | Full table scan on every list call |
-| Domain events | ❌ Not production-ready | No events — all integrations will be synchronous |
+| Module / Area             | Verdict                 | Summary                                                                 |
+| ------------------------- | ----------------------- | ----------------------------------------------------------------------- |
+| Restaurant CRUD           | ✅ Complete             | Basic operations are there                                              |
+| Restaurant approval flow  | ❌ Not production-ready | No approve endpoint — feature is broken                                 |
+| Operating hours           | ❌ Not production-ready | Manual `isOpen` toggle is not a real schedule                           |
+| Restaurant images         | ❌ Not production-ready | No logo/cover — UI cannot render catalog cards                          |
+| Delivery zone             | ❌ Not production-ready | No area enforcement — any customer can order from anywhere              |
+| Restaurant cuisine type   | ❌ Not production-ready | No filter/discovery capability                                          |
+| Menu item CRUD            | ✅ Complete             | Solid implementation                                                    |
+| Menu item sold-out toggle | ✅ Complete             | Works correctly                                                         |
+| Menu item modifiers       | ❌ Not production-ready | No size/topping support — cannot model real menus                       |
+| Menu categories           | ⚠️ Acceptable for MVP   | Flat enum works short-term                                              |
+| Price snapshot contract   | ⚠️ Missing contract     | Works by accident, not by design                                        |
+| Ordering integration      | ❌ Not production-ready | `assertItemAvailable()` missing, `assertOpenAndApproved()` never called |
+| Search & discovery        | ❌ Not production-ready | `SearchModule` entirely absent                                          |
+| Pagination                | ❌ Not production-ready | Full table scan on every list call                                      |
+| Domain events             | ❌ Not production-ready | No events — all integrations will be synchronous                        |
 
 ### Overall: ⚠️ Missing important features — not ready to start Ordering context yet
 

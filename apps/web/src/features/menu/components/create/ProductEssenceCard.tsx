@@ -1,14 +1,14 @@
-import { Info } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Info } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 
 export function ProductEssenceCard() {
   return (
@@ -19,7 +19,10 @@ export function ProductEssenceCard() {
       </h3>
       <div className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="item-name" className="text-sm font-bold text-muted-foreground">
+          <Label
+            htmlFor="item-name"
+            className="text-sm font-bold text-muted-foreground"
+          >
             Item Name
           </Label>
           <Input
@@ -31,7 +34,10 @@ export function ProductEssenceCard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="category" className="text-sm font-bold text-muted-foreground">
+            <Label
+              htmlFor="category"
+              className="text-sm font-bold text-muted-foreground"
+            >
               Category Selection
             </Label>
             <Select>
@@ -45,13 +51,18 @@ export function ProductEssenceCard() {
                 <SelectItem value="artisan-bakery">Artisan Bakery</SelectItem>
                 <SelectItem value="farm-fresh">Farm Fresh</SelectItem>
                 <SelectItem value="fresh-dairy">Fresh Dairy</SelectItem>
-                <SelectItem value="handcrafted-pantry">Handcrafted Pantry</SelectItem>
+                <SelectItem value="handcrafted-pantry">
+                  Handcrafted Pantry
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="price" className="text-sm font-bold text-muted-foreground">
+            <Label
+              htmlFor="price"
+              className="text-sm font-bold text-muted-foreground"
+            >
               Price
             </Label>
             <div className="relative">
@@ -69,7 +80,10 @@ export function ProductEssenceCard() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description" className="text-sm font-bold text-muted-foreground">
+          <Label
+            htmlFor="description"
+            className="text-sm font-bold text-muted-foreground"
+          >
             Description
           </Label>
           <Textarea

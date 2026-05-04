@@ -82,12 +82,12 @@ HTTP Request
 
 ## 3.1 Bootstrap and root module
 
-| File | Purpose | Imports | Used by |
-| --- | --- | --- | --- |
-| `/apps/api/src/main.ts` | Runtime entry point. Creates the Nest app, applies `ValidationPipe`, sets global prefix to `/api`, merges Nest Swagger with Better Auth OpenAPI, exposes `/api-spec.json` and `/docs`, listens on port `3000`. | `NestFactory`, Swagger helpers, `auth`, `AppModule`, Scalar API reference, Express types, `ValidationPipe` | Executed by Nest start scripts from `/apps/api/package.json` |
-| `/apps/api/src/app.module.ts` | Root Nest module. Registers config, DB, restaurant catalog, and Better Auth integration. | `Module`, `AppController`, `AppService`, `ConfigModule`, `DatabaseModule`, `AuthModule`, `auth`, `RestaurantCatalogModule` | Imported by `/apps/api/src/main.ts` and `/apps/api/test/app.e2e-spec.ts` |
-| `/apps/api/src/app.controller.ts` | Minimal root controller with one `GET /` handler. | `Controller`, `Get`, `AppService` | Registered in `/apps/api/src/app.module.ts`, tested by `/apps/api/src/app.controller.spec.ts` |
-| `/apps/api/src/app.service.ts` | Minimal service returning `Hello World!`. | `Injectable` | Injected into `/apps/api/src/app.controller.ts` |
+| File                              | Purpose                                                                                                                                                                                                        | Imports                                                                                                                    | Used by                                                                                       |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `/apps/api/src/main.ts`           | Runtime entry point. Creates the Nest app, applies `ValidationPipe`, sets global prefix to `/api`, merges Nest Swagger with Better Auth OpenAPI, exposes `/api-spec.json` and `/docs`, listens on port `3000`. | `NestFactory`, Swagger helpers, `auth`, `AppModule`, Scalar API reference, Express types, `ValidationPipe`                 | Executed by Nest start scripts from `/apps/api/package.json`                                  |
+| `/apps/api/src/app.module.ts`     | Root Nest module. Registers config, DB, restaurant catalog, and Better Auth integration.                                                                                                                       | `Module`, `AppController`, `AppService`, `ConfigModule`, `DatabaseModule`, `AuthModule`, `auth`, `RestaurantCatalogModule` | Imported by `/apps/api/src/main.ts` and `/apps/api/test/app.e2e-spec.ts`                      |
+| `/apps/api/src/app.controller.ts` | Minimal root controller with one `GET /` handler.                                                                                                                                                              | `Controller`, `Get`, `AppService`                                                                                          | Registered in `/apps/api/src/app.module.ts`, tested by `/apps/api/src/app.controller.spec.ts` |
+| `/apps/api/src/app.service.ts`    | Minimal service returning `Hello World!`.                                                                                                                                                                      | `Injectable`                                                                                                               | Injected into `/apps/api/src/app.controller.ts`                                               |
 
 ### Root dependency diagram
 
@@ -104,13 +104,13 @@ AppController -> AppService
 
 ## 3.2 Database and infrastructure
 
-| File | Purpose | Imports | Used by |
-| --- | --- | --- | --- |
-| `/apps/api/src/drizzle/drizzle.constants.ts` | Defines the `DB_CONNECTION` DI token. | none | Used by `drizzle.module.ts`, `restaurant.repository.ts`, `menu.repository.ts` |
-| `/apps/api/src/drizzle/db.ts` | Creates a shared Drizzle database object directly from `DATABASE_URL`. This path is used by Better Auth. | `dotenv/config`, `drizzle` | Imported by `/apps/api/src/lib/auth.ts` |
-| `/apps/api/src/drizzle/drizzle.module.ts` | Nest DI wrapper around Drizzle. Throws if `DATABASE_URL` is missing. | `Module`, `drizzle`, `DB_CONNECTION` | Imported by `AppModule`, `RestaurantModule`, `MenuModule` |
-| `/apps/api/src/drizzle/schema.ts` | Barrel file that re-exports auth, restaurant, and menu schemas. | schema re-exports | Imported by `/apps/api/src/lib/auth.ts` and both repositories for typed DB access |
-| `/apps/api/drizzle.config.ts` | Drizzle Kit CLI config for migration generation, push, migrate, and studio. | `dotenv/config`, `defineConfig` | Used by DB scripts in `/apps/api/package.json` |
+| File                                         | Purpose                                                                                                  | Imports                              | Used by                                                                           |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------- |
+| `/apps/api/src/drizzle/drizzle.constants.ts` | Defines the `DB_CONNECTION` DI token.                                                                    | none                                 | Used by `drizzle.module.ts`, `restaurant.repository.ts`, `menu.repository.ts`     |
+| `/apps/api/src/drizzle/db.ts`                | Creates a shared Drizzle database object directly from `DATABASE_URL`. This path is used by Better Auth. | `dotenv/config`, `drizzle`           | Imported by `/apps/api/src/lib/auth.ts`                                           |
+| `/apps/api/src/drizzle/drizzle.module.ts`    | Nest DI wrapper around Drizzle. Throws if `DATABASE_URL` is missing.                                     | `Module`, `drizzle`, `DB_CONNECTION` | Imported by `AppModule`, `RestaurantModule`, `MenuModule`                         |
+| `/apps/api/src/drizzle/schema.ts`            | Barrel file that re-exports auth, restaurant, and menu schemas.                                          | schema re-exports                    | Imported by `/apps/api/src/lib/auth.ts` and both repositories for typed DB access |
+| `/apps/api/drizzle.config.ts`                | Drizzle Kit CLI config for migration generation, push, migrate, and studio.                              | `dotenv/config`, `defineConfig`      | Used by DB scripts in `/apps/api/package.json`                                    |
 
 ### DB infrastructure note
 
@@ -121,15 +121,15 @@ AppController -> AppService
 
 ## 3.3 Auth support files
 
-| File | Purpose | Imports | Used by |
-| --- | --- | --- | --- |
-| `/apps/api/src/lib/auth.ts` | Configures Better Auth with Drizzle adapter, email/password auth, generated UUIDs, and OpenAPI plugin. | `better-auth`, `drizzleAdapter`, `db`, `openAPI`, `schema` | Imported by `/apps/api/src/main.ts` and `/apps/api/src/app.module.ts` |
-| `/apps/api/src/module/auth/auth.schema.ts` | Drizzle tables for Better Auth persistence: `user`, `session`, `account`, `verification`, plus relations. | Drizzle schema builders and `relations` | Re-exported by `/apps/api/src/drizzle/schema.ts`; consumed indirectly by Better Auth |
-| `/apps/api/src/module/auth/decorators/current-user.decorator.ts` | Extracts `request.user` from the current HTTP request. Also declares a local `JwtPayload` interface. | `createParamDecorator`, `ExecutionContext`, Express `Request` | Used by `restaurant.controller.ts` and `menu.controller.ts` |
-| `/apps/api/src/module/auth/decorators/roles.decorator.ts` | Stores required roles in route metadata. | `SetMetadata` | Used by `restaurant.controller.ts` and `menu.controller.ts` |
-| `/apps/api/src/module/auth/guards/jwt-auth.guard.ts` | Guard that checks for a `Bearer` header and attaches a placeholder user object to `request.user`. | Nest guard types, `UnauthorizedException`, Express `Request` | Applied to restaurant and menu controllers |
-| `/apps/api/src/module/auth/guards/roles.guard.ts` | Reads `@Roles` metadata and checks `request.user.roles`. Throws `ForbiddenException` on mismatch. | Nest guard types, `Reflector`, Express `Request` | Applied to restaurant and menu controllers |
-| `/apps/api/src/module/auth/interfaces/jwt-payload.interface.ts` | Standalone JWT payload interface. | none | No visible runtime usage in the provided files |
+| File                                                             | Purpose                                                                                                   | Imports                                                       | Used by                                                                              |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `/apps/api/src/lib/auth.ts`                                      | Configures Better Auth with Drizzle adapter, email/password auth, generated UUIDs, and OpenAPI plugin.    | `better-auth`, `drizzleAdapter`, `db`, `openAPI`, `schema`    | Imported by `/apps/api/src/main.ts` and `/apps/api/src/app.module.ts`                |
+| `/apps/api/src/module/auth/auth.schema.ts`                       | Drizzle tables for Better Auth persistence: `user`, `session`, `account`, `verification`, plus relations. | Drizzle schema builders and `relations`                       | Re-exported by `/apps/api/src/drizzle/schema.ts`; consumed indirectly by Better Auth |
+| `/apps/api/src/module/auth/decorators/current-user.decorator.ts` | Extracts `request.user` from the current HTTP request. Also declares a local `JwtPayload` interface.      | `createParamDecorator`, `ExecutionContext`, Express `Request` | Used by `restaurant.controller.ts` and `menu.controller.ts`                          |
+| `/apps/api/src/module/auth/decorators/roles.decorator.ts`        | Stores required roles in route metadata.                                                                  | `SetMetadata`                                                 | Used by `restaurant.controller.ts` and `menu.controller.ts`                          |
+| `/apps/api/src/module/auth/guards/jwt-auth.guard.ts`             | Guard that checks for a `Bearer` header and attaches a placeholder user object to `request.user`.         | Nest guard types, `UnauthorizedException`, Express `Request`  | Applied to restaurant and menu controllers                                           |
+| `/apps/api/src/module/auth/guards/roles.guard.ts`                | Reads `@Roles` metadata and checks `request.user.roles`. Throws `ForbiddenException` on mismatch.         | Nest guard types, `Reflector`, Express `Request`              | Applied to restaurant and menu controllers                                           |
+| `/apps/api/src/module/auth/interfaces/jwt-payload.interface.ts`  | Standalone JWT payload interface.                                                                         | none                                                          | No visible runtime usage in the provided files                                       |
 
 ### Auth dependency diagram
 
@@ -156,21 +156,21 @@ menu.controller.ts       -> JwtAuthGuard + RolesGuard + CurrentUser + Roles
 
 ## 3.4 Restaurant catalog context
 
-| File | Purpose | Imports | Used by |
-| --- | --- | --- | --- |
-| `/apps/api/src/module/restaurant-catalog/restaurant-catalog.module.ts` | Context-level aggregator for `MenuModule` and `RestaurantModule`. | `MenuModule`, `RestaurantModule` | Imported by `/apps/api/src/app.module.ts` |
-| `/apps/api/src/module/restaurant-catalog/restaurant/restaurant.module.ts` | Nest feature module for restaurant CRUD. Exports `RestaurantService` so other modules can depend on it. | `RestaurantController`, `RestaurantService`, `RestaurantRepository`, `DatabaseModule` | Imported by `RestaurantCatalogModule` and `MenuModule` |
-| `/apps/api/src/module/restaurant-catalog/restaurant/restaurant.controller.ts` | HTTP API for `/api/restaurants`. Applies auth and role checks, delegates to `RestaurantService`. | Nest decorators, `RestaurantService`, DTOs, auth guards/decorators, Swagger decorators | Registered by `restaurant.module.ts` |
-| `/apps/api/src/module/restaurant-catalog/restaurant/restaurant.service.ts` | Restaurant business logic: fetches restaurants, handles not-found, owner/admin update rule, open/approved gate. | Nest exceptions, `RestaurantRepository`, DTOs, schema types | Used by `restaurant.controller.ts` and `menu.service.ts` |
-| `/apps/api/src/module/restaurant-catalog/restaurant/restaurant.repository.ts` | Drizzle queries for `restaurants` table: list, find, create, update, delete. | Nest DI, Drizzle `eq`, restaurant schema, DTOs, `DB_CONNECTION`, typed schema barrel | Used by `restaurant.service.ts` |
-| `/apps/api/src/module/restaurant-catalog/restaurant/restaurant.schema.ts` | Drizzle table definition for `restaurants`. | Drizzle PG column helpers | Used by `restaurant.repository.ts`, re-exported by `/apps/api/src/drizzle/schema.ts`, referenced by `menu.schema.ts` |
-| `/apps/api/src/module/restaurant-catalog/restaurant/dto/restaurant.dto.ts` | Request DTOs and response contract for restaurant endpoints. | Swagger decorators, `PartialType`, `class-validator` decorators | Used by `restaurant.controller.ts`, `restaurant.service.ts`, `restaurant.repository.ts` |
-| `/apps/api/src/module/restaurant-catalog/menu/menu.module.ts` | Nest feature module for menu CRUD. Imports `RestaurantModule` because menu ownership checks require restaurant lookup. | `MenuController`, `MenuService`, `MenuRepository`, `DatabaseModule`, `RestaurantModule` | Imported by `RestaurantCatalogModule` |
-| `/apps/api/src/module/restaurant-catalog/menu/menu.controller.ts` | HTTP API for `/api/menu-items`. Applies auth/roles and delegates to `MenuService`. Also exposes a categories route. | Nest decorators, `MenuService`, menu DTOs/constants, auth guards/decorators, Swagger decorators | Registered by `menu.module.ts` |
-| `/apps/api/src/module/restaurant-catalog/menu/menu.service.ts` | Menu business logic: ensures restaurant exists, checks ownership, toggles sold-out state, delegates to repository. | Nest exceptions, `MenuRepository`, menu DTO types/constants, menu schema type, `RestaurantService` | Used by `menu.controller.ts` |
-| `/apps/api/src/module/restaurant-catalog/menu/menu.repository.ts` | Drizzle queries for `menu_items`: list by restaurant/category, find, create, update, delete. | Nest DI, Drizzle `eq` and `and`, menu schema, DTOs, `DB_CONNECTION`, schema barrel | Used by `menu.service.ts` |
-| `/apps/api/src/module/restaurant-catalog/menu/menu.schema.ts` | Drizzle enum and table definition for `menu_items`. Has a foreign key to `restaurants.id` with cascade delete. | Drizzle PG builders, `restaurants` schema | Used by `menu.repository.ts`, re-exported by `/apps/api/src/drizzle/schema.ts` |
-| `/apps/api/src/module/restaurant-catalog/menu/dto/menu.dto.ts` | Menu request DTOs, query DTO, response DTO, and allowed category/status constants. | Swagger helpers, `PartialType`, `OmitType`, `class-validator` decorators | Used by `menu.controller.ts`, `menu.service.ts`, `menu.repository.ts` |
+| File                                                                          | Purpose                                                                                                                | Imports                                                                                            | Used by                                                                                                              |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `/apps/api/src/module/restaurant-catalog/restaurant-catalog.module.ts`        | Context-level aggregator for `MenuModule` and `RestaurantModule`.                                                      | `MenuModule`, `RestaurantModule`                                                                   | Imported by `/apps/api/src/app.module.ts`                                                                            |
+| `/apps/api/src/module/restaurant-catalog/restaurant/restaurant.module.ts`     | Nest feature module for restaurant CRUD. Exports `RestaurantService` so other modules can depend on it.                | `RestaurantController`, `RestaurantService`, `RestaurantRepository`, `DatabaseModule`              | Imported by `RestaurantCatalogModule` and `MenuModule`                                                               |
+| `/apps/api/src/module/restaurant-catalog/restaurant/restaurant.controller.ts` | HTTP API for `/api/restaurants`. Applies auth and role checks, delegates to `RestaurantService`.                       | Nest decorators, `RestaurantService`, DTOs, auth guards/decorators, Swagger decorators             | Registered by `restaurant.module.ts`                                                                                 |
+| `/apps/api/src/module/restaurant-catalog/restaurant/restaurant.service.ts`    | Restaurant business logic: fetches restaurants, handles not-found, owner/admin update rule, open/approved gate.        | Nest exceptions, `RestaurantRepository`, DTOs, schema types                                        | Used by `restaurant.controller.ts` and `menu.service.ts`                                                             |
+| `/apps/api/src/module/restaurant-catalog/restaurant/restaurant.repository.ts` | Drizzle queries for `restaurants` table: list, find, create, update, delete.                                           | Nest DI, Drizzle `eq`, restaurant schema, DTOs, `DB_CONNECTION`, typed schema barrel               | Used by `restaurant.service.ts`                                                                                      |
+| `/apps/api/src/module/restaurant-catalog/restaurant/restaurant.schema.ts`     | Drizzle table definition for `restaurants`.                                                                            | Drizzle PG column helpers                                                                          | Used by `restaurant.repository.ts`, re-exported by `/apps/api/src/drizzle/schema.ts`, referenced by `menu.schema.ts` |
+| `/apps/api/src/module/restaurant-catalog/restaurant/dto/restaurant.dto.ts`    | Request DTOs and response contract for restaurant endpoints.                                                           | Swagger decorators, `PartialType`, `class-validator` decorators                                    | Used by `restaurant.controller.ts`, `restaurant.service.ts`, `restaurant.repository.ts`                              |
+| `/apps/api/src/module/restaurant-catalog/menu/menu.module.ts`                 | Nest feature module for menu CRUD. Imports `RestaurantModule` because menu ownership checks require restaurant lookup. | `MenuController`, `MenuService`, `MenuRepository`, `DatabaseModule`, `RestaurantModule`            | Imported by `RestaurantCatalogModule`                                                                                |
+| `/apps/api/src/module/restaurant-catalog/menu/menu.controller.ts`             | HTTP API for `/api/menu-items`. Applies auth/roles and delegates to `MenuService`. Also exposes a categories route.    | Nest decorators, `MenuService`, menu DTOs/constants, auth guards/decorators, Swagger decorators    | Registered by `menu.module.ts`                                                                                       |
+| `/apps/api/src/module/restaurant-catalog/menu/menu.service.ts`                | Menu business logic: ensures restaurant exists, checks ownership, toggles sold-out state, delegates to repository.     | Nest exceptions, `MenuRepository`, menu DTO types/constants, menu schema type, `RestaurantService` | Used by `menu.controller.ts`                                                                                         |
+| `/apps/api/src/module/restaurant-catalog/menu/menu.repository.ts`             | Drizzle queries for `menu_items`: list by restaurant/category, find, create, update, delete.                           | Nest DI, Drizzle `eq` and `and`, menu schema, DTOs, `DB_CONNECTION`, schema barrel                 | Used by `menu.service.ts`                                                                                            |
+| `/apps/api/src/module/restaurant-catalog/menu/menu.schema.ts`                 | Drizzle enum and table definition for `menu_items`. Has a foreign key to `restaurants.id` with cascade delete.         | Drizzle PG builders, `restaurants` schema                                                          | Used by `menu.repository.ts`, re-exported by `/apps/api/src/drizzle/schema.ts`                                       |
+| `/apps/api/src/module/restaurant-catalog/menu/dto/menu.dto.ts`                | Menu request DTOs, query DTO, response DTO, and allowed category/status constants.                                     | Swagger helpers, `PartialType`, `OmitType`, `class-validator` decorators                           | Used by `menu.controller.ts`, `menu.service.ts`, `menu.repository.ts`                                                |
 
 ### Restaurant catalog dependency diagram
 
@@ -198,27 +198,27 @@ RestaurantCatalogModule
 
 ## 3.5 Config, docs, and tests
 
-| File | Purpose | Imports / content | Used by |
-| --- | --- | --- | --- |
-| `/apps/api/package.json` | Backend scripts, dependencies, and Jest config. | Nest, Drizzle, Better Auth, Swagger, Jest, ESLint, TypeScript | Used by developers, CI, package manager |
-| `/apps/api/.env.example` | Documents required env vars: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`. | plain env values | Used by developers to create `.env` |
-| `/apps/api/.env` | Local secret-bearing runtime env file. | not inspected directly | Used by runtime and CLIs |
-| `/apps/api/.gitignore` | Ignores dist, node_modules, logs, coverage, IDE files, and env files. | plain ignore patterns | Used by Git |
-| `/apps/api/.prettierrc` | Formatting rules: single quotes and trailing commas. | JSON config | Used by Prettier |
-| `/apps/api/eslint.config.mjs` | ESLint config with TypeScript type-aware linting and Prettier integration. | `@eslint/js`, `typescript-eslint`, `globals`, `eslint-plugin-prettier/recommended` | Used by `pnpm lint` |
-| `/apps/api/nest-cli.json` | Nest CLI config with `src` as source root and `deleteOutDir`. | JSON config | Used by Nest CLI |
-| `/apps/api/tsconfig.json` | Base TS config for runtime code. Enables decorators and sets `@/*` path alias. | JSON config | Used by TypeScript, Nest, ts-jest |
-| `/apps/api/tsconfig.build.json` | Build-specific TS config. Excludes tests and writes build info under `dist`. | extends `tsconfig.json` | Used by Nest build |
-| `/apps/api/tsconfig.test.json` | Test-specific TS config with Jest types. | extends `tsconfig.json` | Used by unit/e2e tests |
-| `/apps/api/README.md` | Default Nest starter readme, not project-specific architecture documentation. | static markdown | Used by humans |
-| `/apps/api/docs/bounded-context.md` | Target-state architecture note for a much larger delivery platform. | static markdown | Used by humans |
-| `/apps/api/docs/folder-structure.md` | Target folder organization for a modular monolith with bounded contexts. | static markdown | Used by humans |
-| `/apps/api/docs/public-api-pattern.md` | Design rule for strict cross-context interaction through public APIs only. | static markdown | Used by humans |
-| `/apps/api/docs/Bình's docs/MONOREPO_CODEBASE_GUIDE.md` | Prior codebase guide with broader repo observations. | static markdown | Used by humans |
-| `/apps/api/docs/Bình's docs/Plan_ordering.md` | Ordering module design notes and open questions. | static markdown | Used by humans |
-| `/apps/api/src/app.controller.spec.ts` | Unit test for `AppController.getHello()`. | Nest testing helpers, `AppController`, `AppService` | Run by Jest unit tests |
-| `/apps/api/test/app.e2e-spec.ts` | E2E test that boots `AppModule` and asserts `GET /` returns `Hello World!`. | Nest testing helpers, `supertest`, `AppModule` | Run by `pnpm test:e2e` |
-| `/apps/api/test/jest-e2e.json` | Jest config for e2e tests. | JSON config | Used by `pnpm test:e2e` |
+| File                                                    | Purpose                                                                               | Imports / content                                                                  | Used by                                 |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------- |
+| `/apps/api/package.json`                                | Backend scripts, dependencies, and Jest config.                                       | Nest, Drizzle, Better Auth, Swagger, Jest, ESLint, TypeScript                      | Used by developers, CI, package manager |
+| `/apps/api/.env.example`                                | Documents required env vars: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`. | plain env values                                                                   | Used by developers to create `.env`     |
+| `/apps/api/.env`                                        | Local secret-bearing runtime env file.                                                | not inspected directly                                                             | Used by runtime and CLIs                |
+| `/apps/api/.gitignore`                                  | Ignores dist, node_modules, logs, coverage, IDE files, and env files.                 | plain ignore patterns                                                              | Used by Git                             |
+| `/apps/api/.prettierrc`                                 | Formatting rules: single quotes and trailing commas.                                  | JSON config                                                                        | Used by Prettier                        |
+| `/apps/api/eslint.config.mjs`                           | ESLint config with TypeScript type-aware linting and Prettier integration.            | `@eslint/js`, `typescript-eslint`, `globals`, `eslint-plugin-prettier/recommended` | Used by `pnpm lint`                     |
+| `/apps/api/nest-cli.json`                               | Nest CLI config with `src` as source root and `deleteOutDir`.                         | JSON config                                                                        | Used by Nest CLI                        |
+| `/apps/api/tsconfig.json`                               | Base TS config for runtime code. Enables decorators and sets `@/*` path alias.        | JSON config                                                                        | Used by TypeScript, Nest, ts-jest       |
+| `/apps/api/tsconfig.build.json`                         | Build-specific TS config. Excludes tests and writes build info under `dist`.          | extends `tsconfig.json`                                                            | Used by Nest build                      |
+| `/apps/api/tsconfig.test.json`                          | Test-specific TS config with Jest types.                                              | extends `tsconfig.json`                                                            | Used by unit/e2e tests                  |
+| `/apps/api/README.md`                                   | Default Nest starter readme, not project-specific architecture documentation.         | static markdown                                                                    | Used by humans                          |
+| `/apps/api/docs/bounded-context.md`                     | Target-state architecture note for a much larger delivery platform.                   | static markdown                                                                    | Used by humans                          |
+| `/apps/api/docs/folder-structure.md`                    | Target folder organization for a modular monolith with bounded contexts.              | static markdown                                                                    | Used by humans                          |
+| `/apps/api/docs/public-api-pattern.md`                  | Design rule for strict cross-context interaction through public APIs only.            | static markdown                                                                    | Used by humans                          |
+| `/apps/api/docs/Bình's docs/MONOREPO_CODEBASE_GUIDE.md` | Prior codebase guide with broader repo observations.                                  | static markdown                                                                    | Used by humans                          |
+| `/apps/api/docs/Bình's docs/Plan_ordering.md`           | Ordering module design notes and open questions.                                      | static markdown                                                                    | Used by humans                          |
+| `/apps/api/src/app.controller.spec.ts`                  | Unit test for `AppController.getHello()`.                                             | Nest testing helpers, `AppController`, `AppService`                                | Run by Jest unit tests                  |
+| `/apps/api/test/app.e2e-spec.ts`                        | E2E test that boots `AppModule` and asserts `GET /` returns `Hello World!`.           | Nest testing helpers, `supertest`, `AppModule`                                     | Run by `pnpm test:e2e`                  |
+| `/apps/api/test/jest-e2e.json`                          | Jest config for e2e tests.                                                            | JSON config                                                                        | Used by `pnpm test:e2e`                 |
 
 ## 4. Request Lifecycle
 
@@ -290,21 +290,21 @@ Client
 
 ### Concrete routes declared in the inspected files
 
-| Method | Path | Handler | Service | Repository / DB |
-| --- | --- | --- | --- | --- |
-| `GET` | `/api` | `AppController.getHello` | `AppService.getHello` | none |
-| `GET` | `/api/restaurants` | `RestaurantController.findAll` | `RestaurantService.findAll` | `RestaurantRepository.findAll -> restaurants` |
-| `GET` | `/api/restaurants/:id` | `RestaurantController.findOne` | `RestaurantService.findOne` | `RestaurantRepository.findById -> restaurants` |
-| `POST` | `/api/restaurants` | `RestaurantController.create` | `RestaurantService.create` | `RestaurantRepository.create -> restaurants` |
-| `PATCH` | `/api/restaurants/:id` | `RestaurantController.update` | `RestaurantService.update` | `RestaurantRepository.update -> restaurants` |
-| `DELETE` | `/api/restaurants/:id` | `RestaurantController.remove` | `RestaurantService.remove` | `RestaurantRepository.remove -> restaurants` |
-| `GET` | `/api/menu-items/categories` | `MenuController.getCategories` | `MenuService.getCategories` | none |
-| `GET` | `/api/menu-items?restaurantId=...&category=...` | `MenuController.findByRestaurant` | `MenuService.findByRestaurant` | `MenuRepository.findByRestaurant -> menu_items` |
-| `GET` | `/api/menu-items/:id` | `MenuController.findOne` | `MenuService.findOne` | `MenuRepository.findById -> menu_items` |
-| `POST` | `/api/menu-items` | `MenuController.create` | `MenuService.create` | `MenuRepository.create -> menu_items` |
-| `PATCH` | `/api/menu-items/:id` | `MenuController.update` | `MenuService.update` | `MenuRepository.update -> menu_items` |
-| `PATCH` | `/api/menu-items/:id/sold-out` | `MenuController.toggleSoldOut` | `MenuService.toggleSoldOut` | `MenuRepository.update -> menu_items` |
-| `DELETE` | `/api/menu-items/:id` | `MenuController.remove` | `MenuService.remove` | `MenuRepository.remove -> menu_items` |
+| Method   | Path                                            | Handler                           | Service                        | Repository / DB                                 |
+| -------- | ----------------------------------------------- | --------------------------------- | ------------------------------ | ----------------------------------------------- |
+| `GET`    | `/api`                                          | `AppController.getHello`          | `AppService.getHello`          | none                                            |
+| `GET`    | `/api/restaurants`                              | `RestaurantController.findAll`    | `RestaurantService.findAll`    | `RestaurantRepository.findAll -> restaurants`   |
+| `GET`    | `/api/restaurants/:id`                          | `RestaurantController.findOne`    | `RestaurantService.findOne`    | `RestaurantRepository.findById -> restaurants`  |
+| `POST`   | `/api/restaurants`                              | `RestaurantController.create`     | `RestaurantService.create`     | `RestaurantRepository.create -> restaurants`    |
+| `PATCH`  | `/api/restaurants/:id`                          | `RestaurantController.update`     | `RestaurantService.update`     | `RestaurantRepository.update -> restaurants`    |
+| `DELETE` | `/api/restaurants/:id`                          | `RestaurantController.remove`     | `RestaurantService.remove`     | `RestaurantRepository.remove -> restaurants`    |
+| `GET`    | `/api/menu-items/categories`                    | `MenuController.getCategories`    | `MenuService.getCategories`    | none                                            |
+| `GET`    | `/api/menu-items?restaurantId=...&category=...` | `MenuController.findByRestaurant` | `MenuService.findByRestaurant` | `MenuRepository.findByRestaurant -> menu_items` |
+| `GET`    | `/api/menu-items/:id`                           | `MenuController.findOne`          | `MenuService.findOne`          | `MenuRepository.findById -> menu_items`         |
+| `POST`   | `/api/menu-items`                               | `MenuController.create`           | `MenuService.create`           | `MenuRepository.create -> menu_items`           |
+| `PATCH`  | `/api/menu-items/:id`                           | `MenuController.update`           | `MenuService.update`           | `MenuRepository.update -> menu_items`           |
+| `PATCH`  | `/api/menu-items/:id/sold-out`                  | `MenuController.toggleSoldOut`    | `MenuService.toggleSoldOut`    | `MenuRepository.update -> menu_items`           |
+| `DELETE` | `/api/menu-items/:id`                           | `MenuController.remove`           | `MenuService.remove`           | `MenuRepository.remove -> menu_items`           |
 
 ### Auth route note
 

@@ -29,20 +29,20 @@ drizzle/schemas/restaurant.schema.ts   # Table definition + inferred TypeScript 
 
 Table: `restaurants`
 
-| Column        | Type        | Constraints                  | Default        |
-|---------------|-------------|------------------------------|----------------|
-| `id`          | `uuid`      | Primary key                  | `gen_random_uuid()` |
-| `owner_id`    | `uuid`      | Not null                     | —              |
-| `name`        | `text`      | Not null                     | —              |
-| `description` | `text`      | Nullable                     | —              |
-| `address`     | `text`      | Not null                     | —              |
-| `phone`       | `text`      | Not null                     | —              |
-| `is_open`     | `boolean`   | Not null                     | `false`        |
-| `is_approved` | `boolean`   | Not null                     | `false`        |
-| `latitude`    | `real`      | Nullable                     | —              |
-| `longitude`   | `real`      | Nullable                     | —              |
-| `created_at`  | `timestamp` | Not null                     | `now()`        |
-| `updated_at`  | `timestamp` | Not null                     | `now()`        |
+| Column        | Type        | Constraints | Default             |
+| ------------- | ----------- | ----------- | ------------------- |
+| `id`          | `uuid`      | Primary key | `gen_random_uuid()` |
+| `owner_id`    | `uuid`      | Not null    | —                   |
+| `name`        | `text`      | Not null    | —                   |
+| `description` | `text`      | Nullable    | —                   |
+| `address`     | `text`      | Not null    | —                   |
+| `phone`       | `text`      | Not null    | —                   |
+| `is_open`     | `boolean`   | Not null    | `false`             |
+| `is_approved` | `boolean`   | Not null    | `false`             |
+| `latitude`    | `real`      | Nullable    | —                   |
+| `longitude`   | `real`      | Nullable    | —                   |
+| `created_at`  | `timestamp` | Not null    | `now()`             |
+| `updated_at`  | `timestamp` | Not null    | `now()`             |
 
 Drizzle infers `Restaurant` (select) and `NewRestaurant` (insert) types directly from this definition.
 
@@ -53,13 +53,13 @@ Drizzle infers `Restaurant` (select) and `NewRestaurant` (insert) types directly
 Base path: `/api/restaurants`  
 All routes require a valid JWT (`JwtAuthGuard` + `RolesGuard` applied at controller level).
 
-| Method   | Path          | Roles required          | Description                              |
-|----------|---------------|-------------------------|------------------------------------------|
-| `GET`    | `/`           | Any authenticated user  | List all restaurants (ordered by `created_at`) |
-| `GET`    | `/:id`        | Any authenticated user  | Get a single restaurant by UUID          |
-| `POST`   | `/`           | `admin`, `restaurant`   | Create a new restaurant (owner = caller) |
-| `PATCH`  | `/:id`        | `admin`, `restaurant`   | Update a restaurant (owner or admin)     |
-| `DELETE` | `/:id`        | `admin`                 | Delete a restaurant — returns `204`      |
+| Method   | Path   | Roles required         | Description                                    |
+| -------- | ------ | ---------------------- | ---------------------------------------------- |
+| `GET`    | `/`    | Any authenticated user | List all restaurants (ordered by `created_at`) |
+| `GET`    | `/:id` | Any authenticated user | Get a single restaurant by UUID                |
+| `POST`   | `/`    | `admin`, `restaurant`  | Create a new restaurant (owner = caller)       |
+| `PATCH`  | `/:id` | `admin`, `restaurant`  | Update a restaurant (owner or admin)           |
+| `DELETE` | `/:id` | `admin`                | Delete a restaurant — returns `204`            |
 
 ### Request Bodies
 

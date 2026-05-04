@@ -1,11 +1,11 @@
-import { RegisterPendingHeader } from "@/features/auth/components/register/RegisterPendingHeader";
-import { RegisterPendingStatus } from "@/features/auth/components/register/RegisterPendingStatus";
-import { RegisterPendingAlerts } from "@/features/auth/components/register/RegisterPendingAlerts";
-import { RegisterPendingSteps } from "@/features/auth/components/register/RegisterPendingSteps";
-import { RegisterPendingContact } from "@/features/auth/components/register/RegisterPendingContact";
-import { RegisterPendingMobileNav } from "@/features/auth/components/register/RegisterPendingMobileNav";
-import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { RegisterPendingHeader } from '@/features/auth/components/register/RegisterPendingHeader';
+import { RegisterPendingStatus } from '@/features/auth/components/register/RegisterPendingStatus';
+import { RegisterPendingAlerts } from '@/features/auth/components/register/RegisterPendingAlerts';
+import { RegisterPendingSteps } from '@/features/auth/components/register/RegisterPendingSteps';
+import { RegisterPendingContact } from '@/features/auth/components/register/RegisterPendingContact';
+import { RegisterPendingMobileNav } from '@/features/auth/components/register/RegisterPendingMobileNav';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 
 export function RegisterPendingPage() {
   const navigate = useNavigate();
@@ -13,7 +13,7 @@ export function RegisterPendingPage() {
 
   useEffect(() => {
     if (!location.state?.step2Completed) {
-      navigate("/auth/register", { replace: true });
+      navigate('/auth/register', { replace: true });
     }
   }, [navigate, location]);
 

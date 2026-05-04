@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Query,
-  ParseUUIDPipe,
-} from '@nestjs/common';
+import { Controller, Get, Param, Query, ParseUUIDPipe } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -61,7 +55,8 @@ export class AclController {
     required: true,
     type: String,
     description: 'Comma-separated list of menu item UUIDs',
-    example: '4dc7cdfa-5a54-402f-b1a8-2d47de146081,a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5',
+    example:
+      '4dc7cdfa-5a54-402f-b1a8-2d47de146081,a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5',
   })
   @ApiOkResponse({
     description: 'Snapshots for found IDs (missing IDs are omitted)',
@@ -70,14 +65,16 @@ export class AclController {
   getMenuItemsByIds(
     @Query('ids') ids: string,
   ): Promise<MenuItemSnapshotResponseDto[]> {
-    return this.aclService.getMenuItemsByIds(this.aclService.parseIds(ids ?? ''));
+    return this.aclService.getMenuItemsByIds(
+      this.aclService.parseIds(ids ?? ''),
+    );
   }
 
   @Get('menu-items/:id')
   @ApiOperation({
     summary: 'Get a single menu item snapshot',
     description:
-      'Returns the Ordering BC\'s local projection of the given menu item. ' +
+      "Returns the Ordering BC's local projection of the given menu item. " +
       'A deleted item returns its tombstone row (status=unavailable).',
   })
   @ApiParam({
@@ -127,14 +124,16 @@ export class AclController {
   getRestaurantsByIds(
     @Query('ids') ids: string,
   ): Promise<RestaurantSnapshotResponseDto[]> {
-    return this.aclService.getRestaurantsByIds(this.aclService.parseIds(ids ?? ''));
+    return this.aclService.getRestaurantsByIds(
+      this.aclService.parseIds(ids ?? ''),
+    );
   }
 
   @Get('restaurants/:id')
   @ApiOperation({
     summary: 'Get a single restaurant snapshot',
     description:
-      'Returns the Ordering BC\'s local projection of the given restaurant. ' +
+      "Returns the Ordering BC's local projection of the given restaurant. " +
       'A deleted restaurant returns its tombstone row (isOpen=false, isApproved=false).',
   })
   @ApiParam({

@@ -19,12 +19,14 @@ This document lists what `RestaurantCatalogModule` (and its sub-modules) must pr
 ### 1.1 `MenuItemUpdatedEvent` → `src/shared/events/menu-item-updated.event.ts`
 
 **Triggers:**
+
 - `MenuService.createMenuItem(...)` — after DB insert
-- `MenuService.updateMenuItem(...)` — after DB update  
+- `MenuService.updateMenuItem(...)` — after DB update
 - `MenuService.toggleSoldOut(...)` — after status change
 - `MenuService.deleteMenuItem(...)` — publish with `status = 'unavailable'`
 
 **How to publish** (in `MenuService`):
+
 ```typescript
 // Inject EventBus from @nestjs/cqrs
 constructor(
@@ -47,6 +49,7 @@ this.eventBus.publish(new MenuItemUpdatedEvent(
 > Do NOT set `isAvailable` in the event payload.
 
 **Import CqrsModule** in `MenuModule`:
+
 ```typescript
 // menu.module.ts
 import { CqrsModule } from '@nestjs/cqrs';
@@ -62,12 +65,14 @@ import { CqrsModule } from '@nestjs/cqrs';
 ### 1.2 `RestaurantUpdatedEvent` → `src/shared/events/restaurant-updated.event.ts`
 
 **Triggers:**
+
 - `RestaurantService.createRestaurant(...)` — after DB insert
 - `RestaurantService.updateRestaurant(...)` — after DB update
 - `RestaurantService.approveRestaurant(...)` — after approval status change
 - `RestaurantService.openRestaurant()` / `closeRestaurant()` — after open/closed toggle
 
 **How to publish** (in `RestaurantService`):
+
 ```typescript
 constructor(
   private readonly eventBus: EventBus,
@@ -84,6 +89,7 @@ this.eventBus.publish(new RestaurantUpdatedEvent(
 ```
 
 **Import CqrsModule** in `RestaurantModule`:
+
 ```typescript
 // restaurant.module.ts
 import { CqrsModule } from '@nestjs/cqrs';
@@ -101,23 +107,23 @@ import { CqrsModule } from '@nestjs/cqrs';
 
 ### For `MenuItemUpdatedEvent`
 
-| Field | Source in DB | Notes |
-|-------|-------------|-------|
-| `menuItemId` | `menu_items.id` | UUID |
-| `restaurantId` | `menu_items.restaurant_id` | UUID |
-| `name` | `menu_items.name` | Snapshot frozen into order_items at checkout |
-| `price` | `menu_items.price` | Numeric — frozen at checkout |
-| `status` | `menu_items.status` | `'available' \| 'unavailable' \| 'out_of_stock'` |
+| Field          | Source in DB               | Notes                                            |
+| -------------- | -------------------------- | ------------------------------------------------ |
+| `menuItemId`   | `menu_items.id`            | UUID                                             |
+| `restaurantId` | `menu_items.restaurant_id` | UUID                                             |
+| `name`         | `menu_items.name`          | Snapshot frozen into order_items at checkout     |
+| `price`        | `menu_items.price`         | Numeric — frozen at checkout                     |
+| `status`       | `menu_items.status`        | `'available' \| 'unavailable' \| 'out_of_stock'` |
 
 ### For `RestaurantUpdatedEvent`
 
-| Field | Source in DB | Notes |
-|-------|-------------|-------|
-| `restaurantId` | `restaurants.id` | UUID |
-| `name` | `restaurants.name` | For display in order summary |
-| `isOpen` | `restaurants.is_open` | Checked at checkout time |
-| `isApproved` | `restaurants.is_approved` | Checked at checkout time |
-| `address` | `restaurants.address` | Stored in snapshot; used in pickup notification |
+| Field          | Source in DB              | Notes                                           |
+| -------------- | ------------------------- | ----------------------------------------------- |
+| `restaurantId` | `restaurants.id`          | UUID                                            |
+| `name`         | `restaurants.name`        | For display in order summary                    |
+| `isOpen`       | `restaurants.is_open`     | Checked at checkout time                        |
+| `isApproved`   | `restaurants.is_approved` | Checked at checkout time                        |
+| `address`      | `restaurants.address`     | Stored in snapshot; used in pickup notification |
 
 > If `address` does not yet exist on the `restaurants` table, it must be added in Phase 3 before snapshot projectors are written.
 
@@ -135,6 +141,7 @@ import { CqrsModule } from '@nestjs/cqrs';
 ## 4. Validation Gates (Ordering Side)
 
 At checkout time, the Ordering BC will:
+
 1. Check `ordering_restaurant_snapshots.is_open = true` for the restaurant
 2. Check `ordering_restaurant_snapshots.is_approved = true` for the restaurant
 3. Check `ordering_menu_item_snapshots.status = 'available'` for each item in the cart
@@ -154,18 +161,18 @@ Until Phase 3, the snapshot tables are empty. **Decided (Phase 2):** absent snap
 
 ## Summary
 
-| What to do | Where | When | Status |
-|------------|-------|------|--------|
-| Add `CqrsModule` import to `MenuModule` | `menu.module.ts` | Phase 3 | ✅ Done |
-| Inject `EventBus` in `MenuService` | `menu.service.ts` | Phase 3 | ✅ Done |
-| Publish `MenuItemUpdatedEvent` after mutations | `menu.service.ts` | Phase 3 | ✅ Done |
-| Add `CqrsModule` import to `RestaurantModule` | `restaurant.module.ts` | Phase 3 | ✅ Done |
-| Inject `EventBus` in `RestaurantService` | `restaurant.service.ts` | Phase 3 | ✅ Done |
-| Publish `RestaurantUpdatedEvent` after mutations | `restaurant.service.ts` | Phase 3 | ✅ Done |
-| Confirm `address` field on `restaurants` table | `restaurant.schema.ts` | Phase 3 | ✅ Done |
-| **Add `delivery_radius_km` column** | `restaurant.schema.ts` | Phase 4 | ⏳ Pending |
-| **Include `deliveryRadiusKm` in `RestaurantUpdatedEvent`** | `restaurant.service.ts` | Phase 4 | ⏳ Pending (event field added as optional) |
-| **Include `latitude`/`longitude` in `RestaurantUpdatedEvent`** | `restaurant.service.ts` | Phase 4 | ✅ Done (optional fields added) |
+| What to do                                                     | Where                   | When    | Status                                     |
+| -------------------------------------------------------------- | ----------------------- | ------- | ------------------------------------------ |
+| Add `CqrsModule` import to `MenuModule`                        | `menu.module.ts`        | Phase 3 | ✅ Done                                    |
+| Inject `EventBus` in `MenuService`                             | `menu.service.ts`       | Phase 3 | ✅ Done                                    |
+| Publish `MenuItemUpdatedEvent` after mutations                 | `menu.service.ts`       | Phase 3 | ✅ Done                                    |
+| Add `CqrsModule` import to `RestaurantModule`                  | `restaurant.module.ts`  | Phase 3 | ✅ Done                                    |
+| Inject `EventBus` in `RestaurantService`                       | `restaurant.service.ts` | Phase 3 | ✅ Done                                    |
+| Publish `RestaurantUpdatedEvent` after mutations               | `restaurant.service.ts` | Phase 3 | ✅ Done                                    |
+| Confirm `address` field on `restaurants` table                 | `restaurant.schema.ts`  | Phase 3 | ✅ Done                                    |
+| **Add `delivery_radius_km` column**                            | `restaurant.schema.ts`  | Phase 4 | ⏳ Pending                                 |
+| **Include `deliveryRadiusKm` in `RestaurantUpdatedEvent`**     | `restaurant.service.ts` | Phase 4 | ⏳ Pending (event field added as optional) |
+| **Include `latitude`/`longitude` in `RestaurantUpdatedEvent`** | `restaurant.service.ts` | Phase 4 | ✅ Done (optional fields added)            |
 
 ---
 
@@ -182,17 +189,20 @@ accepts delivery orders.
 **Where it is missing:** `restaurants` table in `restaurant.schema.ts` — no such column.
 
 **What Ordering expects:**
+
 ```typescript
 // In RestaurantUpdatedEvent payload:
 deliveryRadiusKm?: number;  // nullable — restaurants may not set a radius
 ```
 
 **What to add in `restaurant.schema.ts`:**
+
 ```typescript
 deliveryRadiusKm: real('delivery_radius_km'),  // nullable
 ```
 
 **Impact if missing:**
+
 - `ordering_restaurant_snapshots.delivery_radius_km` will always be `null`
 - BR-3 (Phase 4 checkout validation) cannot enforce the delivery area constraint
 - All orders will be accepted regardless of delivery distance (silently skips radius check)
@@ -208,6 +218,7 @@ deliveryRadiusKm: real('delivery_radius_km'),  // nullable
 `RestaurantUpdatedEvent` yet (event does not exist yet as of Phase 1).
 
 **What Ordering expects in `RestaurantUpdatedEvent`:**
+
 ```typescript
 latitude?: number;   // from restaurants.latitude
 longitude?: number;  // from restaurants.longitude

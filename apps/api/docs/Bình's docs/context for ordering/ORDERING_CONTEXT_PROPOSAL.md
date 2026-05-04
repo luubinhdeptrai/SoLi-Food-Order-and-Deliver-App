@@ -7,6 +7,7 @@
 > **Last Verified Against:** Full codebase audit — all facts cross-checked with source files
 
 ### Change Legend
+
 - **[UPDATED]** — Section corrected to match current implementation
 - **[ADDED]** — New content not present in previous version
 - **[REMOVED]** — Content removed (feature deprecated or superseded)
@@ -66,9 +67,9 @@ The **Ordering Context** is the **core domain** of the SoLi Food Delivery platfo
 
 ### Roles Involved
 
-| Role       | Ordering Actions                                    |
-|------------|-----------------------------------------------------|
-| Customer   | Manage cart, place order, cancel, track, reorder    |
+| Role       | Ordering Actions                                     |
+| ---------- | ---------------------------------------------------- |
+| Customer   | Manage cart, place order, cancel, track, reorder     |
 | Restaurant | Confirm order, mark preparing, mark ready for pickup |
 | Shipper    | Pickup order, mark delivering, mark delivered        |
 | Admin      | Override any state, view all orders                  |
@@ -79,32 +80,32 @@ The **Ordering Context** is the **core domain** of the SoLi Food Delivery platfo
 
 ### 2.1 What Is Inside the Ordering Context
 
-| Module               | Responsibility                                             |
-|----------------------|------------------------------------------------------------|
-| `CartModule`         | Cart CRUD, single-restaurant constraint, item management   |
-| `OrderModule`        | Order aggregate creation, price snapshot, checkout         |
-| `OrderLifecycleModule` | State machine, state transitions, permission per actor  |
-| `OrderHistoryModule` | Read-side queries for past orders (Customer, Restaurant, Shipper) |
+| Module                 | Responsibility                                                    |
+| ---------------------- | ----------------------------------------------------------------- |
+| `CartModule`           | Cart CRUD, single-restaurant constraint, item management          |
+| `OrderModule`          | Order aggregate creation, price snapshot, checkout                |
+| `OrderLifecycleModule` | State machine, state transitions, permission per actor            |
+| `OrderHistoryModule`   | Read-side queries for past orders (Customer, Restaurant, Shipper) |
 
 ### 2.2 What Is Outside the Ordering Context
 
-| Concern              | Belongs To             | How Ordering Interacts                           |
-|----------------------|------------------------|--------------------------------------------------|
-| Menu item data/price | Restaurant & Catalog   | Via local projection (event-driven snapshot)     |
-| Restaurant open/closed | Restaurant & Catalog | Via local projection snapshot (D3-B selected)    |
-| Payment processing   | Payment Context        | Ordering publishes `OrderPlacedEvent`            |
-| Shipper assignment   | Delivery Context       | Ordering publishes `OrderReadyForPickupEvent`    |
-| Push notifications   | Notification Context   | Ordering publishes `OrderStatusChangedEvent`     |
+| Concern                | Belongs To           | How Ordering Interacts                        |
+| ---------------------- | -------------------- | --------------------------------------------- |
+| Menu item data/price   | Restaurant & Catalog | Via local projection (event-driven snapshot)  |
+| Restaurant open/closed | Restaurant & Catalog | Via local projection snapshot (D3-B selected) |
+| Payment processing     | Payment Context      | Ordering publishes `OrderPlacedEvent`         |
+| Shipper assignment     | Delivery Context     | Ordering publishes `OrderReadyForPickupEvent` |
+| Push notifications     | Notification Context | Ordering publishes `OrderStatusChangedEvent`  |
 
 ### 2.3 Business Rules Governing This Context
 
-| Rule  | Description                                                                             |
-|-------|-----------------------------------------------------------------------------------------|
-| BR-2  | Cart must contain items from **one restaurant only**                                    |
-| BR-3  | Delivery address must be within the restaurant's operational radius                     |
-| BR-4  | Payment: COD and VNPay supported. VNPay orders transition `PENDING → PAID` upon `PaymentConfirmedEvent` from Payment Context, then await restaurant confirmation (`PAID → CONFIRMED`). COD orders skip the `PAID` state and go directly `PENDING → CONFIRMED` upon restaurant confirmation. |
-| BR-7  | Orders follow a defined sequential state machine (see Section 8)                        |
-| BR-8  | Restaurant/item availability is enforced at checkout time                               |
+| Rule | Description                                                                                                                                                                                                                                                                                 |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| BR-2 | Cart must contain items from **one restaurant only**                                                                                                                                                                                                                                        |
+| BR-3 | Delivery address must be within the restaurant's operational radius                                                                                                                                                                                                                         |
+| BR-4 | Payment: COD and VNPay supported. VNPay orders transition `PENDING → PAID` upon `PaymentConfirmedEvent` from Payment Context, then await restaurant confirmation (`PAID → CONFIRMED`). COD orders skip the `PAID` state and go directly `PENDING → CONFIRMED` upon restaurant confirmation. |
+| BR-7 | Orders follow a defined sequential state machine (see Section 8)                                                                                                                                                                                                                            |
+| BR-8 | Restaurant/item availability is enforced at checkout time                                                                                                                                                                                                                                   |
 
 ---
 
@@ -172,13 +173,14 @@ The **Ordering Context** is the **core domain** of the SoLi Food Delivery platfo
 **TriggeredByRole enum:** `customer | restaurant | shipper | admin | system`
 
 **OrderModifier (JSONB in order_items.modifiers):**
+
 ```typescript
 {
   groupId: string;
   groupName: string;
   optionId: string;
   optionName: string;
-  price: number;          // snapshotted at checkout — immutable
+  price: number; // snapshotted at checkout — immutable
 }
 ```
 
@@ -263,6 +265,7 @@ Merge rule (addItem):
 ```
 
 **Key operations use `cartItemId` (not `menuItemId`):**
+
 - `PATCH /carts/my/items/:cartItemId` — update quantity for specific line
 - `PATCH /carts/my/items/:cartItemId/modifiers` — replace modifiers for specific line
 - `DELETE /carts/my/items/:cartItemId` — remove specific line
@@ -296,12 +299,14 @@ AddItemToCartHandler  ← handles domain logic, persists
 ```
 
 **Pros:**
+
 - Strict separation of write (Command) and read (Query) paths
 - Event publishing is built-in and idiomatic
 - Future microservice extraction requires only swapping `EventBus` transport
 - Consistent with the Demo project's architecture
 
 **Cons:**
+
 - `@nestjs/cqrs` is not installed — requires new dependency and learning curve
 - More boilerplate: separate Command/Handler classes per operation
 - Potentially over-engineered for early MVP phases (cart CRUD)
@@ -323,11 +328,13 @@ CartService  ← handles domain logic, persists via CartRepository
 ```
 
 **Pros:**
+
 - Zero new dependencies
 - Consistent with the existing `restaurant-catalog` module immediately
 - Faster to scaffold (no Command/Query boilerplate)
 
 **Cons:**
+
 - Mixed read/write responsibility in Service classes over time
 - Event system is `EventEmitter2` (not type-safe by default, weaker contract)
 - Harder to migrate to microservices later (EventEmitter is in-process only — same as CQRS, but contract is weaker)
@@ -345,17 +352,19 @@ OrderModule     → CommandHandler-based (CQRS)
 ```
 
 **Pros:**
+
 - Balances pragmatism and architecture
 - Ordering's critical path uses the right pattern
 - Cart is simple enough not to need full CQRS
 
 **Cons:**
+
 - Inconsistency within the Ordering context itself
 - Still requires installing `@nestjs/cqrs`
 
 ---
 
-> **Selected Option:** [ ] A   [ ] B   [✅SELECTED] C
+> **Selected Option:** [ ] A [ ] B [✅SELECTED] C
 
 ---
 
@@ -370,12 +379,14 @@ Where and how is a customer's cart stored?
 Cart and CartItems are stored in PostgreSQL tables, same as other entities.
 
 **Pros:**
+
 - No additional infrastructure (no Redis)
 - Durable — survives API restarts
 - Consistent with current stack
 - Easy to query for admin/debugging
 
 **Cons:**
+
 - Slightly higher latency for frequent cart operations (add/remove item)
 - DB load from high-frequency operations
 
@@ -386,10 +397,12 @@ Cart and CartItems are stored in PostgreSQL tables, same as other entities.
 Cart is stored in Redis (fast read/write). When order is placed, cart data is persisted to PostgreSQL and Redis entry is cleared.
 
 **Pros:**
+
 - Very fast cart operations (sub-millisecond reads)
 - Natural TTL for abandoned carts (e.g., 24h expiry)
 
 **Cons:**
+
 - Requires Redis infrastructure — ✅ `redis:7-alpine` already added to `docker-compose.yml`
 - Cart lives solely in Redis — no DB fallback (by design, D2-B)
 - New pattern introduced in this codebase
@@ -401,22 +414,25 @@ Cart is stored in Redis (fast read/write). When order is placed, cart data is pe
 Cart stored in PostgreSQL. A scheduled job cleans up carts older than N hours.
 
 **Pros:**
+
 - Durable, auditable, no extra infra
 - Abandoned cart analytics possible later
 
 **Cons:**
+
 - Requires a cron job setup
 - Slightly more complex schema (need `expiresAt` or `lastActivityAt`)
 
 ---
 
-> **Selected Option:** [ ] A   [✅SELECTED ] B   [ ] C
+> **Selected Option:** [ ] A [✅SELECTED ] B [ ] C
 
 ---
 
 ### D3 — Restaurant & Item Validation at Checkout
 
 When a customer checks out, the system must verify:
+
 1. The restaurant is `isOpen = true` and `isApproved = true`
 2. All cart items are `status = 'available'`
 
@@ -437,11 +453,13 @@ Order created
 ```
 
 **Pros:**
+
 - No new infrastructure
 - Immediately consistent (reads from canonical source)
 - Already used in `MenuService` for ownership check
 
 **Cons:**
+
 - Tight coupling between Ordering and Restaurant catalog
 - Violates bounded context boundary (Ordering imports RestaurantModule)
 - Harder to extract to microservice later
@@ -465,12 +483,14 @@ Order created
 ```
 
 **Pros:**
+
 - Zero coupling between Ordering and Restaurant catalog at runtime
 - Matches the Demo project's architecture exactly
 - Easily extracted to microservice: just swap EventBus transport
 - Price is already available in the snapshot → no extra lookup needed
 
 **Cons:**
+
 - Eventual consistency: snapshot may lag behind reality (milliseconds in same process)
 - Restaurant Catalog must publish events — currently it does NOT (needs to be added)
 - Slightly more complex setup (projector classes, event contracts)
@@ -488,16 +508,18 @@ ordering/acl/
 ```
 
 **Pros:**
+
 - Decouples Ordering from implementation details of Restaurant catalog
 - Easy to swap adapter if Restaurant becomes a microservice later
 
 **Cons:**
+
 - More files/abstractions for same result as Option A initially
 - Still synchronous at runtime — same consistency as A
 
 ---
 
-> **Selected Option:** [ ] A   [✅SELECTED ] B   [ ] C
+> **Selected Option:** [ ] A [✅SELECTED ] B [ ] C
 
 ---
 
@@ -512,11 +534,13 @@ If Option B or C is selected for D3, where are local snapshots stored?
 Use a `Map<id, Snapshot>` in the Projector class (as in Demo project).
 
 **Pros:**
+
 - Zero DB overhead
 - Instant lookup
 - Simple implementation
 
 **Cons:**
+
 - Lost on API restart → needs warm-up event replay or initial sync
 - Memory grows with catalog size (large menus = large map)
 
@@ -527,17 +551,19 @@ Use a `Map<id, Snapshot>` in the Projector class (as in Demo project).
 Store snapshots in a dedicated DB table owned by the Ordering context.
 
 **Pros:**
+
 - Survives restarts with no replay needed
 - Queryable for debugging
 - Scales better than in-memory for large catalogs
 
 **Cons:**
+
 - Additional Drizzle schema/migration
 - Slightly higher latency than in-memory (still fast for local queries)
 
 ---
 
-> **Selected Option:** [ ] A   [✅SELECTED ] B
+> **Selected Option:** [ ] A [✅SELECTED ] B
 
 ---
 
@@ -560,10 +586,12 @@ Server: if key seen → return cached Order
 ```
 
 **Pros:**
+
 - Industry standard pattern
 - Works for any client (mobile, web)
 
 **Cons:**
+
 - Client must generate and manage the key
 - Requires a short-lived storage for processed keys (Redis or DB table)
 
@@ -576,21 +604,23 @@ Server: if key seen → return cached Order
 When a cart is converted to an order, store `cartId` on the Order and enforce a `UNIQUE(cartId)` constraint. A second checkout attempt for the same cart fails at DB level.
 
 **Pros:**
+
 - No client changes required
 - Zero-cost deduplication via DB constraint
 - Simple to implement with Drizzle
 
 **Cons:**
+
 - Only prevents duplicate order from same cart; does not handle general API retries
 - Cart must be locked/cleared immediately after order creation
 
 ---
 
-> **Selected Option:** [✅SELECTED ] A   [✅SELECTED ] B
-(I select both Option A (Idempotency Key) and Option B (DB Unique Constraint on cartId).
-Option A ensures request-level idempotency, preventing duplicate processing caused by retries or double-clicks. 
-Option B enforces a data-level invariant, guaranteeing that a cart can only be converted into a single order, even under race conditions or inconsistent client behavior. 
-Combining both provides a defense-in-depth strategy, which is especially critical when integrating with payment gateways such as VNPay.)
+> **Selected Option:** [✅SELECTED ] A [✅SELECTED ] B
+> (I select both Option A (Idempotency Key) and Option B (DB Unique Constraint on cartId).
+> Option A ensures request-level idempotency, preventing duplicate processing caused by retries or double-clicks.
+> Option B enforces a data-level invariant, guaranteeing that a cart can only be converted into a single order, even under race conditions or inconsistent client behavior.
+> Combining both provides a defense-in-depth strategy, which is especially critical when integrating with payment gateways such as VNPay.)
 
 ---
 
@@ -605,27 +635,29 @@ Define allowed transitions as a plain TypeScript object and validate in `OrderLi
 ```typescript
 // Status values use lowercase — matching the PostgreSQL enum ('order_status')
 const ALLOWED_TRANSITIONS = {
-  pending:           ['paid', 'confirmed', 'cancelled'],
+  pending: ['paid', 'confirmed', 'cancelled'],
   // paid: reachable only for VNPay orders via PaymentConfirmedEvent (system-triggered)
   // confirmed: reachable directly for COD orders via restaurant confirmation
-  paid:              ['confirmed', 'cancelled'],
-  confirmed:         ['preparing', 'cancelled'],
-  preparing:         ['ready_for_pickup'],
-  ready_for_pickup:  ['picked_up'],
-  picked_up:         ['delivering'],
-  delivering:        ['delivered'],
-  delivered:         ['refunded'],
-  cancelled:         [],
-  refunded:          [],
+  paid: ['confirmed', 'cancelled'],
+  confirmed: ['preparing', 'cancelled'],
+  preparing: ['ready_for_pickup'],
+  ready_for_pickup: ['picked_up'],
+  picked_up: ['delivering'],
+  delivering: ['delivered'],
+  delivered: ['refunded'],
+  cancelled: [],
+  refunded: [],
 };
 ```
 
 **Pros:**
+
 - No new dependency
 - Easy to read and maintain
 - Consistent with existing code style
 
 **Cons:**
+
 - Side effects (events, notifications) must be manually wired
 - Risk of forgetting to publish events after transition
 
@@ -636,18 +668,20 @@ const ALLOWED_TRANSITIONS = {
 Use a formal state machine library.
 
 **Pros:**
+
 - Explicit side effects (`entry`, `exit` actions)
 - Visual tooling available
 
 **Cons:**
+
 - New dependency
 - Additional learning curve
 - Likely over-engineered for this stage
 
 ---
 
-> **Selected Option:** [✅SELECTED ] A   [ ] B
-> *(Recommendation: Option A is sufficient and consistent with current style)*
+> **Selected Option:** [✅SELECTED ] A [ ] B
+> _(Recommendation: Option A is sufficient and consistent with current style)_
 
 ---
 
@@ -662,6 +696,7 @@ Each phase has a **clear scope**, is **independently deliverable**, and ends wit
 **Goal:** Prepare the Ordering context skeleton without any domain logic.
 
 **Scope:**
+
 - Install `@nestjs/cqrs` — ✅ `@nestjs/cqrs ^11.0.3`
 - Install `ioredis` — ✅ `ioredis ^5.10.1`
 - Create context folder structure `src/module/ordering/` — ✅
@@ -676,13 +711,14 @@ Each phase has a **clear scope**, is **independently deliverable**, and ends wit
 - Create `src/module/ordering/common/ordering.constants.ts` — ✅
 
 **Redis key schema and constants (from `ordering.constants.ts`):**
+
 ```typescript
-IDEMPOTENCY_KEY_PREFIX          = 'idempotency:order:'   // key: idempotency:order:<X-Idempotency-Key>
-IDEMPOTENCY_TTL_FALLBACK_SECONDS = 300                   // 5 min (matches ORDER_IDEMPOTENCY_TTL_SECONDS seed)
-CART_KEY_PREFIX                 = 'cart:'                // key: cart:<customerId>
-CART_TTL_SECONDS                = 604800                 // 7 days
-CART_LOCK_SUFFIX                = ':lock'                // key: cart:<customerId>:lock
-CART_LOCK_TTL_SECONDS           = 30                     // checkout lock duration
+IDEMPOTENCY_KEY_PREFIX = 'idempotency:order:'; // key: idempotency:order:<X-Idempotency-Key>
+IDEMPOTENCY_TTL_FALLBACK_SECONDS = 300; // 5 min (matches ORDER_IDEMPOTENCY_TTL_SECONDS seed)
+CART_KEY_PREFIX = 'cart:'; // key: cart:<customerId>
+CART_TTL_SECONDS = 604800; // 7 days
+CART_LOCK_SUFFIX = ':lock'; // key: cart:<customerId>:lock
+CART_LOCK_TTL_SECONDS = 30; // checkout lock duration
 ```
 
 - `@nestjs/event-emitter` is **NOT used** — all events use CQRS `EventBus` exclusively
@@ -699,6 +735,7 @@ CART_LOCK_TTL_SECONDS           = 30                     // checkout lock durati
 **Goal:** Define all database tables for the Ordering context.
 
 **Scope:**
+
 - ~~`carts` table~~ — **not needed (D2-B): cart is Redis-only**
 - ~~`cart_items` table~~ — **not needed (D2-B): items are embedded in the Redis cart JSON**
 - `orders` table
@@ -713,6 +750,7 @@ CART_LOCK_TTL_SECONDS           = 30                     // checkout lock durati
 - Run migration (`db:push`)
 
 **Redis Cart Structure (D2-B — no DB tables for cart):** **[UPDATED]**
+
 ```json
 {
   "cartId": "uuid",
@@ -728,7 +766,13 @@ CART_LOCK_TTL_SECONDS           = 30                     // checkout lock durati
       "unitPrice": "number (snapshotted)",
       "quantity": "number (max 99)",
       "selectedModifiers": [
-        { "groupId": "...", "groupName": "...", "optionId": "...", "optionName": "...", "price": 0 }
+        {
+          "groupId": "...",
+          "groupName": "...",
+          "optionId": "...",
+          "optionName": "...",
+          "price": 0
+        }
       ]
     }
   ],
@@ -736,42 +780,51 @@ CART_LOCK_TTL_SECONDS           = 30                     // checkout lock durati
   "updatedAt": "ISO string"
 }
 ```
+
 - **Key pattern:** `cart:<customerId>` — one active cart per customer
 - **TTL:** `CART_TTL_SECONDS = 604800` (7 days) — reset on every write
 
 **Table Overview:** **[UPDATED]**
 
-| Table                                 | Key Fields                                                                                                                                                      |
-|---------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `orders`                              | `id`, `customerId`, `restaurantId`, `restaurantName`*, `cartId` (UNIQUE — D5-B), `status` (enum), `totalAmount` (NUMERIC(12,2)), `paymentMethod` (cod\|vnpay), `deliveryAddress` (JSONB), `note`, `paymentUrl`, `expiresAt`, `createdAt`, `updatedAt` |
-| `order_items`                         | `id`, `orderId` (FK cascade), `menuItemId`, `itemName`*, `unitPrice`* (NUMERIC(12,2)), `modifiersPrice` (NUMERIC(12,2), default 0), `quantity`, `subtotal` (NUMERIC(12,2)), `modifiers` (JSONB `OrderModifier[]`) |
-| `order_status_logs`                   | `id`, `orderId` (FK cascade), `fromStatus` (nullable — null = initial creation), `toStatus`, `triggeredBy` (nullable — null = system), `triggeredByRole` (enum), `note`, `createdAt` |
-| `ordering_menu_item_snapshots`        | `menuItemId` (PK), `restaurantId`, `name`, `price` (NUMERIC(12,2)), `status` (enum), `modifiers` (JSONB), `lastSyncedAt` |
-| `ordering_restaurant_snapshots`       | `restaurantId` (PK), `name`, `isOpen`, `isApproved`, `address`, `cuisineType`, `latitude`, `longitude`, `lastSyncedAt` |
-| `ordering_delivery_zone_snapshots`    | `zoneId` (PK), `restaurantId` (indexed), `name`, `radiusKm`, `baseFee` (NUMERIC(10,2)), `perKmRate` (NUMERIC(10,2)), `avgSpeedKmh`, `prepTimeMinutes`, `bufferMinutes`, `isActive`, `isDeleted` (tombstone), `lastSyncedAt` |
-| `app_settings`                        | `key` (PK, text), `value` (text), `description` (text), `updatedAt` |
+| Table                              | Key Fields                                                                                                                                                                                                                                             |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `orders`                           | `id`, `customerId`, `restaurantId`, `restaurantName`\*, `cartId` (UNIQUE — D5-B), `status` (enum), `totalAmount` (NUMERIC(12,2)), `paymentMethod` (cod\|vnpay), `deliveryAddress` (JSONB), `note`, `paymentUrl`, `expiresAt`, `createdAt`, `updatedAt` |
+| `order_items`                      | `id`, `orderId` (FK cascade), `menuItemId`, `itemName`_, `unitPrice`_ (NUMERIC(12,2)), `modifiersPrice` (NUMERIC(12,2), default 0), `quantity`, `subtotal` (NUMERIC(12,2)), `modifiers` (JSONB `OrderModifier[]`)                                      |
+| `order_status_logs`                | `id`, `orderId` (FK cascade), `fromStatus` (nullable — null = initial creation), `toStatus`, `triggeredBy` (nullable — null = system), `triggeredByRole` (enum), `note`, `createdAt`                                                                   |
+| `ordering_menu_item_snapshots`     | `menuItemId` (PK), `restaurantId`, `name`, `price` (NUMERIC(12,2)), `status` (enum), `modifiers` (JSONB), `lastSyncedAt`                                                                                                                               |
+| `ordering_restaurant_snapshots`    | `restaurantId` (PK), `name`, `isOpen`, `isApproved`, `address`, `cuisineType`, `latitude`, `longitude`, `lastSyncedAt`                                                                                                                                 |
+| `ordering_delivery_zone_snapshots` | `zoneId` (PK), `restaurantId` (indexed), `name`, `radiusKm`, `baseFee` (NUMERIC(10,2)), `perKmRate` (NUMERIC(10,2)), `avgSpeedKmh`, `prepTimeMinutes`, `bufferMinutes`, `isActive`, `isDeleted` (tombstone), `lastSyncedAt`                            |
+| `app_settings`                     | `key` (PK, text), `value` (text), `description` (text), `updatedAt`                                                                                                                                                                                    |
 
 > `*` = snapshotted value (not a FK — stored as plain data for immutable order history)
 
 **Money column pattern (M-1 fix — NUMERIC, not float):**
+
 ```typescript
 // All financial columns use this custom type to avoid IEEE-754 float precision loss.
 const moneyColumn = customType<{ data: number; driverData: string }>({
-  dataType() { return 'numeric(12, 2)'; },
-  fromDriver(value) { return parseFloat(value); },
-  toDriver(value) { return String(value); },
+  dataType() {
+    return 'numeric(12, 2)';
+  },
+  fromDriver(value) {
+    return parseFloat(value);
+  },
+  toDriver(value) {
+    return String(value);
+  },
 });
 ```
+
 - Used in: `order_items.unitPrice`, `order_items.modifiersPrice`, `order_items.subtotal`, `orders.totalAmount`, `ordering_menu_item_snapshots.price`
 - Delivery zone fees use `numeric(10, 2)` via a `zoneFeeColumn` helper
 
 **`app_settings` seed rows (inserted in migration):**
 
-| key | default value | description |
-|-----|---------------|-------------|
-| `ORDER_IDEMPOTENCY_TTL_SECONDS` | `300` | How long an idempotency key is retained in Redis (5 min) |
-| `RESTAURANT_ACCEPT_TIMEOUT_SECONDS` | `600` | How long before unconfirmed PENDING/PAID order is auto-cancelled |
-| `CART_ABANDONED_TTL_SECONDS` | `86400` | Redis TTL for inactive carts (24h) — informational; actual TTL is 7 days (`CART_TTL_SECONDS`) |
+| key                                 | default value | description                                                                                   |
+| ----------------------------------- | ------------- | --------------------------------------------------------------------------------------------- |
+| `ORDER_IDEMPOTENCY_TTL_SECONDS`     | `300`         | How long an idempotency key is retained in Redis (5 min)                                      |
+| `RESTAURANT_ACCEPT_TIMEOUT_SECONDS` | `600`         | How long before unconfirmed PENDING/PAID order is auto-cancelled                              |
+| `CART_ABANDONED_TTL_SECONDS`        | `86400`       | Redis TTL for inactive carts (24h) — informational; actual TTL is 7 days (`CART_TTL_SECONDS`) |
 
 > **Design note:** `cartId` UNIQUE constraint on `orders` is NOT a foreign key — there is no `carts` DB table (D2-B). The constraint still enforces that a cart can only produce one order.
 
@@ -786,6 +839,7 @@ const moneyColumn = customType<{ data: number; driverData: string }>({
 **Goal:** Customers can manage their cart. Single-restaurant constraint and modifier identity are enforced.
 
 **Scope:**
+
 - `CartRedisRepository` — Redis operations: read/write/delete cart JSON at `cart:<customerId>`
 - `CartService` — Domain logic:
   - `getCart(customerId)` → reads Redis; returns `null` if no cart
@@ -814,6 +868,7 @@ POST   /carts/my/checkout                     → place order (dispatches PlaceO
 All cart endpoints require authentication. No `@AllowAnonymous()`.
 
 **BR-2 Enforcement Logic (single-restaurant cart):**
+
 ```
 addItem(customerId, dto):
   1. Load cart from Redis (key: cart:<customerId>)
@@ -830,6 +885,7 @@ addItem(customerId, dto):
 ```
 
 **Modifier validation at add-item time:**
+
 - Client submits only `groupId` + `optionId` (no names or prices)
 - Server resolves names and prices from `ordering_menu_item_snapshots.modifiers` JSONB
 - Validates: group+option exist in snapshot, option `isAvailable`, `minSelections`/`maxSelections` satisfied
@@ -851,21 +907,23 @@ addItem(customerId, dto):
 
 **Part A — Event Contracts (Shared)** **[UPDATED]**
 
-| Event | Direction | Publisher | Consumer |
-|-------|-----------|-----------|----------|
-| `MenuItemUpdatedEvent` | Upstream → Ordering | `MenuService` | `MenuItemProjector` |
-| `RestaurantUpdatedEvent` | Upstream → Ordering | `RestaurantService` | `RestaurantSnapshotProjector` |
-| `DeliveryZoneSnapshotUpdatedEvent` | Upstream → Ordering | `ZonesService` | `DeliveryZoneSnapshotProjector` |
+| Event                              | Direction           | Publisher           | Consumer                        |
+| ---------------------------------- | ------------------- | ------------------- | ------------------------------- |
+| `MenuItemUpdatedEvent`             | Upstream → Ordering | `MenuService`       | `MenuItemProjector`             |
+| `RestaurantUpdatedEvent`           | Upstream → Ordering | `RestaurantService` | `RestaurantSnapshotProjector`   |
+| `DeliveryZoneSnapshotUpdatedEvent` | Upstream → Ordering | `ZonesService`      | `DeliveryZoneSnapshotProjector` |
 
 > `isAvailable` field has been **[REMOVED]** from `MenuItemUpdatedEvent`. `status` enum is the single canonical availability field.
 
 **Part B — Restaurant Catalog Changes (Upstream)** **[IMPLEMENTED]**
+
 - `MenuService`: publishes `MenuItemUpdatedEvent` after `create()`, `update()`, `toggleSoldOut()`, `remove()` (publishes `status=unavailable` on delete)
 - `RestaurantService`: publishes `RestaurantUpdatedEvent` after `create()`, `update()`, status changes
 - `ZonesService`: publishes `DeliveryZoneSnapshotUpdatedEvent` after `create()`, `update()`, `remove()` (isDeleted=true on remove)
 - `CqrsModule` imported in `MenuModule`, `RestaurantModule`, `ZonesModule`
 
 **Part C — Projectors in Ordering Context** **[IMPLEMENTED]**
+
 - `MenuItemProjector` — `@EventsHandler(MenuItemUpdatedEvent)` — upserts `ordering_menu_item_snapshots`; `modifiers=null` → skips modifiers column update (preserves existing snapshot)
 - `RestaurantSnapshotProjector` — `@EventsHandler(RestaurantUpdatedEvent)` — upserts `ordering_restaurant_snapshots`
 - `DeliveryZoneSnapshotProjector` — `@EventsHandler(DeliveryZoneSnapshotUpdatedEvent)` — upserts or tombstones `ordering_delivery_zone_snapshots` **[ADDED]**
@@ -880,6 +938,7 @@ addItem(customerId, dto):
   - `GET /ordering/restaurants/:id` → single restaurant snapshot
 
 **Tombstone pattern for delivery zone hard-deletes:** **[ADDED]**
+
 ```
 ZonesService.remove() → eventBus.publish(DeliveryZoneSnapshotUpdatedEvent { isDeleted: true })
                            ↓
@@ -890,6 +949,7 @@ DeliveryZoneSnapshotProjector.handle()
 ```
 
 **Modifier snapshot in `ordering_menu_item_snapshots`:** **[ADDED]**
+
 ```typescript
 interface MenuItemModifierSnapshot {
   groupId: string;
@@ -898,18 +958,20 @@ interface MenuItemModifierSnapshot {
   maxSelections: number;
   options: Array<{
     optionId: string;
-    name: string;          // ← 'name', not 'optionName'
+    name: string; // ← 'name', not 'optionName'
     price: number;
-    isDefault: boolean;    // ← included in snapshot
+    isDefault: boolean; // ← included in snapshot
     isAvailable: boolean;
   }>;
 }
 ```
+
 - Stored as JSONB in `ordering_menu_item_snapshots.modifiers`
 - Consumed by `CartService.addItem()` to validate and resolve option selections at add-item time
 - Consumed by `PlaceOrderHandler` to re-validate modifier constraints at checkout (step 5b)
 
 **Coupling Audit:**
+
 - [x] `order.module.ts` does NOT import `RestaurantModule`, `MenuModule`, or `ZonesModule`
 - [x] `cart.module.ts` does NOT import `RestaurantModule`, `MenuModule`, or `ZonesModule`
 - [x] Only shared artifacts are the event classes in `src/shared/events/`
@@ -925,6 +987,7 @@ interface MenuItemModifierSnapshot {
 **Goal:** A customer can check out their cart and create an Order with a fully frozen price snapshot.
 
 **Scope:**
+
 - `PlaceOrderHandler` — CQRS `CommandHandler` (D1-C); dispatched via `CommandBus` by `CartController.checkout()`
 - `PlaceOrderCommand` — carries `customerId`, `deliveryAddress`, `paymentMethod`, `note?`, `idempotencyKey?`
 - `CheckoutDto` — `deliveryAddress` (nested `DeliveryAddressDto`), `paymentMethod` (cod|vnpay), `note?` (maxLength 500)
@@ -1041,12 +1104,14 @@ POST /carts/my/checkout
 ```
 
 **Idempotency (D5-A + D5-B — both active):**
+
 - **D5-A (Redis):** `X-Idempotency-Key` header → `idempotency:order:<key>` in Redis; TTL from `app_settings.ORDER_IDEMPOTENCY_TTL_SECONDS` (default 300s); fallback constant `IDEMPOTENCY_TTL_FALLBACK_SECONDS = 300`
 - **D5-B (DB):** `UNIQUE(cart_id)` constraint on `orders` table — second-line guard against race conditions
 - Key saved immediately after DB commit (Step 11), BEFORE cart cleanup (Step 13) — prevents key loss on cleanup failure
 - Key validation regex: `/^[0-9a-fA-F-]{8,64}$/` — rejects non-hex keys with 400
 
 **`PlaceOrderCommand` signature:**
+
 ```typescript
 new PlaceOrderCommand(
   customerId: string,       // from JWT sub — never from cart payload (spoofing prevention)
@@ -1058,6 +1123,7 @@ new PlaceOrderCommand(
 ```
 
 **Payment flow after order creation:**
+
 ```
 COD:   PENDING → Restaurant confirms (PENDING → CONFIRMED)
 
@@ -1080,11 +1146,12 @@ Timeout: expiresAt exceeded → OrderTimeoutTask (Phase 5) → CANCELLED
 **Goal:** All actors can transition order states according to defined rules.
 
 **Scope:**
+
 - `OrderLifecycleService` — state machine logic + permission check per actor role
 - `OrderLifecycleController` — REST endpoints for state transitions
 - `OrderLifecycleModule`
 - `OrderStatusLog` appended on every transition
-- `OrderTimeoutTask` — `@Cron` job that queries PENDING/PAID orders where `expiresAt < NOW()` and transitions them to `CANCELLED` with `triggeredBy = 'system'`, then publishes `OrderStatusChangedEvent`   ← [FIXED][from MISSING]
+- `OrderTimeoutTask` — `@Cron` job that queries PENDING/PAID orders where `expiresAt < NOW()` and transitions them to `CANCELLED` with `triggeredBy = 'system'`, then publishes `OrderStatusChangedEvent` ← [FIXED][from MISSING]
 
 **State Machine:**
 
@@ -1131,32 +1198,35 @@ Timeout: expiresAt exceeded → OrderTimeoutTask (Phase 5) → CANCELLED
 
 **Transition Permission Table:**
 
-| Transition                        | Triggered By            | Notes                                                    |
-|-----------------------------------|-------------------------|----------------------------------------------------------|
-| `PENDING → PAID`                  | System (Payment Context) | VNPay payment confirmed via `PaymentConfirmedEvent`     |
-| `PENDING → CONFIRMED`             | Restaurant              | COD orders only — direct restaurant confirmation         |
-| `PENDING → CANCELLED`             | Customer, Restaurant    | Before payment (VNPay) or before restaurant confirms (COD) |
-| `PAID → CONFIRMED`                | Restaurant              | VNPay orders — restaurant confirms after payment         |
-| `PAID → CANCELLED`                | Customer, Restaurant    | After VNPay payment but before restaurant confirms — publishes `OrderCancelledAfterPaymentEvent` to trigger refund   ← [FIXED][from WARNING] |
-| `CONFIRMED → PREPARING`           | Restaurant              | Cooking started                                          |
-| `CONFIRMED → CANCELLED`           | Restaurant              | Cannot fulfill                                           |
-| `PREPARING → READY_FOR_PICKUP`    | Restaurant              | Ready for shipper                                        |
-| `READY_FOR_PICKUP → PICKED_UP`    | Shipper                 | Shipper collected order                                  |
-| `PICKED_UP → DELIVERING`          | Shipper                 | En route to customer                                     |
-| `DELIVERING → DELIVERED`          | Shipper                 | Confirmed delivery                                       |
-| `DELIVERED → REFUNDED`            | Admin                   | Post-delivery refund                                     |
+| Transition                     | Triggered By             | Notes                                                                                                                                      |
+| ------------------------------ | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PENDING → PAID`               | System (Payment Context) | VNPay payment confirmed via `PaymentConfirmedEvent`                                                                                        |
+| `PENDING → CONFIRMED`          | Restaurant               | COD orders only — direct restaurant confirmation                                                                                           |
+| `PENDING → CANCELLED`          | Customer, Restaurant     | Before payment (VNPay) or before restaurant confirms (COD)                                                                                 |
+| `PAID → CONFIRMED`             | Restaurant               | VNPay orders — restaurant confirms after payment                                                                                           |
+| `PAID → CANCELLED`             | Customer, Restaurant     | After VNPay payment but before restaurant confirms — publishes `OrderCancelledAfterPaymentEvent` to trigger refund ← [FIXED][from WARNING] |
+| `CONFIRMED → PREPARING`        | Restaurant               | Cooking started                                                                                                                            |
+| `CONFIRMED → CANCELLED`        | Restaurant               | Cannot fulfill                                                                                                                             |
+| `PREPARING → READY_FOR_PICKUP` | Restaurant               | Ready for shipper                                                                                                                          |
+| `READY_FOR_PICKUP → PICKED_UP` | Shipper                  | Shipper collected order                                                                                                                    |
+| `PICKED_UP → DELIVERING`       | Shipper                  | En route to customer                                                                                                                       |
+| `DELIVERING → DELIVERED`       | Shipper                  | Confirmed delivery                                                                                                                         |
+| `DELIVERED → REFUNDED`         | Admin                    | Post-delivery refund                                                                                                                       |
 
 **REST Endpoints:**
+
 ```
 PATCH  /orders/:id/status    → body: { toStatus: 'CONFIRMED', note?: string }
 GET    /orders/:id/timeline  → get OrderStatusLog history
 ```
 
 **Events Published on Each Transition:**
+
 - Every transition → `OrderStatusChangedEvent` → Notification Context reacts
 - `READY_FOR_PICKUP` → `OrderReadyForPickupEvent` → Delivery Context reacts
 
 > � **[FIXED][from MISSING]** Restaurant accept timeout implemented via **both** mechanisms:
+>
 > - `orders.expiresAt` set at order creation to `NOW() + RESTAURANT_ACCEPT_TIMEOUT_SECONDS` (see Phase 1 schema)
 > - `OrderTimeoutTask` (`@Cron`) in `OrderLifecycleModule` periodically queries `WHERE status IN ('PENDING','PAID') AND expiresAt < NOW()` and transitions matching orders to `CANCELLED` with `triggeredBy = 'system'`, publishing `OrderStatusChangedEvent` for each
 
@@ -1171,6 +1241,7 @@ GET    /orders/:id/timeline  → get OrderStatusLog history
 > ⚠️ Note: This phase defines the **events that Ordering publishes** and the **stubs** in other contexts that will receive them. The full implementation of Payment, Delivery, and Notification contexts is out of scope for this proposal.
 
 **Scope:**
+
 - Define event contracts in `shared/events/`:
   - `OrderPlacedEvent` — consumed by Payment, Notification
   - `OrderStatusChangedEvent` — consumed by Notification
@@ -1228,12 +1299,14 @@ OrderCancelledAfterPaymentEvent:   ← OUTGOING (published by Ordering)   ← [F
 **Goal:** Customers, Restaurant owners, and Shippers can query their order history.
 
 **Scope:**
+
 - `OrderHistoryRepository` — specialized query methods (no writes)
 - `OrderHistoryService` — query orchestration
 - `OrderHistoryController` — REST endpoints with pagination
 - `OrderHistoryModule`
 
 **REST Endpoints:**
+
 ```
 GET  /orders/my                       → Customer's own orders (paginated)
 GET  /orders/restaurant/:restaurantId → Restaurant's received orders
@@ -1242,6 +1315,7 @@ GET  /orders/:id                      → Single order detail (with items + time
 ```
 
 **Query Filters:**
+
 - `status` (filter by state)
 - `from` / `to` (date range)
 - `page` / `limit` (pagination)
@@ -1469,18 +1543,18 @@ app.module.ts
 
 ### 8.2 Actor-State Permission Matrix
 
-| State                | Customer Can       | Restaurant Can                   | Shipper Can    | Admin Can           |
-|----------------------|--------------------|----------------------------------|----------------|---------------------|
-| PENDING              | Cancel             | Confirm (COD only), Cancel       | —              | Any                 |
-| PAID                 | Cancel             | Confirm, Cancel                  | —              | Any                 |
-| CONFIRMED            | View only          | Start Preparing, Cancel          | —              | Any                 |
-| PREPARING            | View only          | Mark Ready for Pickup            | —              | Any                 |
-| READY_FOR_PICKUP     | View only          | —                                | Pick up        | Any                 |
-| PICKED_UP            | View only          | —                                | Start Delivery | Any                 |
-| DELIVERING           | View only          | —                                | Mark Delivered | Any                 |
-| DELIVERED            | View only          | —                                | —              | Refund              |
-| CANCELLED            | View only          | —                                | —              | —                   |
-| REFUNDED             | View only          | —                                | —              | —                   |
+| State            | Customer Can | Restaurant Can             | Shipper Can    | Admin Can |
+| ---------------- | ------------ | -------------------------- | -------------- | --------- |
+| PENDING          | Cancel       | Confirm (COD only), Cancel | —              | Any       |
+| PAID             | Cancel       | Confirm, Cancel            | —              | Any       |
+| CONFIRMED        | View only    | Start Preparing, Cancel    | —              | Any       |
+| PREPARING        | View only    | Mark Ready for Pickup      | —              | Any       |
+| READY_FOR_PICKUP | View only    | —                          | Pick up        | Any       |
+| PICKED_UP        | View only    | —                          | Start Delivery | Any       |
+| DELIVERING       | View only    | —                          | Mark Delivered | Any       |
+| DELIVERED        | View only    | —                          | —              | Refund    |
+| CANCELLED        | View only    | —                          | —              | —         |
+| REFUNDED         | View only    | —                          | —              | —         |
 
 ### 8.3 VNPay Payment Flow Impact on State Machine
 
@@ -1541,12 +1615,14 @@ VNPay Payment Failure / Timeout:
 The current pricing model covers **item costs only**. Shipping fees are architecturally designed for (via delivery zone `baseFee` + `perKmRate`) but **not yet applied to `orders.totalAmount`**.
 
 **Per-line item calculation:**
+
 ```
 modifiersPrice = sum of all selected option prices for that line
 subtotal       = (unitPrice + modifiersPrice) × quantity
 ```
 
 **Order total:**
+
 ```
 totalAmount = SUM(subtotal) for all order_items
 ```
@@ -1554,6 +1630,7 @@ totalAmount = SUM(subtotal) for all order_items
 > **No shipping fee in `totalAmount`.** The `deliveryZones` table has `baseFee` and `perKmRate` columns, and `ZonesService.estimateDelivery()` computes delivery fee + ETA for display purposes. However, **checkout does not add any delivery fee to `totalAmount`**. This is an intentional phase decision — shipping fee collection will be added in a future phase.
 
 **Price authority at checkout:**
+
 - `unitPrice` is sourced from `ordering_menu_item_snapshots.price` (ACL snapshot), NOT from the cart's add-time price
 - Cart add-time prices are informational only — overwritten by the authoritative snapshot price at checkout
 - This prevents stale pricing if the restaurant updates menu prices between add-to-cart and checkout
@@ -1561,6 +1638,7 @@ totalAmount = SUM(subtotal) for all order_items
 ### 9.2 Delivery Estimate (Available via API, Not in Checkout)
 
 `ZonesService.estimateDelivery()` computes:
+
 ```
 distanceKm     = GeoService.calculateDistanceKm(restaurant, customer)
 eligibleZone   = innermost zone where zone.radiusKm >= distanceKm
@@ -1574,9 +1652,11 @@ Endpoint: `GET /restaurants/:restaurantId/delivery-zones/estimate?latitude=...&l
 ### 9.3 Future: Shipping Fee in Checkout
 
 When shipping fee is added to checkout, the `PlaceOrderCommand` will need to carry the selected zone or customer coordinates, and `PlaceOrderHandler` will compute the delivery fee from `DeliveryZoneSnapshotRepository` data. `totalAmount` will then be:
+
 ```
 totalAmount = SUM(item subtotals) + deliveryFee
 ```
+
 A new `deliveryFee` column will be needed on `orders` for receipt display.
 
 ---
@@ -1606,6 +1686,7 @@ longitude                   name
 ### 10.2 Local Snapshot (Ordering BC)
 
 `ordering_delivery_zone_snapshots` mirrors the upstream `delivery_zones` table with these additions:
+
 - `isDeleted` boolean — tombstone flag for hard-deleted zones (row preserved for event-replay safety)
 - `lastSyncedAt` — tracks freshness
 - Index on `restaurantId` for fast BR-3 checkout query
@@ -1656,6 +1737,7 @@ ZonesService.remove()    → repo.remove() → eventBus.publish(DeliveryZoneSnap
 ### 11.1 Incoming Events (Upstream → Ordering)
 
 **`MenuItemUpdatedEvent`** — from `MenuService` + `ModifiersService`
+
 ```typescript
 interface ModifierOptionSnapshot {
   optionId: string;
@@ -1684,6 +1766,7 @@ interface MenuItemModifierSnapshot {
 ```
 
 **`RestaurantUpdatedEvent`** — from `RestaurantService`
+
 ```typescript
 {
   restaurantId: string;
@@ -1698,6 +1781,7 @@ interface MenuItemModifierSnapshot {
 ```
 
 **`DeliveryZoneSnapshotUpdatedEvent`** — from `ZonesService`
+
 ```typescript
 {
   zoneId: string;
@@ -1710,11 +1794,12 @@ interface MenuItemModifierSnapshot {
   prepTimeMinutes: number;
   bufferMinutes: number;
   isActive: boolean;
-  isDeleted: boolean;  // true = tombstone the snapshot row
+  isDeleted: boolean; // true = tombstone the snapshot row
 }
 ```
 
 **`PaymentConfirmedEvent`** — from Payment Context → triggers PENDING → PAID
+
 ```typescript
 {
   orderId: string;
@@ -1726,6 +1811,7 @@ interface MenuItemModifierSnapshot {
 ```
 
 **`PaymentFailedEvent`** — from Payment Context → triggers PENDING → CANCELLED
+
 ```typescript
 {
   orderId: string;
@@ -1739,6 +1825,7 @@ interface MenuItemModifierSnapshot {
 ### 11.2 Outgoing Events (Ordering → Downstream)
 
 **`OrderPlacedEvent`** — consumed by Payment, Notification
+
 ```typescript
 {
   orderId: string;
@@ -1747,12 +1834,18 @@ interface MenuItemModifierSnapshot {
   restaurantName: string;
   totalAmount: number;
   paymentMethod: 'cod' | 'vnpay';
-  items: Array<{ menuItemId: string; name: string; quantity: number; unitPrice: number }>;
+  items: Array<{
+    menuItemId: string;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+  }>;
   deliveryAddress: DeliveryAddress;
 }
 ```
 
 **`OrderStatusChangedEvent`** — consumed by Notification
+
 ```typescript
 {
   orderId: string;
@@ -1766,18 +1859,20 @@ interface MenuItemModifierSnapshot {
 ```
 
 **`OrderReadyForPickupEvent`** — consumed by Delivery, Notification
+
 ```typescript
 {
   orderId: string;
   restaurantId: string;
   restaurantName: string;
-  restaurantAddress: string;  // from restaurant snapshot
+  restaurantAddress: string; // from restaurant snapshot
   customerId: string;
   deliveryAddress: DeliveryAddress;
 }
 ```
 
 **`OrderCancelledAfterPaymentEvent`** — consumed by Payment (trigger refund)
+
 ```typescript
 {
   orderId: string;
@@ -1859,14 +1954,14 @@ Phases 0–4 are complete. These checklist items are preserved for reference and
 
 ### 13.2 Restaurant Catalog Blockers Status **[UPDATED]**
 
-| Item | Status |
-|------|--------|
-| `RestaurantService` must publish `RestaurantUpdatedEvent` | ✅ DONE |
-| `MenuService` must publish `MenuItemUpdatedEvent` | ✅ DONE |
-| `ZonesService` must publish `DeliveryZoneSnapshotUpdatedEvent` | ✅ DONE |
-| ~~Add `deliveryRadiusKm` column to `restaurants` table~~ | **[REMOVED]** — superseded by `delivery_zones` table |
-| Add `PATCH /restaurants/:id/approve` endpoint | ✅ DONE |
-| Fix return types: `create()` / `update()` return `NewRestaurant` | ✅ DONE |
+| Item                                                             | Status                                               |
+| ---------------------------------------------------------------- | ---------------------------------------------------- |
+| `RestaurantService` must publish `RestaurantUpdatedEvent`        | ✅ DONE                                              |
+| `MenuService` must publish `MenuItemUpdatedEvent`                | ✅ DONE                                              |
+| `ZonesService` must publish `DeliveryZoneSnapshotUpdatedEvent`   | ✅ DONE                                              |
+| ~~Add `deliveryRadiusKm` column to `restaurants` table~~         | **[REMOVED]** — superseded by `delivery_zones` table |
+| Add `PATCH /restaurants/:id/approve` endpoint                    | ✅ DONE                                              |
+| Fix return types: `create()` / `update()` return `NewRestaurant` | ✅ DONE                                              |
 
 ### 13.3 Infrastructure Verification **[UPDATED]**
 
@@ -1881,15 +1976,15 @@ Phases 0–4 are complete. These checklist items are preserved for reference and
 
 ## Appendix: Naming Conventions Reference
 
-| Layer      | Convention                                  | Example                              |
-|------------|---------------------------------------------|--------------------------------------|
-| Schema     | `{entity}.schema.ts`                        | `order.schema.ts`                    |
-| Repository | `{entity}.repository.ts`                    | `menu-item-snapshot.repository.ts`   |
-| Service    | `{entity}.service.ts`                       | `cart.service.ts`                    |
-| Controller | `{entity}.controller.ts`                    | `cart.controller.ts`                 |
-| Module     | `{entity}.module.ts`                        | `ordering.module.ts`                 |
-| DTOs       | `dto/{entity}.dto.ts`                       | `dto/cart.dto.ts`                    |
-| Command    | `commands/{action}-{entity}.command.ts`     | `commands/place-order.command.ts`    |
-| Handler    | `commands/{action}-{entity}.handler.ts`     | `commands/place-order.handler.ts`    |
-| Projector  | `projections/{entity}.projector.ts`         | `projections/menu-item.projector.ts` |
-| Events     | `shared/events/{entity}-{verb}.event.ts`    | `shared/events/order-placed.event.ts`|
+| Layer      | Convention                               | Example                               |
+| ---------- | ---------------------------------------- | ------------------------------------- |
+| Schema     | `{entity}.schema.ts`                     | `order.schema.ts`                     |
+| Repository | `{entity}.repository.ts`                 | `menu-item-snapshot.repository.ts`    |
+| Service    | `{entity}.service.ts`                    | `cart.service.ts`                     |
+| Controller | `{entity}.controller.ts`                 | `cart.controller.ts`                  |
+| Module     | `{entity}.module.ts`                     | `ordering.module.ts`                  |
+| DTOs       | `dto/{entity}.dto.ts`                    | `dto/cart.dto.ts`                     |
+| Command    | `commands/{action}-{entity}.command.ts`  | `commands/place-order.command.ts`     |
+| Handler    | `commands/{action}-{entity}.handler.ts`  | `commands/place-order.handler.ts`     |
+| Projector  | `projections/{entity}.projector.ts`      | `projections/menu-item.projector.ts`  |
+| Events     | `shared/events/{entity}-{verb}.event.ts` | `shared/events/order-placed.event.ts` |

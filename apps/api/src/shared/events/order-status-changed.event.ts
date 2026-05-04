@@ -11,7 +11,12 @@ export class OrderStatusChangedEvent {
     public readonly restaurantId: string,
     public readonly fromStatus: string,
     public readonly toStatus: string,
-    public readonly triggeredByRole: 'customer' | 'restaurant' | 'shipper' | 'admin' | 'system',
+    public readonly triggeredByRole:
+      | 'customer'
+      | 'restaurant'
+      | 'shipper'
+      | 'admin'
+      | 'system',
     public readonly note?: string,
   ) {}
 }

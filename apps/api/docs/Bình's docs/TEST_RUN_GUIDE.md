@@ -2,11 +2,11 @@
 
 ## Prerequisites
 
-| Tool | Where it runs |
-|------|---------------|
+| Tool           | Where it runs                             |
+| -------------- | ----------------------------------------- |
 | Docker Desktop | Local machine (starts PostgreSQL + Redis) |
-| Node.js ≥ 20 | Local machine |
-| pnpm | Local machine (`npm i -g pnpm`) |
+| Node.js ≥ 20   | Local machine                             |
+| pnpm           | Local machine (`npm i -g pnpm`)           |
 
 ---
 
@@ -105,6 +105,7 @@ pnpm test:e2e --verbose
 ```
 
 The command that runs is:
+
 ```
 jest --config ./test/jest-e2e.json
 ```
@@ -129,14 +130,14 @@ Tests run sequentially (`maxWorkers: 1`) because each suite resets the database.
 
 ## 7. Troubleshooting
 
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| `DATABASE_URL is not defined` | No .env file loaded | Create `apps/api/.env` or `.env.test` |
-| `connect ECONNREFUSED 127.0.0.1:5433` | PostgreSQL not running | `docker compose up -d` |
-| `relation "restaurants" does not exist` | Migrations not applied | Run `pnpm db:migrate` against the test DB |
-| `ECONNREFUSED 127.0.0.1:6379` | Redis not running | `docker compose up -d` |
-| **All tests get 401 Unauthorized** | MockAuthGuard not overriding real guard | See Authentication Override issue below |
-| Tests conflict with each other | Running in parallel | `maxWorkers: 1` is set in `jest-e2e.json` — should be sequential |
+| Symptom                                 | Cause                                   | Fix                                                              |
+| --------------------------------------- | --------------------------------------- | ---------------------------------------------------------------- |
+| `DATABASE_URL is not defined`           | No .env file loaded                     | Create `apps/api/.env` or `.env.test`                            |
+| `connect ECONNREFUSED 127.0.0.1:5433`   | PostgreSQL not running                  | `docker compose up -d`                                           |
+| `relation "restaurants" does not exist` | Migrations not applied                  | Run `pnpm db:migrate` against the test DB                        |
+| `ECONNREFUSED 127.0.0.1:6379`           | Redis not running                       | `docker compose up -d`                                           |
+| **All tests get 401 Unauthorized**      | MockAuthGuard not overriding real guard | See Authentication Override issue below                          |
+| Tests conflict with each other          | Running in parallel                     | `maxWorkers: 1` is set in `jest-e2e.json` — should be sequential |
 
 ### Known Issue: Authentication Override
 

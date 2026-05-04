@@ -13,11 +13,7 @@ import { and, eq } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DB_CONNECTION } from '@/drizzle/drizzle.constants';
 import * as schema from '@/drizzle/schema';
-import {
-  orders,
-  orderStatusLogs,
-  type Order,
-} from '../../order/order.schema';
+import { orders, orderStatusLogs, type Order } from '../../order/order.schema';
 import { TransitionOrderCommand } from './transition-order.command';
 import { OrderRepository } from '../repositories/order.repository';
 import { OrderLifecycleService } from '../services/order-lifecycle.service';
@@ -46,9 +42,7 @@ import { OrderCancelledAfterPaymentEvent } from '@/shared/events/order-cancelled
  */
 @Injectable()
 @CommandHandler(TransitionOrderCommand)
-export class TransitionOrderHandler
-  implements ICommandHandler<TransitionOrderCommand>
-{
+export class TransitionOrderHandler implements ICommandHandler<TransitionOrderCommand> {
   private readonly logger = new Logger(TransitionOrderHandler.name);
 
   constructor(

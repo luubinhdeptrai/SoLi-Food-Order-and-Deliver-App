@@ -75,7 +75,11 @@ export class CartService {
     let cart = await this.cartRepo.findByCustomerId(customerId);
 
     if (!cart) {
-      cart = this.createEmptyCart(customerId, dto.restaurantId, dto.restaurantName);
+      cart = this.createEmptyCart(
+        customerId,
+        dto.restaurantId,
+        dto.restaurantName,
+      );
     }
 
     // 2. BR-2: single-restaurant cart
@@ -111,7 +115,7 @@ export class CartService {
       cart.items[existingIndex] = { ...existing, quantity: newQty };
     } else {
       const item: CartItem = {
-        cartItemId: randomUUID(),            // stable line-item ID (Case 9, 15 fix)
+        cartItemId: randomUUID(), // stable line-item ID (Case 9, 15 fix)
         modifierFingerprint: newFingerprint, // deterministic identity hash (Case 9 fix)
         menuItemId: dto.menuItemId,
         itemName: dto.itemName,
@@ -153,7 +157,10 @@ export class CartService {
       return this.removeItemFromCart(cart, cartItemId, customerId);
     }
 
-    cart.items[itemIndex] = { ...cart.items[itemIndex], quantity: dto.quantity };
+    cart.items[itemIndex] = {
+      ...cart.items[itemIndex],
+      quantity: dto.quantity,
+    };
     cart.updatedAt = new Date().toISOString();
     await this.cartRepo.save(cart, await this.getCartTtl());
 
@@ -179,7 +186,9 @@ export class CartService {
 
     const itemIndex = cart.items.findIndex((i) => i.cartItemId === cartItemId);
     if (itemIndex < 0) {
-      throw new NotFoundException(`Cart item ${cartItemId} is not in your cart.`);
+      throw new NotFoundException(
+        `Cart item ${cartItemId} is not in your cart.`,
+      );
     }
 
     const existing = cart.items[itemIndex];
@@ -214,12 +223,17 @@ export class CartService {
    * menuItemId after the Case 9 / Case 15 fixes.
    * If the cart becomes empty, the Redis key is deleted and `null` is returned.
    */
-  async removeItem(customerId: string, cartItemId: string): Promise<Cart | null> {
+  async removeItem(
+    customerId: string,
+    cartItemId: string,
+  ): Promise<Cart | null> {
     const cart = await this.requireCart(customerId);
 
     const itemExists = cart.items.some((i) => i.cartItemId === cartItemId);
     if (!itemExists) {
-      throw new NotFoundException(`Cart item ${cartItemId} is not in your cart.`);
+      throw new NotFoundException(
+        `Cart item ${cartItemId} is not in your cart.`,
+      );
     }
 
     return this.removeItemFromCart(cart, cartItemId, customerId);
@@ -339,7 +353,10 @@ export class CartService {
     }
 
     // Delegate all modifier-specific validation + resolution to resolveOptions.
-    return this.resolveModifierOptions(snapshot.modifiers ?? [], selectedOptions);
+    return this.resolveModifierOptions(
+      snapshot.modifiers ?? [],
+      selectedOptions,
+    );
   }
 
   /**
@@ -377,8 +394,13 @@ export class CartService {
     // if one is available.  This augments selectionCountByGroup so Step 3 sees it.
     const autoInjected: SelectedModifier[] = [];
     for (const group of snapshotModifiers) {
-      if (group.minSelections > 0 && !selectionCountByGroup.has(group.groupId)) {
-        const defaultOpt = group.options.find((o) => o.isDefault && o.isAvailable);
+      if (
+        group.minSelections > 0 &&
+        !selectionCountByGroup.has(group.groupId)
+      ) {
+        const defaultOpt = group.options.find(
+          (o) => o.isDefault && o.isAvailable,
+        );
         if (defaultOpt) {
           autoInjected.push({
             groupId: group.groupId,
@@ -483,6 +505,9 @@ export class CartService {
       );
     }
 
-    return this.resolveModifierOptions(snapshot.modifiers ?? [], selectedOptions);
+    return this.resolveModifierOptions(
+      snapshot.modifiers ?? [],
+      selectedOptions,
+    );
   }
 }

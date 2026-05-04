@@ -35,7 +35,8 @@ export class DeliveryAddressDto implements DeliveryAddress {
   city!: string;
 
   @ApiPropertyOptional({
-    description: 'GPS latitude of the delivery point (used for BR-3 radius check)',
+    description:
+      'GPS latitude of the delivery point (used for BR-3 radius check)',
     example: 10.7769,
   })
   @IsOptional()
@@ -44,7 +45,8 @@ export class DeliveryAddressDto implements DeliveryAddress {
   latitude?: number;
 
   @ApiPropertyOptional({
-    description: 'GPS longitude of the delivery point (used for BR-3 radius check)',
+    description:
+      'GPS longitude of the delivery point (used for BR-3 radius check)',
     example: 106.7009,
   })
   @IsOptional()
@@ -75,7 +77,8 @@ export class CheckoutDto {
 
   @ApiProperty({
     enum: ['cod', 'vnpay'],
-    description: 'Payment method. COD: cash on delivery. VNPay: online payment gateway.',
+    description:
+      'Payment method. COD: cash on delivery. VNPay: online payment gateway.',
     example: 'cod',
   })
   @IsEnum(['cod', 'vnpay'], {
@@ -109,10 +112,16 @@ export class CheckoutResponseDto {
   @ApiProperty({ example: 'pending' })
   status!: string;
 
-  @ApiProperty({ description: 'Total amount = items total + shipping fee', example: 145.5 })
+  @ApiProperty({
+    description: 'Total amount = items total + shipping fee',
+    example: 145.5,
+  })
   totalAmount!: number;
 
-  @ApiProperty({ description: 'Delivery fee computed from the closest eligible zone', example: 20.0 })
+  @ApiProperty({
+    description: 'Delivery fee computed from the closest eligible zone',
+    example: 20.0,
+  })
   shippingFee!: number;
 
   @ApiProperty({ enum: ['cod', 'vnpay'] })
@@ -125,11 +134,15 @@ export class CheckoutResponseDto {
   paymentUrl?: string | null;
 
   @ApiPropertyOptional({
-    description: 'Estimated delivery time in minutes. Null when location data is unavailable.',
+    description:
+      'Estimated delivery time in minutes. Null when location data is unavailable.',
     example: 35,
   })
   estimatedDeliveryMinutes?: number | null;
 
-  @ApiProperty({ description: 'ISO 8601 timestamp', example: '2025-01-01T00:00:00.000Z' })
+  @ApiProperty({
+    description: 'ISO 8601 timestamp',
+    example: '2025-01-01T00:00:00.000Z',
+  })
   createdAt!: string;
 }

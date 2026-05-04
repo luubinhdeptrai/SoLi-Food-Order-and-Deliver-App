@@ -1,13 +1,13 @@
-import { AppState, Platform } from "react-native";
+import { AppState, Platform } from 'react-native';
 import {
   QueryClient,
   QueryClientProvider,
   focusManager,
   onlineManager,
-} from "@tanstack/react-query";
-import NetInfo from "@react-native-community/netinfo";
-import { Stack } from "expo-router";
-import { useEffect } from "react";
+} from '@tanstack/react-query';
+import NetInfo from '@react-native-community/netinfo';
+import { Stack } from 'expo-router';
+import { useEffect } from 'react';
 
 // 1. Create the client
 const queryClient = new QueryClient({
@@ -24,9 +24,9 @@ onlineManager.setEventListener((setOnline) => {
 export default function RootLayout() {
   // 3. Setup Focus Manager (Detects App background/foreground)
   useEffect(() => {
-    const subscription = AppState.addEventListener("change", (status) => {
-      if (Platform.OS !== "web") {
-        focusManager.setFocused(status === "active");
+    const subscription = AppState.addEventListener('change', (status) => {
+      if (Platform.OS !== 'web') {
+        focusManager.setFocused(status === 'active');
       }
     });
     return () => subscription.remove();

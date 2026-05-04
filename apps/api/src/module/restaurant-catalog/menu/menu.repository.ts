@@ -67,7 +67,10 @@ export class MenuRepository {
     // Public endpoint defaults to 'available' so customers never see unavailable items.
     if (status !== 'all') {
       conditions.push(
-        eq(menuItems.status, status as (typeof menuItemStatusEnum.enumValues)[number]),
+        eq(
+          menuItems.status,
+          status as (typeof menuItemStatusEnum.enumValues)[number],
+        ),
       );
     }
 
@@ -150,7 +153,10 @@ export class MenuRepository {
     };
 
     try {
-      const [row] = await this.db.insert(menuCategories).values(data).returning();
+      const [row] = await this.db
+        .insert(menuCategories)
+        .values(data)
+        .returning();
       return row;
     } catch (err: unknown) {
       // Map PostgreSQL unique-constraint violation (Issue #13) to a 409 so
@@ -189,4 +195,3 @@ export class MenuRepository {
     await this.db.delete(menuCategories).where(eq(menuCategories.id, id));
   }
 }
-

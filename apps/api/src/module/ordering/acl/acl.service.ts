@@ -27,7 +27,9 @@ export class AclService {
   // Menu item snapshots
   // ---------------------------------------------------------------------------
 
-  async getMenuItemById(menuItemId: string): Promise<MenuItemSnapshotResponseDto> {
+  async getMenuItemById(
+    menuItemId: string,
+  ): Promise<MenuItemSnapshotResponseDto> {
     const snapshot = await this.menuItemSnapshotRepo.findById(menuItemId);
     if (!snapshot) {
       throw new NotFoundException(
@@ -42,9 +44,13 @@ export class AclService {
    * Returns only the rows that exist — callers must handle missing entries.
    * An empty `ids` list returns an empty array without hitting the DB.
    */
-  async getMenuItemsByIds(ids: string[]): Promise<MenuItemSnapshotResponseDto[]> {
+  async getMenuItemsByIds(
+    ids: string[],
+  ): Promise<MenuItemSnapshotResponseDto[]> {
     if (ids.length === 0) return [];
-    return this.menuItemSnapshotRepo.findManyByIds(ids) as Promise<MenuItemSnapshotResponseDto[]>;
+    return this.menuItemSnapshotRepo.findManyByIds(ids) as Promise<
+      MenuItemSnapshotResponseDto[]
+    >;
   }
 
   // ---------------------------------------------------------------------------
@@ -71,7 +77,9 @@ export class AclService {
     ids: string[],
   ): Promise<RestaurantSnapshotResponseDto[]> {
     if (ids.length === 0) return [];
-    return this.restaurantSnapshotRepo.findManyByIds(ids) as Promise<RestaurantSnapshotResponseDto[]>;
+    return this.restaurantSnapshotRepo.findManyByIds(ids) as Promise<
+      RestaurantSnapshotResponseDto[]
+    >;
   }
 
   // ---------------------------------------------------------------------------

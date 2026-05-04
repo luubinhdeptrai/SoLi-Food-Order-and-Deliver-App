@@ -65,7 +65,9 @@ export interface CartItem {
  *    only server-confirmed IDs are hashed. This prevents a client from crafting
  *    a fingerprint from an invalid optionId that passes merge but fails validation.
  */
-export function buildFingerprintFromResolved(resolved: SelectedModifier[]): string {
+export function buildFingerprintFromResolved(
+  resolved: SelectedModifier[],
+): string {
   if (resolved.length === 0) return '';
   return [...resolved]
     .sort(

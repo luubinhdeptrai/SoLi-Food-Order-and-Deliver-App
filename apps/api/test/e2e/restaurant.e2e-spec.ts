@@ -73,14 +73,22 @@ describe('Restaurant CRUD (E2E)', () => {
     const adminSignUp = await http
       .post('/api/auth/sign-up/email')
       .set('Content-Type', 'application/json')
-      .send({ email: TEST_ADMIN_EMAIL, password: TEST_PASSWORD, name: 'E2E Admin' });
+      .send({
+        email: TEST_ADMIN_EMAIL,
+        password: TEST_PASSWORD,
+        name: 'E2E Admin',
+      });
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    adminToken = (adminSignUp.body?.token ?? adminSignUp.body?.session?.token) as string;
+    adminToken = (adminSignUp.body?.token ??
+      adminSignUp.body?.session?.token) as string;
 
     // Grant admin role via direct Drizzle update
     const db = getTestDb();
-    await db.update(user).set({ role: 'admin' }).where(eq(user.email, TEST_ADMIN_EMAIL));
+    await db
+      .update(user)
+      .set({ role: 'admin' })
+      .where(eq(user.email, TEST_ADMIN_EMAIL));
   });
 
   afterAll(async () => {
@@ -94,14 +102,11 @@ describe('Restaurant CRUD (E2E)', () => {
 
   describe('§1 POST /api/restaurants', () => {
     it('creates a restaurant with required fields and returns 201', async () => {
-      const res = await http
-        .post('/api/restaurants')
-        .set(ownerHeaders())
-        .send({
-          name: 'New Test Restaurant',
-          address: '100 Test Ave',
-          phone: '+84-100-000-0000',
-        });
+      const res = await http.post('/api/restaurants').set(ownerHeaders()).send({
+        name: 'New Test Restaurant',
+        address: '100 Test Ave',
+        phone: '+84-100-000-0000',
+      });
 
       expect(res.status).toBe(201);
       expect(res.body).toMatchObject({
@@ -116,20 +121,17 @@ describe('Restaurant CRUD (E2E)', () => {
     });
 
     it('creates a restaurant with all optional fields', async () => {
-      const res = await http
-        .post('/api/restaurants')
-        .set(ownerHeaders())
-        .send({
-          name: 'Full Fields Restaurant',
-          address: '200 Full St',
-          phone: '+84-200-000-0000',
-          description: 'A fully detailed restaurant',
-          latitude: 10.7769,
-          longitude: 106.7009,
-          cuisineType: 'Vietnamese',
-          logoUrl: 'https://example.com/logo.jpg',
-          coverImageUrl: 'https://example.com/cover.jpg',
-        });
+      const res = await http.post('/api/restaurants').set(ownerHeaders()).send({
+        name: 'Full Fields Restaurant',
+        address: '200 Full St',
+        phone: '+84-200-000-0000',
+        description: 'A fully detailed restaurant',
+        latitude: 10.7769,
+        longitude: 106.7009,
+        cuisineType: 'Vietnamese',
+        logoUrl: 'https://example.com/logo.jpg',
+        coverImageUrl: 'https://example.com/cover.jpg',
+      });
 
       expect(res.status).toBe(201);
       expect(res.body).toMatchObject({
@@ -199,10 +201,12 @@ describe('Restaurant CRUD (E2E)', () => {
     });
 
     it('returns 400 for invalid logoUrl', async () => {
-      const res = await http
-        .post('/api/restaurants')
-        .set(ownerHeaders())
-        .send({ name: 'Bad URL', address: '1 St', phone: '+84000', logoUrl: 'not-a-url' });
+      const res = await http.post('/api/restaurants').set(ownerHeaders()).send({
+        name: 'Bad URL',
+        address: '1 St',
+        phone: '+84000',
+        logoUrl: 'not-a-url',
+      });
 
       expect(res.status).toBe(400);
     });
@@ -212,9 +216,7 @@ describe('Restaurant CRUD (E2E)', () => {
 
   describe('§2 GET /api/restaurants', () => {
     it('returns { data, total } shape (public)', async () => {
-      const res = await http
-        .get('/api/restaurants')
-        .set(noAuthHeaders());
+      const res = await http.get('/api/restaurants').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body.data)).toBe(true);
@@ -234,7 +236,11 @@ describe('Restaurant CRUD (E2E)', () => {
       const createRes = await http
         .post('/api/restaurants')
         .set(ownerHeaders())
-        .send({ name: 'Unapproved Restaurant', address: '1 St', phone: '+84000' });
+        .send({
+          name: 'Unapproved Restaurant',
+          address: '1 St',
+          phone: '+84000',
+        });
       const unapprovedId = createRes.body.id as string;
 
       const listRes = await http.get('/api/restaurants').set(noAuthHeaders());
@@ -252,11 +258,15 @@ describe('Restaurant CRUD (E2E)', () => {
     });
 
     it('respects offset pagination parameter', async () => {
-      const allRes = await http.get('/api/restaurants?limit=100').set(noAuthHeaders());
+      const allRes = await http
+        .get('/api/restaurants?limit=100')
+        .set(noAuthHeaders());
       const total = allRes.body.total as number;
 
       if (total > 1) {
-        const offsetRes = await http.get('/api/restaurants?offset=1&limit=100').set(noAuthHeaders());
+        const offsetRes = await http
+          .get('/api/restaurants?offset=1&limit=100')
+          .set(noAuthHeaders());
         expect(offsetRes.status).toBe(200);
         expect(offsetRes.body.data.length).toBe(total - 1);
       }
@@ -323,10 +333,11 @@ describe('Restaurant CRUD (E2E)', () => {
     let updatableId: string;
 
     beforeAll(async () => {
-      const res = await http
-        .post('/api/restaurants')
-        .set(ownerHeaders())
-        .send({ name: 'Updatable Restaurant', address: '1 St', phone: '+84000' });
+      const res = await http.post('/api/restaurants').set(ownerHeaders()).send({
+        name: 'Updatable Restaurant',
+        address: '1 St',
+        phone: '+84000',
+      });
       updatableId = res.body.id as string;
     });
 
@@ -334,7 +345,10 @@ describe('Restaurant CRUD (E2E)', () => {
       const res = await http
         .patch(`/api/restaurants/${updatableId}`)
         .set(ownerHeaders())
-        .send({ name: 'Updated Restaurant Name', description: 'New description' });
+        .send({
+          name: 'Updated Restaurant Name',
+          description: 'New description',
+        });
 
       expect(res.status).toBe(200);
       expect(res.body.name).toBe('Updated Restaurant Name');
@@ -394,10 +408,11 @@ describe('Restaurant CRUD (E2E)', () => {
     let restaurantId: string;
 
     beforeAll(async () => {
-      const res = await http
-        .post('/api/restaurants')
-        .set(ownerHeaders())
-        .send({ name: 'Toggle Open Restaurant', address: '1 St', phone: '+84000' });
+      const res = await http.post('/api/restaurants').set(ownerHeaders()).send({
+        name: 'Toggle Open Restaurant',
+        address: '1 St',
+        phone: '+84000',
+      });
       restaurantId = res.body.id as string;
     });
 
@@ -442,10 +457,11 @@ describe('Restaurant CRUD (E2E)', () => {
     let restaurantId: string;
 
     beforeAll(async () => {
-      const res = await http
-        .post('/api/restaurants')
-        .set(ownerHeaders())
-        .send({ name: 'Approval Test Restaurant', address: '1 St', phone: '+84000' });
+      const res = await http.post('/api/restaurants').set(ownerHeaders()).send({
+        name: 'Approval Test Restaurant',
+        address: '1 St',
+        phone: '+84000',
+      });
       restaurantId = res.body.id as string;
     });
 
@@ -520,10 +536,11 @@ describe('Restaurant CRUD (E2E)', () => {
     let deletableId: string;
 
     beforeAll(async () => {
-      const res = await http
-        .post('/api/restaurants')
-        .set(ownerHeaders())
-        .send({ name: 'Deletable Restaurant', address: '1 St', phone: '+84000' });
+      const res = await http.post('/api/restaurants').set(ownerHeaders()).send({
+        name: 'Deletable Restaurant',
+        address: '1 St',
+        phone: '+84000',
+      });
       deletableId = res.body.id as string;
     });
 
@@ -599,10 +616,11 @@ describe('Restaurant CRUD (E2E)', () => {
     });
 
     it('POST /api/restaurants returns restaurant with ownerId', async () => {
-      const res = await http
-        .post('/api/restaurants')
-        .set(ownerHeaders())
-        .send({ name: 'Shape Test Restaurant', address: '1 St', phone: '+84000' });
+      const res = await http.post('/api/restaurants').set(ownerHeaders()).send({
+        name: 'Shape Test Restaurant',
+        address: '1 St',
+        phone: '+84000',
+      });
 
       expect(res.status).toBe(201);
       expect(res.body.ownerId).toBeDefined();

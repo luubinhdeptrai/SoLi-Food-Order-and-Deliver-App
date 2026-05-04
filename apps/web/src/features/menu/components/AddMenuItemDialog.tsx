@@ -1,23 +1,23 @@
-import { useState } from "react";
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Leaf, DollarSign, Tag, FileText } from "lucide-react";
-import type { MenuItemCategory } from "@/features/menu/types";
+} from '@/components/ui/select';
+import { Leaf, DollarSign, Tag, FileText } from 'lucide-react';
+import type { MenuItemCategory } from '@/features/menu/types';
 
 interface AddMenuItemDialogProps {
   open: boolean;
@@ -32,12 +32,12 @@ interface AddMenuItemDialogProps {
 }
 
 const CATEGORIES: { value: MenuItemCategory; label: string }[] = [
-  { value: "salads", label: "Salads" },
-  { value: "desserts", label: "Desserts" },
-  { value: "breads", label: "Breads" },
-  { value: "mains", label: "Main Dishes" },
-  { value: "drinks", label: "Drinks" },
-  { value: "sides", label: "Sides" },
+  { value: 'salads', label: 'Salads' },
+  { value: 'desserts', label: 'Desserts' },
+  { value: 'breads', label: 'Breads' },
+  { value: 'mains', label: 'Main Dishes' },
+  { value: 'drinks', label: 'Drinks' },
+  { value: 'sides', label: 'Sides' },
 ];
 
 export function AddMenuItemDialog({
@@ -45,21 +45,21 @@ export function AddMenuItemDialog({
   onOpenChange,
   onSubmit,
 }: AddMenuItemDialogProps) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [sku, setSku] = useState("");
-  const [category, setCategory] = useState<MenuItemCategory>("mains");
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [sku, setSku] = useState('');
+  const [category, setCategory] = useState<MenuItemCategory>('mains');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit?.({ name, description, price, sku, category });
     // Reset
-    setName("");
-    setDescription("");
-    setPrice("");
-    setSku("");
-    setCategory("mains");
+    setName('');
+    setDescription('');
+    setPrice('');
+    setSku('');
+    setCategory('mains');
     onOpenChange(false);
   };
 
@@ -67,13 +67,13 @@ export function AddMenuItemDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="sm:max-w-[520px] rounded-3xl p-0 overflow-hidden border-0"
-        style={{ background: "var(--surface-container-lowest)" }}
+        style={{ background: 'var(--surface-container-lowest)' }}
       >
         {/* Header accent */}
         <div
           className="px-7 pt-7 pb-5"
           style={{
-            background: "linear-gradient(135deg, #0d631b 0%, #2e7d32 100%)",
+            background: 'linear-gradient(135deg, #0d631b 0%, #2e7d32 100%)',
           }}
         >
           <div className="flex items-center gap-3 mb-3">
@@ -98,14 +98,14 @@ export function AddMenuItemDialog({
             <Label
               htmlFor="item-name"
               className="text-xs font-semibold uppercase tracking-wider"
-              style={{ color: "var(--on-surface-variant)" }}
+              style={{ color: 'var(--on-surface-variant)' }}
             >
               Item Name
             </Label>
             <div className="relative">
               <FileText
                 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4"
-                style={{ color: "var(--on-surface-variant)" }}
+                style={{ color: 'var(--on-surface-variant)' }}
               />
               <Input
                 id="item-name"
@@ -114,7 +114,7 @@ export function AddMenuItemDialog({
                 onChange={(e) => setName(e.target.value)}
                 required
                 className="pl-9 rounded-xl border-0 focus-visible:ring-primary/30"
-                style={{ background: "var(--surface-container-low)" }}
+                style={{ background: 'var(--surface-container-low)' }}
               />
             </div>
           </div>
@@ -124,7 +124,7 @@ export function AddMenuItemDialog({
             <Label
               htmlFor="item-description"
               className="text-xs font-semibold uppercase tracking-wider"
-              style={{ color: "var(--on-surface-variant)" }}
+              style={{ color: 'var(--on-surface-variant)' }}
             >
               Description
             </Label>
@@ -135,7 +135,7 @@ export function AddMenuItemDialog({
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               className="rounded-xl border-0 resize-none focus-visible:ring-primary/30"
-              style={{ background: "var(--surface-container-low)" }}
+              style={{ background: 'var(--surface-container-low)' }}
             />
           </div>
 
@@ -145,14 +145,14 @@ export function AddMenuItemDialog({
               <Label
                 htmlFor="item-price"
                 className="text-xs font-semibold uppercase tracking-wider"
-                style={{ color: "var(--on-surface-variant)" }}
+                style={{ color: 'var(--on-surface-variant)' }}
               >
                 Price
               </Label>
               <div className="relative">
                 <DollarSign
                   className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4"
-                  style={{ color: "var(--on-surface-variant)" }}
+                  style={{ color: 'var(--on-surface-variant)' }}
                 />
                 <Input
                   id="item-price"
@@ -164,7 +164,7 @@ export function AddMenuItemDialog({
                   onChange={(e) => setPrice(e.target.value)}
                   required
                   className="pl-9 rounded-xl border-0 focus-visible:ring-primary/30"
-                  style={{ background: "var(--surface-container-low)" }}
+                  style={{ background: 'var(--surface-container-low)' }}
                 />
               </div>
             </div>
@@ -172,14 +172,14 @@ export function AddMenuItemDialog({
               <Label
                 htmlFor="item-sku"
                 className="text-xs font-semibold uppercase tracking-wider"
-                style={{ color: "var(--on-surface-variant)" }}
+                style={{ color: 'var(--on-surface-variant)' }}
               >
                 SKU
               </Label>
               <div className="relative">
                 <Tag
                   className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4"
-                  style={{ color: "var(--on-surface-variant)" }}
+                  style={{ color: 'var(--on-surface-variant)' }}
                 />
                 <Input
                   id="item-sku"
@@ -187,7 +187,7 @@ export function AddMenuItemDialog({
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
                   className="pl-9 rounded-xl border-0 focus-visible:ring-primary/30 font-mono"
-                  style={{ background: "var(--surface-container-low)" }}
+                  style={{ background: 'var(--surface-container-low)' }}
                 />
               </div>
             </div>
@@ -198,7 +198,7 @@ export function AddMenuItemDialog({
             <Label
               htmlFor="item-category"
               className="text-xs font-semibold uppercase tracking-wider"
-              style={{ color: "var(--on-surface-variant)" }}
+              style={{ color: 'var(--on-surface-variant)' }}
             >
               Category
             </Label>
@@ -209,7 +209,7 @@ export function AddMenuItemDialog({
               <SelectTrigger
                 id="item-category"
                 className="rounded-xl border-0 focus:ring-primary/30"
-                style={{ background: "var(--surface-container-low)" }}
+                style={{ background: 'var(--surface-container-low)' }}
               >
                 <SelectValue placeholder="Select a category" />
               </SelectTrigger>
@@ -238,8 +238,8 @@ export function AddMenuItemDialog({
               type="submit"
               className="flex-1 rounded-full font-semibold"
               style={{
-                background: "linear-gradient(135deg, #0d631b 0%, #2e7d32 100%)",
-                color: "#ffffff",
+                background: 'linear-gradient(135deg, #0d631b 0%, #2e7d32 100%)',
+                color: '#ffffff',
               }}
             >
               <Leaf className="mr-2 h-4 w-4" />

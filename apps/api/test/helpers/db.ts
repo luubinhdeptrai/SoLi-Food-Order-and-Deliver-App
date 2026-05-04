@@ -13,8 +13,14 @@ import type { OrderingRestaurantSnapshot } from '../../src/module/ordering/acl/s
 import { orderingRestaurantSnapshots } from '../../src/module/ordering/acl/schemas/restaurant-snapshot.schema';
 import type { OrderingDeliveryZoneSnapshot } from '../../src/module/ordering/acl/schemas/delivery-zone-snapshot.schema';
 import { orderingDeliveryZoneSnapshots } from '../../src/module/ordering/acl/schemas/delivery-zone-snapshot.schema';
-import type { Order, OrderItem } from '../../src/module/ordering/order/order.schema';
-import { orders, orderItems } from '../../src/module/ordering/order/order.schema';
+import type {
+  Order,
+  OrderItem,
+} from '../../src/module/ordering/order/order.schema';
+import {
+  orders,
+  orderItems,
+} from '../../src/module/ordering/order/order.schema';
 import { getTestDb } from '../setup/db-setup';
 
 /**

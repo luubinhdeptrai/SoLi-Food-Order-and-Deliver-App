@@ -1,4 +1,4 @@
- # Cart + Modifier System — Full End-to-End Test Plan
+# Cart + Modifier System — Full End-to-End Test Plan
 
 **Purpose:** Production-grade, fully reproducible QA plan for the Cart + Modifier system.
 Executable from a clean DB (after `pnpm db:seed`). Every dependency is explicitly defined.
@@ -100,9 +100,11 @@ pnpm start:dev
 ```
 
 **Verify seed worked:**
+
 ```http
 GET http://localhost:3000/api/ordering/menu-items/4dc7cdfa-5a54-402f-b1a8-2d47de146081
 ```
+
 Expected `200` with `"name": "Margherita Pizza"`, `"modifiers": []`.
 
 ---
@@ -131,6 +133,7 @@ x-test-user-id: 11111111-1111-4111-8111-111111111111
 ```
 
 **Expected:** `201 Created`
+
 ```json
 {
   "id": "<GROUP_SIZE_ID>",
@@ -141,6 +144,7 @@ x-test-user-id: 11111111-1111-4111-8111-111111111111
   "displayOrder": 0
 }
 ```
+
 **→ Save `id` as `GROUP_SIZE_ID`.**
 
 ---
@@ -162,6 +166,7 @@ x-test-user-id: 11111111-1111-4111-8111-111111111111
 ```
 
 **Expected:** `201 Created`
+
 ```json
 {
   "id": "<OPT_SMALL_ID>",
@@ -172,6 +177,7 @@ x-test-user-id: 11111111-1111-4111-8111-111111111111
   "isAvailable": true
 }
 ```
+
 **→ Save `id` as `OPT_SMALL_ID`.**
 
 ---
@@ -193,6 +199,7 @@ x-test-user-id: 11111111-1111-4111-8111-111111111111
 ```
 
 **Expected:** `201 Created`
+
 ```json
 {
   "id": "<OPT_LARGE_ID>",
@@ -203,6 +210,7 @@ x-test-user-id: 11111111-1111-4111-8111-111111111111
   "isAvailable": true
 }
 ```
+
 **→ Save `id` as `OPT_LARGE_ID`.**
 
 ---
@@ -276,6 +284,7 @@ GET http://localhost:3000/api/ordering/menu-items/4dc7cdfa-5a54-402f-b1a8-2d47de
 ```
 
 **Expected:** `200 OK` — `modifiers` must NOT be `[]`:
+
 ```json
 {
   "menuItemId": "4dc7cdfa-5a54-402f-b1a8-2d47de146081",
@@ -286,8 +295,20 @@ GET http://localhost:3000/api/ordering/menu-items/4dc7cdfa-5a54-402f-b1a8-2d47de
       "minSelections": 1,
       "maxSelections": 1,
       "options": [
-        { "optionId": "{{OPT_SMALL_ID}}", "name": "Small", "price": 0,     "isDefault": true,  "isAvailable": true },
-        { "optionId": "{{OPT_LARGE_ID}}", "name": "Large", "price": 10000, "isDefault": false, "isAvailable": true }
+        {
+          "optionId": "{{OPT_SMALL_ID}}",
+          "name": "Small",
+          "price": 0,
+          "isDefault": true,
+          "isAvailable": true
+        },
+        {
+          "optionId": "{{OPT_LARGE_ID}}",
+          "name": "Large",
+          "price": 10000,
+          "isDefault": false,
+          "isAvailable": true
+        }
       ]
     },
     {
@@ -296,8 +317,18 @@ GET http://localhost:3000/api/ordering/menu-items/4dc7cdfa-5a54-402f-b1a8-2d47de
       "minSelections": 0,
       "maxSelections": 2,
       "options": [
-        { "optionId": "{{OPT_CHEESE_ID}}", "name": "Cheese", "price": 5000, "isAvailable": true },
-        { "optionId": "{{OPT_BACON_ID}}",  "name": "Bacon",  "price": 8000, "isAvailable": true }
+        {
+          "optionId": "{{OPT_CHEESE_ID}}",
+          "name": "Cheese",
+          "price": 5000,
+          "isAvailable": true
+        },
+        {
+          "optionId": "{{OPT_BACON_ID}}",
+          "name": "Bacon",
+          "price": 8000,
+          "isAvailable": true
+        }
       ]
     }
   ]
@@ -305,8 +336,8 @@ GET http://localhost:3000/api/ordering/menu-items/4dc7cdfa-5a54-402f-b1a8-2d47de
 ```
 
 > ✅ Global Setup complete. Now run the test cases below.
-> ⚠️  Clear customer Redis cart before each case: `DEL cart:22222222-2222-4222-8222-222222222222`
->     Or use `DELETE http://localhost:3000/api/carts/my` with customer header.
+> ⚠️ Clear customer Redis cart before each case: `DEL cart:22222222-2222-4222-8222-222222222222`
+> Or use `DELETE http://localhost:3000/api/carts/my` with customer header.
 
 ---
 
@@ -348,6 +379,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `201 Created`
+
 ```json
 {
   "restaurantId": "fe8b2648-2260-4bc5-9acd-d88972148c78",
@@ -410,6 +442,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `201 Created`
+
 ```json
 {
   "items": [
@@ -419,11 +452,11 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
       "quantity": 1,
       "selectedModifiers": [
         {
-          "groupId":    "{{GROUP_SIZE_ID}}",
-          "groupName":  "Size",
-          "optionId":   "{{OPT_LARGE_ID}}",
+          "groupId": "{{GROUP_SIZE_ID}}",
+          "groupName": "Size",
+          "optionId": "{{OPT_LARGE_ID}}",
           "optionName": "Large",
-          "price":      10000
+          "price": 10000
         }
       ]
     }
@@ -468,6 +501,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `200 OK`
+
 ```json
 {
   "items": [
@@ -590,6 +624,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `400 Bad Request`
+
 ```json
 {
   "statusCode": 400,
@@ -640,6 +675,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `400 Bad Request`
+
 ```json
 {
   "statusCode": 400,
@@ -697,6 +733,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `400 Bad Request`
+
 ```json
 {
   "statusCode": 400,
@@ -764,6 +801,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `400 Bad Request`
+
 ```json
 {
   "statusCode": 400,
@@ -817,6 +855,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `201 Created`
+
 ```json
 {
   "items": [
@@ -825,11 +864,11 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
       "quantity": 2,
       "selectedModifiers": [
         {
-          "groupId":    "{{GROUP_SIZE_ID}}",
-          "groupName":  "Size",
-          "optionId":   "{{OPT_SMALL_ID}}",
+          "groupId": "{{GROUP_SIZE_ID}}",
+          "groupName": "Size",
+          "optionId": "{{OPT_SMALL_ID}}",
           "optionName": "Small",
-          "price":      0
+          "price": 0
         }
       ]
     }
@@ -880,6 +919,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `400 Bad Request`
+
 ```json
 {
   "statusCode": 400,
@@ -925,6 +965,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ```
 
 **Expected:** `400 Bad Request`
+
 ```json
 { "statusCode": 400, "message": "Menu item snapshot not found ..." }
 ```
@@ -1005,15 +1046,14 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `200 OK`
+
 ```json
 {
   "items": [
     {
       "cartItemId": "{{CART_ITEM_ID}}",
       "quantity": 3,
-      "selectedModifiers": [
-        { "optionName": "Small", "price": 0 }
-      ]
+      "selectedModifiers": [{ "optionName": "Small", "price": 0 }]
     }
   ]
 }
@@ -1076,6 +1116,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `200 OK`
+
 ```json
 {
   "items": [
@@ -1118,15 +1159,14 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `200 OK`
+
 ```json
 {
   "items": [
     {
       "cartItemId": "{{CART_ITEM_ID}}",
       "quantity": 4,
-      "selectedModifiers": [
-        { "optionName": "Small", "price": 0 }
-      ]
+      "selectedModifiers": [{ "optionName": "Small", "price": 0 }]
     }
   ]
 }
@@ -1215,6 +1255,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 GET http://localhost:3000/api/carts/my
 x-test-user-id: 22222222-2222-4222-8222-222222222222
 ```
+
 → Returns `null` or empty `items` array.
 
 ---
@@ -1224,6 +1265,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 **Dependencies:** Global Setup S1–S3.
 
 **Pricing formula:** `totalAmount = (unitPrice + modifiersPrice) × quantity`
+
 - Margherita Pizza base price from ACL snapshot: **12.50**
 - Large modifier price from ACL snapshot: **10,000** (VND — note the price unit mismatch here; use whatever your test currency is)
 - quantity: **2**
@@ -1279,6 +1321,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `201 Created`
+
 ```json
 {
   "orderId": "<UUID>",
@@ -1297,6 +1340,7 @@ WHERE order_id = '<orderId from response>';
 ```
 
 Expected row:
+
 ```
 unit_price      = 12.5     ← base price from ACL snapshot (NOT inflated by modifier)
 modifiers_price = 10000    ← Large option price from ACL snapshot
@@ -1326,14 +1370,15 @@ SELECT modifiers FROM order_items WHERE order_id = '<orderId>';
 ```
 
 **Expected JSONB:**
+
 ```json
 [
   {
-    "groupId":   "{{GROUP_SIZE_ID}}",
+    "groupId": "{{GROUP_SIZE_ID}}",
     "groupName": "Size",
-    "optionId":  "{{OPT_LARGE_ID}}",
+    "optionId": "{{OPT_LARGE_ID}}",
     "optionName": "Large",
-    "price":     10000
+    "price": 10000
   }
 ]
 ```
@@ -1407,6 +1452,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `422 Unprocessable Entity`
+
 ```json
 {
   "statusCode": 422,
@@ -1504,6 +1550,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `422 Unprocessable Entity`
+
 ```json
 {
   "statusCode": 422,
@@ -1590,6 +1637,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `422 Unprocessable Entity`
+
 ```json
 {
   "statusCode": 422,
@@ -1652,6 +1700,7 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Expected Result
 
 **Status:** `200 OK`
+
 ```json
 {
   "items": [
@@ -1682,83 +1731,85 @@ x-test-user-id: 22222222-2222-4222-8222-222222222222
 ### Assert — Back-fill is persisted on next write
 
 After the PATCH above, inspect Redis:
+
 ```bash
 GET "cart:22222222-2222-4222-8222-222222222222"
 ```
+
 The stored JSON should now include `"cartItemId"` and `"modifierFingerprint"` on the item.
 
 ---
 
 ## 📊 Full Dependency Map
 
-| Case | Requires Global Setup | Requires Specific State Change | Cart State Needed |
-|------|-----------------------|-------------------------------|-------------------|
-| 1    | None                  | None                          | Empty             |
-| 2    | S1–S3 (Size group)    | None                          | Empty             |
-| 3    | S1–S3                 | None                          | Has Case 2 item   |
-| 4    | S1–S3                 | None                          | Empty             |
-| 5    | S1–S3 (snapshot needed) | None                        | Empty             |
-| 6    | S1–S3                 | None                          | Empty             |
-| 7    | S4–S6 (Extras+Bacon)  | Set Bacon `isAvailable=false` | Empty             |
-| 8    | S1–S3                 | Set Small `isDefault=false`   | Empty             |
-| 9    | S1–S3                 | Small must be `isDefault=true` | Empty            |
-| 10   | S1–S3                 | None                          | Empty             |
-| 11   | None                  | None (uses non-existent ID)   | Empty             |
-| 12   | S1–S3                 | None                          | Has item w/ Large |
-| 13   | S1–S6                 | None                          | Has item w/ Cheese|
-| 14   | S1–S3                 | None                          | Has item (any)    |
-| 15   | None                  | None                          | Has item (any)    |
-| 16   | None                  | None                          | Empty             |
-| 17   | S1–S3                 | None                          | Empty             |
-| 18   | S1–S3                 | None (re-uses Case 17)        | Empty             |
-| 19   | S4–S6                 | Delete Bacon option           | Has Bacon in cart |
-| 20   | S1–S3                 | Set Large `isAvailable=false` | Has Large in cart |
-| 21   | S1–S6                 | Raise Extras `minSelections`  | Has item, no Extra|
-| 22   | None                  | Raw Redis injection           | Injected manually |
+| Case | Requires Global Setup   | Requires Specific State Change | Cart State Needed  |
+| ---- | ----------------------- | ------------------------------ | ------------------ |
+| 1    | None                    | None                           | Empty              |
+| 2    | S1–S3 (Size group)      | None                           | Empty              |
+| 3    | S1–S3                   | None                           | Has Case 2 item    |
+| 4    | S1–S3                   | None                           | Empty              |
+| 5    | S1–S3 (snapshot needed) | None                           | Empty              |
+| 6    | S1–S3                   | None                           | Empty              |
+| 7    | S4–S6 (Extras+Bacon)    | Set Bacon `isAvailable=false`  | Empty              |
+| 8    | S1–S3                   | Set Small `isDefault=false`    | Empty              |
+| 9    | S1–S3                   | Small must be `isDefault=true` | Empty              |
+| 10   | S1–S3                   | None                           | Empty              |
+| 11   | None                    | None (uses non-existent ID)    | Empty              |
+| 12   | S1–S3                   | None                           | Has item w/ Large  |
+| 13   | S1–S6                   | None                           | Has item w/ Cheese |
+| 14   | S1–S3                   | None                           | Has item (any)     |
+| 15   | None                    | None                           | Has item (any)     |
+| 16   | None                    | None                           | Empty              |
+| 17   | S1–S3                   | None                           | Empty              |
+| 18   | S1–S3                   | None (re-uses Case 17)         | Empty              |
+| 19   | S4–S6                   | Delete Bacon option            | Has Bacon in cart  |
+| 20   | S1–S3                   | Set Large `isAvailable=false`  | Has Large in cart  |
+| 21   | S1–S6                   | Raise Extras `minSelections`   | Has item, no Extra |
+| 22   | None                    | Raw Redis injection            | Injected manually  |
 
 ---
 
 ## 📊 Summary Table
 
-| # | Method | Path | Precondition | Expected Status | Key Assertion |
-|---|--------|------|--------------|-----------------|---------------|
-| 1 | POST | `/carts/my/items` | No modifiers (ITEM_PLAIN) | 201 | `cartItemId` present |
-| 2 | POST | `/carts/my/items` | Size group seeded | 201 | price from ACL snapshot |
-| 3 | POST | `/carts/my/items` | Same item+mods in cart | 200 | quantity merged, 1 line |
-| 4 | POST | `/carts/my/items` | Cart has Small | 201 | 2 separate line items |
-| 5 | POST | `/carts/my/items` | Snapshot exists | 400 | invalid groupId rejected |
-| 6 | POST | `/carts/my/items` | Snapshot exists | 400 | invalid optionId rejected |
-| 7 | POST | `/carts/my/items` | Bacon `isAvailable=false` | 400 | unavailable option rejected |
-| 8 | POST | `/carts/my/items` | No default, no selection | 400 | minSelections enforced |
-| 9 | POST | `/carts/my/items` | Small `isDefault=true` | 201 | default auto-injected |
-| 10 | POST | `/carts/my/items` | Size has maxSelections=1 | 400 | maxSelections enforced |
-| 11A | POST | `/carts/my/items` | No snapshot + selectedOptions | 400 | snapshot required for mods |
-| 11B | POST | `/carts/my/items` | No snapshot + no selectedOptions | 201 | graceful degradation |
-| 12 | PATCH | `/carts/my/items/:id/modifiers` | Cart has item | 200 | modifier changed, qty same |
-| 13 | PATCH | `/carts/my/items/:id/modifiers` | Cart has Cheese | 200 | Cheese cleared, item stays |
-| 14 | PATCH | `/carts/my/items/:id` | Cart has item w/ mods | 200 | qty updated, mods unchanged |
-| 15 | PATCH | `/carts/my/items/:id` | Cart has item | 204 | item removed |
-| 16 | DELETE | `/carts/my/items/:id` | Cart has item | 204 | item absent |
-| 17 | POST | `/carts/my/checkout` | Cart+snapshots ready | 201 | `totalAmount=(base+mod)×qty` |
-| 18 | POST | `/carts/my/checkout` | Same as 17 | 201 | `order_items.modifiers` populated |
-| 19 | POST | `/carts/my/checkout` | Bacon deleted after cart add | 422 | stale option rejected |
-| 20 | POST | `/carts/my/checkout` | Large `isAvailable=false` | 422 | unavailable at checkout |
-| 21 | POST | `/carts/my/checkout` | minSelections raised | 422 | constraint raised rejected |
-| 22 | GET | `/carts/my` | Old Redis format injected | 200 | `cartItemId` back-filled |
+| #   | Method | Path                            | Precondition                     | Expected Status | Key Assertion                     |
+| --- | ------ | ------------------------------- | -------------------------------- | --------------- | --------------------------------- |
+| 1   | POST   | `/carts/my/items`               | No modifiers (ITEM_PLAIN)        | 201             | `cartItemId` present              |
+| 2   | POST   | `/carts/my/items`               | Size group seeded                | 201             | price from ACL snapshot           |
+| 3   | POST   | `/carts/my/items`               | Same item+mods in cart           | 200             | quantity merged, 1 line           |
+| 4   | POST   | `/carts/my/items`               | Cart has Small                   | 201             | 2 separate line items             |
+| 5   | POST   | `/carts/my/items`               | Snapshot exists                  | 400             | invalid groupId rejected          |
+| 6   | POST   | `/carts/my/items`               | Snapshot exists                  | 400             | invalid optionId rejected         |
+| 7   | POST   | `/carts/my/items`               | Bacon `isAvailable=false`        | 400             | unavailable option rejected       |
+| 8   | POST   | `/carts/my/items`               | No default, no selection         | 400             | minSelections enforced            |
+| 9   | POST   | `/carts/my/items`               | Small `isDefault=true`           | 201             | default auto-injected             |
+| 10  | POST   | `/carts/my/items`               | Size has maxSelections=1         | 400             | maxSelections enforced            |
+| 11A | POST   | `/carts/my/items`               | No snapshot + selectedOptions    | 400             | snapshot required for mods        |
+| 11B | POST   | `/carts/my/items`               | No snapshot + no selectedOptions | 201             | graceful degradation              |
+| 12  | PATCH  | `/carts/my/items/:id/modifiers` | Cart has item                    | 200             | modifier changed, qty same        |
+| 13  | PATCH  | `/carts/my/items/:id/modifiers` | Cart has Cheese                  | 200             | Cheese cleared, item stays        |
+| 14  | PATCH  | `/carts/my/items/:id`           | Cart has item w/ mods            | 200             | qty updated, mods unchanged       |
+| 15  | PATCH  | `/carts/my/items/:id`           | Cart has item                    | 204             | item removed                      |
+| 16  | DELETE | `/carts/my/items/:id`           | Cart has item                    | 204             | item absent                       |
+| 17  | POST   | `/carts/my/checkout`            | Cart+snapshots ready             | 201             | `totalAmount=(base+mod)×qty`      |
+| 18  | POST   | `/carts/my/checkout`            | Same as 17                       | 201             | `order_items.modifiers` populated |
+| 19  | POST   | `/carts/my/checkout`            | Bacon deleted after cart add     | 422             | stale option rejected             |
+| 20  | POST   | `/carts/my/checkout`            | Large `isAvailable=false`        | 422             | unavailable at checkout           |
+| 21  | POST   | `/carts/my/checkout`            | minSelections raised             | 422             | constraint raised rejected        |
+| 22  | GET    | `/carts/my`                     | Old Redis format injected        | 200             | `cartItemId` back-filled          |
 
 ---
 
 ## ⚠️ Broken Assumptions in Original `cart-test-scenarios.md`
 
-| Original Case | Problem | Fix Applied |
-|---------------|---------|-------------|
-| All cases using `{{ITEM_MODS}}` | No modifier groups existed — snapshot had `modifiers: []` | Global Setup S1–S6 creates them |
-| All cases using `{{GROUP_SIZE_ID}}` etc. | IDs were placeholders — no real data | Replaced with real capture-from-response pattern |
-| Case 7 `isAvailable=false` test | No setup to actually mark the option unavailable | Added PATCH setup step before test |
-| Case 8 no-default test | Small option was `isDefault=true` — would auto-inject, not 400 | Added PATCH to set `isDefault=false` first |
-| Case 9 auto-inject test | Required `isDefault=true` but prior test turned it off | Added explicit restore in Case 8 teardown |
-| Case 19 stale option test | Bacon needed to be in cart first, then deleted | Added explicit cart-add step before delete |
-| Case 20 `isAvailable=false` at checkout | Large needed to be in cart first, then marked unavailable | Added explicit cart-add step before PATCH |
-| Case 21 minSelections raised | Extras needed to be in cart without Extras selected | Added explicit cart-add step before group PATCH |
-| Case 22 back-fill | Redis key format was not shown | Added raw `SET` command with old-format JSON |
-| Pricing in Cases 17/18 | Prices stated as `50000` base + `10000` mod which don't match seed data | Corrected to use seed prices: 12.50 + 10000 |
+| Original Case                            | Problem                                                                 | Fix Applied                                      |
+| ---------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------ |
+| All cases using `{{ITEM_MODS}}`          | No modifier groups existed — snapshot had `modifiers: []`               | Global Setup S1–S6 creates them                  |
+| All cases using `{{GROUP_SIZE_ID}}` etc. | IDs were placeholders — no real data                                    | Replaced with real capture-from-response pattern |
+| Case 7 `isAvailable=false` test          | No setup to actually mark the option unavailable                        | Added PATCH setup step before test               |
+| Case 8 no-default test                   | Small option was `isDefault=true` — would auto-inject, not 400          | Added PATCH to set `isDefault=false` first       |
+| Case 9 auto-inject test                  | Required `isDefault=true` but prior test turned it off                  | Added explicit restore in Case 8 teardown        |
+| Case 19 stale option test                | Bacon needed to be in cart first, then deleted                          | Added explicit cart-add step before delete       |
+| Case 20 `isAvailable=false` at checkout  | Large needed to be in cart first, then marked unavailable               | Added explicit cart-add step before PATCH        |
+| Case 21 minSelections raised             | Extras needed to be in cart without Extras selected                     | Added explicit cart-add step before group PATCH  |
+| Case 22 back-fill                        | Redis key format was not shown                                          | Added raw `SET` command with old-format JSON     |
+| Pricing in Cases 17/18                   | Prices stated as `50000` base + `10000` mod which don't match seed data | Corrected to use seed prices: 12.50 + 10000      |

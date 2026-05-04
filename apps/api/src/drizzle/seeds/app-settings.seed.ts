@@ -40,10 +40,7 @@ async function seed() {
     },
   ];
 
-  await db
-    .insert(appSettings)
-    .values(rows)
-    .onConflictDoNothing(); // idempotent — safe to re-run
+  await db.insert(appSettings).values(rows).onConflictDoNothing(); // idempotent — safe to re-run
 
   console.log('✅ app_settings seeded:', rows.map((r) => r.key).join(', '));
 }

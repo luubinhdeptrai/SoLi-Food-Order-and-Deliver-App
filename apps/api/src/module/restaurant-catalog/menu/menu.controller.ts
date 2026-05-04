@@ -11,7 +11,12 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { AllowAnonymous, Roles, Session, type UserSession } from '@thallesp/nestjs-better-auth';
+import {
+  AllowAnonymous,
+  Roles,
+  Session,
+  type UserSession,
+} from '@thallesp/nestjs-better-auth';
 import { MenuService } from './menu.service';
 import {
   CreateMenuItemDto,
@@ -53,7 +58,8 @@ export class MenuController {
   @AllowAnonymous()
   @ApiOperation({
     summary: 'List categories for a restaurant',
-    description: 'Returns per-restaurant menu categories ordered by displayOrder.',
+    description:
+      'Returns per-restaurant menu categories ordered by displayOrder.',
   })
   @ApiQuery({
     name: 'restaurantId',

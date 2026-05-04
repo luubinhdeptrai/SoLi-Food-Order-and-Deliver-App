@@ -25,9 +25,18 @@ import { randomUUID } from 'crypto';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp, teardownTestApp } from '../setup/app-factory';
-import { resetDb, seedBaseRestaurant, TEST_RESTAURANT_ID } from '../setup/db-setup';
+import {
+  resetDb,
+  seedBaseRestaurant,
+  TEST_RESTAURANT_ID,
+} from '../setup/db-setup';
 import { TestAuthManager } from '../helpers/test-auth';
-import { setAuthManager, ownerHeaders, otherUserHeaders, noAuthHeaders } from '../helpers/auth';
+import {
+  setAuthManager,
+  ownerHeaders,
+  otherUserHeaders,
+  noAuthHeaders,
+} from '../helpers/auth';
 import { getOrder, getOrderItems } from '../helpers/db';
 
 // ─── Timing helper ────────────────────────────────────────────────────────────
@@ -75,7 +84,11 @@ const ADDRESS_FAR = {
 
 // ─── Reusable add-item payload builder ───────────────────────────────────────
 
-function addItemPayload(menuItemId: string, quantity = 1, overrides: Record<string, unknown> = {}) {
+function addItemPayload(
+  menuItemId: string,
+  quantity = 1,
+  overrides: Record<string, unknown> = {},
+) {
   return {
     menuItemId,
     restaurantId: TEST_RESTAURANT_ID,
@@ -125,7 +138,11 @@ describe('Order placement E2E', () => {
     const itemRes = await http
       .post('/api/menu-items')
       .set(ownerHeaders())
-      .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Test Burger', price: 10.0 });
+      .send({
+        restaurantId: TEST_RESTAURANT_ID,
+        name: 'Test Burger',
+        price: 10.0,
+      });
     expect(itemRes.status).toBe(201);
     snapshotItemId = itemRes.body.id as string;
 
@@ -521,7 +538,11 @@ describe('Order placement E2E', () => {
       const tempItemRes = await http
         .post('/api/menu-items')
         .set(ownerHeaders())
-        .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Soon Unavailable', price: 5.0 });
+        .send({
+          restaurantId: TEST_RESTAURANT_ID,
+          name: 'Soon Unavailable',
+          price: 5.0,
+        });
       expect(tempItemRes.status).toBe(201);
       const tempItemId = tempItemRes.body.id as string;
       await delay(200);
@@ -530,7 +551,12 @@ describe('Order placement E2E', () => {
       await http
         .post('/api/carts/my/items')
         .set(ownerHeaders())
-        .send(addItemPayload(tempItemId, 1, { itemName: 'Soon Unavailable', unitPrice: 5.0 }));
+        .send(
+          addItemPayload(tempItemId, 1, {
+            itemName: 'Soon Unavailable',
+            unitPrice: 5.0,
+          }),
+        );
 
       // Mark the item unavailable — fires MenuItemUpdatedEvent → snapshot updated.
       await http
@@ -562,7 +588,11 @@ describe('Order placement E2E', () => {
       const modItemRes = await http
         .post('/api/menu-items')
         .set(ownerHeaders())
-        .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Modifier Burger', price: 12.0 });
+        .send({
+          restaurantId: TEST_RESTAURANT_ID,
+          name: 'Modifier Burger',
+          price: 12.0,
+        });
       expect(modItemRes.status).toBe(201);
       modItemId = modItemRes.body.id as string;
 
@@ -575,7 +605,9 @@ describe('Order placement E2E', () => {
       await delay(200);
 
       const optRes = await http
-        .post(`/api/menu-items/${modItemId}/modifier-groups/${reqGroupId}/options`)
+        .post(
+          `/api/menu-items/${modItemId}/modifier-groups/${reqGroupId}/options`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Ketchup', price: 0, isDefault: true });
       expect(optRes.status).toBe(201);

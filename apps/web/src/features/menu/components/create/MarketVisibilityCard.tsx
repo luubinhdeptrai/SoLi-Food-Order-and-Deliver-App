@@ -1,6 +1,6 @@
-import { Eye, Lightbulb } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Eye, Lightbulb } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 export function MarketVisibilityCard() {
   return (
@@ -12,7 +12,9 @@ export function MarketVisibilityCard() {
       <div className="flex items-center justify-between p-4 bg-muted/30 rounded-2xl">
         <div>
           <p className="font-bold text-foreground">Live Availability</p>
-          <p className="text-xs text-muted-foreground">Enable for public viewing</p>
+          <p className="text-xs text-muted-foreground">
+            Enable for public viewing
+          </p>
         </div>
         <Switch defaultChecked className="data-[state=checked]:bg-primary" />
       </div>

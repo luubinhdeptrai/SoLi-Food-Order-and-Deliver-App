@@ -37,20 +37,20 @@ PlaceOrderHandler
 
 ### New Files
 
-| Component | Path |
-|-----------|------|
-| `PlaceOrderCommand` | `src/module/ordering/order/commands/place-order.command.ts` |
-| `PlaceOrderHandler` | `src/module/ordering/order/commands/place-order.handler.ts` |
-| `CheckoutDto` / `CheckoutResponseDto` | `src/module/ordering/order/dto/checkout.dto.ts` |
-| `AppSettingsService` | `src/module/ordering/common/app-settings.service.ts` |
+| Component                             | Path                                                        |
+| ------------------------------------- | ----------------------------------------------------------- |
+| `PlaceOrderCommand`                   | `src/module/ordering/order/commands/place-order.command.ts` |
+| `PlaceOrderHandler`                   | `src/module/ordering/order/commands/place-order.handler.ts` |
+| `CheckoutDto` / `CheckoutResponseDto` | `src/module/ordering/order/dto/checkout.dto.ts`             |
+| `AppSettingsService`                  | `src/module/ordering/common/app-settings.service.ts`        |
 
 ### Modified Files
 
-| File | Change |
-|------|--------|
-| `cart/cart.controller.ts` | Added `POST /carts/my/checkout` endpoint, injected `CommandBus` |
-| `cart/cart.module.ts` | Added `CqrsModule`, exports `CartRedisRepository` |
-| `order/order.module.ts` | Registered `PlaceOrderHandler`, `AppSettingsService`, snapshot repos, `CartRedisRepository` |
+| File                      | Change                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------- |
+| `cart/cart.controller.ts` | Added `POST /carts/my/checkout` endpoint, injected `CommandBus`                             |
+| `cart/cart.module.ts`     | Added `CqrsModule`, exports `CartRedisRepository`                                           |
+| `order/order.module.ts`   | Registered `PlaceOrderHandler`, `AppSettingsService`, snapshot repos, `CartRedisRepository` |
 
 ---
 
@@ -67,15 +67,15 @@ pnpm start:dev         # Start API server (port 3000)
 
 ### Seeded IDs (used in every test below)
 
-| Resource | ID |
-|----------|----|
-| **Customer 1 (default test user)** | `11111111-1111-4111-8111-111111111111` |
-| **Customer 2** | `22222222-2222-4222-8222-222222222222` |
-| **Sunset Bistro** (open + approved) | `fe8b2648-2260-4bc5-9acd-d88972148c78` |
-| **Closed Kitchen** (closed) | `cccccccc-cccc-4ccc-8ccc-cccccccccccc` |
+| Resource                             | ID                                     |
+| ------------------------------------ | -------------------------------------- |
+| **Customer 1 (default test user)**   | `11111111-1111-4111-8111-111111111111` |
+| **Customer 2**                       | `22222222-2222-4222-8222-222222222222` |
+| **Sunset Bistro** (open + approved)  | `fe8b2648-2260-4bc5-9acd-d88972148c78` |
+| **Closed Kitchen** (closed)          | `cccccccc-cccc-4ccc-8ccc-cccccccccccc` |
 | **Margherita Pizza** (available, R1) | `4dc7cdfa-5a54-402f-b1a8-2d47de146081` |
-| **Caesar Salad** (available, R1) | `a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5` |
-| **Classic Burger** (available, R2) | `c3d4e5f6-a7b8-4c9d-8e0f-a1b2c3d4e5f6` |
+| **Caesar Salad** (available, R1)     | `a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5` |
+| **Classic Burger** (available, R2)   | `c3d4e5f6-a7b8-4c9d-8e0f-a1b2c3d4e5f6` |
 
 > All write endpoints use `x-test-user-id` header (DevTestUserMiddleware active in dev).
 > No real JWT required.
@@ -160,6 +160,7 @@ x-test-user-id: 11111111-1111-4111-8111-111111111111
 ```
 
 **Expected 201:**
+
 ```json
 {
   "orderId": "<uuid>",
@@ -307,6 +308,7 @@ X-Idempotency-Key: test-idem-key-abc123
 ```
 
 **Expected 400 Bad Request:**
+
 ```json
 {
   "statusCode": 400,
@@ -338,7 +340,7 @@ X-Idempotency-Key: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a
 POST http://localhost:3000/api/carts/my/checkout
 Content-Type: application/json
 x-test-user-id: 11111111-1111-4111-8111-111111111111
-X-Idempotency-Key:    
+X-Idempotency-Key:
 
 {
   "deliveryAddress": { "street": "5 Tran Hung Dao", "district": "D1", "city": "HCMC" },
@@ -431,6 +433,7 @@ x-test-user-id: 11111111-1111-4111-8111-111111111111
 ```
 
 **Expected 422 Unprocessable Entity:**
+
 ```json
 {
   "statusCode": 422,
@@ -533,6 +536,7 @@ x-test-user-id: 11111111-1111-4111-8111-111111111111
 ```
 
 **Expected 422 Unprocessable Entity:**
+
 ```json
 {
   "statusCode": 422,
@@ -602,6 +606,7 @@ x-test-user-id: 11111111-1111-4111-8111-111111111111
 ```
 
 **Expected 422 Unprocessable Entity:**
+
 ```json
 {
   "statusCode": 422,
@@ -645,6 +650,7 @@ x-test-user-id: 11111111-1111-4111-8111-111111111111
 ```
 
 **Expected 400 Bad Request:**
+
 ```json
 {
   "statusCode": 400,
@@ -803,6 +809,7 @@ ORDER BY created_at DESC LIMIT 1;
 **Goal:** Confirm that only one order is created when two requests arrive simultaneously for the same cart.
 
 **Protection layers:**
+
 1. **Layer 1 — Redis SET NX lock:** The first request acquires `cart:<customerId>:lock`; the second gets `lockAcquired = false` → **immediately returns 409** before any DB work.
 2. **Layer 2 — DB UNIQUE(cartId):** If both requests somehow pass the lock (e.g., lock expired mid-flight), only one DB transaction commits; the second fails with a `23505` constraint error → **409 Conflict**.
 
@@ -867,6 +874,7 @@ SELECT COUNT(*) FROM orders WHERE customer_id = '11111111-1111-4111-8111-1111111
 ```
 
 **Explanation:**
+
 - Redis lock (30s TTL) ensures only one checkout runs at a time per customer.
 - The lock is released in a `finally` block so it is always cleaned up, even on error.
 - If the lock somehow expires mid-execution (> 30s), the DB `UNIQUE(cartId)` is the fallback.
@@ -923,16 +931,16 @@ ORDER BY o.created_at DESC;
 
 ## Troubleshooting
 
-| Symptom | Likely Cause | Fix |
-|---------|-------------|-----|
-| `422` "Missing ACL snapshot" | Snapshots not populated | Run `pnpm seed`, or trigger a create/update on the restaurant/menu item via the catalog API |
-| `409` "checkout in progress" | Lock from a failed previous request | Wait 30s for lock TTL to expire, or manually `DEL cart:<customerId>:lock` in Redis CLI |
-| `500` on checkout | Redis or DB down | Check `docker compose ps`; ensure both are running |
-| Total amount is wrong | ACL snapshot price diverged from cart price | Expected behaviour — snapshot price wins. See Scenario 7. |
-| Cart not cleared after order | Redis error during cleanup | Check server logs; cart cleanup failure does not roll back the DB transaction (C-1 fix: idempotency key is saved before cleanup, so retries are safe) |
-| `400` "X-Idempotency-Key must be a UUID string" | Key contains non-hex chars (e.g. `test-key`) | Use a standard UUID v4 string like `550e8400-e29b-41d4-a716-446655440000` (M-2 fix) |
-| `422` "Cart integrity violation" | Redis payload tampered; item belongs to different restaurant | Clear cart (`DELETE /carts/my`) and re-add items normally (C-2 fix) |
-| Idempotency key expires unexpectedly fast | `IDEMPOTENCY_TTL_FALLBACK_SECONDS` was wrong | Fixed (M-3): fallback is now 300s (5 min); runtime TTL from `app_settings.ORDER_IDEMPOTENCY_TTL_SECONDS` |
+| Symptom                                         | Likely Cause                                                 | Fix                                                                                                                                                   |
+| ----------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `422` "Missing ACL snapshot"                    | Snapshots not populated                                      | Run `pnpm seed`, or trigger a create/update on the restaurant/menu item via the catalog API                                                           |
+| `409` "checkout in progress"                    | Lock from a failed previous request                          | Wait 30s for lock TTL to expire, or manually `DEL cart:<customerId>:lock` in Redis CLI                                                                |
+| `500` on checkout                               | Redis or DB down                                             | Check `docker compose ps`; ensure both are running                                                                                                    |
+| Total amount is wrong                           | ACL snapshot price diverged from cart price                  | Expected behaviour — snapshot price wins. See Scenario 7.                                                                                             |
+| Cart not cleared after order                    | Redis error during cleanup                                   | Check server logs; cart cleanup failure does not roll back the DB transaction (C-1 fix: idempotency key is saved before cleanup, so retries are safe) |
+| `400` "X-Idempotency-Key must be a UUID string" | Key contains non-hex chars (e.g. `test-key`)                 | Use a standard UUID v4 string like `550e8400-e29b-41d4-a716-446655440000` (M-2 fix)                                                                   |
+| `422` "Cart integrity violation"                | Redis payload tampered; item belongs to different restaurant | Clear cart (`DELETE /carts/my`) and re-add items normally (C-2 fix)                                                                                   |
+| Idempotency key expires unexpectedly fast       | `IDEMPOTENCY_TTL_FALLBACK_SECONDS` was wrong                 | Fixed (M-3): fallback is now 300s (5 min); runtime TTL from `app_settings.ORDER_IDEMPOTENCY_TTL_SECONDS`                                              |
 
 ---
 
@@ -940,10 +948,10 @@ ORDER BY o.created_at DESC;
 
 ### Why Two Idempotency Guards?
 
-| Guard | Layer | Protection |
-|-------|-------|-----------|
-| `X-Idempotency-Key` (D5-A) | Redis | Fast path for retried network requests; returns cached orderId immediately |
-| `UNIQUE(cart_id)` (D5-B) | PostgreSQL | Hard constraint; catches races that slip past the Redis lock |
+| Guard                      | Layer      | Protection                                                                 |
+| -------------------------- | ---------- | -------------------------------------------------------------------------- |
+| `X-Idempotency-Key` (D5-A) | Redis      | Fast path for retried network requests; returns cached orderId immediately |
+| `UNIQUE(cart_id)` (D5-B)   | PostgreSQL | Hard constraint; catches races that slip past the Redis lock               |
 
 Both guards are necessary because Redis is eventually consistent and can be bypassed by network partitions, while the DB constraint is always authoritative.
 

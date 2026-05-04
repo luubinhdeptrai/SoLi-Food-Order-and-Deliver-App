@@ -1,12 +1,12 @@
 export type MenuItemCategory =
-  | "salads"
-  | "desserts"
-  | "breads"
-  | "mains"
-  | "drinks"
-  | "sides";
+  | 'salads'
+  | 'desserts'
+  | 'breads'
+  | 'mains'
+  | 'drinks'
+  | 'sides';
 
-export type MenuItemStatus = "available" | "unavailable" | "out_of_stock";
+export type MenuItemStatus = 'available' | 'unavailable' | 'out_of_stock';
 
 export interface MenuItem {
   id: string;

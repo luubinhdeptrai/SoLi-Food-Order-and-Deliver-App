@@ -74,7 +74,9 @@ export class OrderLifecycleController {
   @ApiOkResponse({ description: 'Order confirmed' })
   @ApiForbiddenResponse({ description: 'Role or ownership check failed' })
   @ApiNotFoundResponse({ description: 'Order not found' })
-  @ApiUnprocessableEntityResponse({ description: 'Invalid transition or VNPay order' })
+  @ApiUnprocessableEntityResponse({
+    description: 'Invalid transition or VNPay order',
+  })
   @ApiParam({ name: 'id', format: 'uuid' })
   async confirm(
     @Param('id', ParseUUIDPipe) id: string,
@@ -145,7 +147,9 @@ export class OrderLifecycleController {
   @ApiOkResponse({ description: 'Order picked up by shipper' })
   @ApiForbiddenResponse({ description: 'Role check failed' })
   @ApiNotFoundResponse({ description: 'Order not found' })
-  @ApiConflictResponse({ description: 'Another shipper claimed the order first' })
+  @ApiConflictResponse({
+    description: 'Another shipper claimed the order first',
+  })
   @ApiUnprocessableEntityResponse({ description: 'Invalid transition' })
   @ApiParam({ name: 'id', format: 'uuid' })
   async pickup(
@@ -176,12 +180,7 @@ export class OrderLifecycleController {
   ) {
     const actorRole = this.resolveRole(session.user.role);
     return this.commandBus.execute(
-      new TransitionOrderCommand(
-        id,
-        'delivering',
-        session.user.id,
-        actorRole,
-      ),
+      new TransitionOrderCommand(id, 'delivering', session.user.id, actorRole),
     );
   }
 
@@ -203,12 +202,7 @@ export class OrderLifecycleController {
   ) {
     const actorRole = this.resolveRole(session.user.role);
     return this.commandBus.execute(
-      new TransitionOrderCommand(
-        id,
-        'delivered',
-        session.user.id,
-        actorRole,
-      ),
+      new TransitionOrderCommand(id, 'delivered', session.user.id, actorRole),
     );
   }
 
@@ -228,7 +222,9 @@ export class OrderLifecycleController {
   @ApiBadRequestResponse({ description: 'Missing reason note' })
   @ApiForbiddenResponse({ description: 'Role or ownership check failed' })
   @ApiNotFoundResponse({ description: 'Order not found' })
-  @ApiUnprocessableEntityResponse({ description: 'Order cannot be cancelled from current state' })
+  @ApiUnprocessableEntityResponse({
+    description: 'Order cannot be cancelled from current state',
+  })
   @ApiParam({ name: 'id', format: 'uuid' })
   async cancel(
     @Param('id', ParseUUIDPipe) id: string,
@@ -261,7 +257,9 @@ export class OrderLifecycleController {
   @ApiBadRequestResponse({ description: 'Missing reason note' })
   @ApiForbiddenResponse({ description: 'Admin role required' })
   @ApiNotFoundResponse({ description: 'Order not found' })
-  @ApiUnprocessableEntityResponse({ description: 'Order is not in delivered state' })
+  @ApiUnprocessableEntityResponse({
+    description: 'Order is not in delivered state',
+  })
   @ApiParam({ name: 'id', format: 'uuid' })
   async refund(
     @Param('id', ParseUUIDPipe) id: string,

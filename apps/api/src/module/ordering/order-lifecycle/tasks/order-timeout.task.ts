@@ -36,7 +36,9 @@ export class OrderTimeoutTask {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async handleExpiredOrders(): Promise<void> {
-    let expired: Awaited<ReturnType<typeof this.orderRepo.findExpiredPendingOrPaid>>;
+    let expired: Awaited<
+      ReturnType<typeof this.orderRepo.findExpiredPendingOrPaid>
+    >;
 
     try {
       expired = await this.orderRepo.findExpiredPendingOrPaid();
@@ -60,12 +62,14 @@ export class OrderTimeoutTask {
           new TransitionOrderCommand(
             order.id,
             'cancelled',
-            null,       // system actor — no user ID
+            null, // system actor — no user ID
             'system',
             'Order expired — no restaurant confirmation within timeout',
           ),
         );
-        this.logger.log(`Auto-cancelled expired order ${order.id} (was ${order.status}).`);
+        this.logger.log(
+          `Auto-cancelled expired order ${order.id} (was ${order.status}).`,
+        );
       } catch (err) {
         // Log per-order failures without aborting the rest of the batch.
         this.logger.error(

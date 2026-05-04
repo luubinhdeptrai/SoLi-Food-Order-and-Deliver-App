@@ -6,6 +6,12 @@ import { SearchModule } from './search/search.module';
 import { ModifiersModule } from './menu/modifiers/modifiers.module';
 
 @Module({
-  imports: [MenuModule, RestaurantModule, ZonesModule, SearchModule, ModifiersModule],
+  imports: [
+    MenuModule,
+    RestaurantModule,
+    ZonesModule,
+    SearchModule,
+    ModifiersModule,
+  ],
 })
 export class RestaurantCatalogModule {}

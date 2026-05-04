@@ -39,8 +39,8 @@ import { TestAuthManager } from '../helpers/test-auth';
 
 const RESTAURANT_LAT = 10.7769;
 const RESTAURANT_LON = 106.7009;
-const CUSTOMER_NEARBY_LAT = 10.7820;
-const CUSTOMER_NEARBY_LON = 106.7060;
+const CUSTOMER_NEARBY_LAT = 10.782;
+const CUSTOMER_NEARBY_LON = 106.706;
 const CUSTOMER_FAR_LAT = 21.0278;
 const CUSTOMER_FAR_LON = 105.8342;
 
@@ -188,14 +188,22 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
       const res = await http
         .post(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones`)
         .set(ownerHeaders())
-        .send({ name: 'Fast', radiusKm: 1, baseFee: 0, perKmRate: 0, avgSpeedKmh: 200 });
+        .send({
+          name: 'Fast',
+          radiusKm: 1,
+          baseFee: 0,
+          perKmRate: 0,
+          avgSpeedKmh: 200,
+        });
 
       expect(res.status).toBe(400);
     });
 
     it('returns 404 for non-existent restaurant', async () => {
       const res = await http
-        .post('/api/restaurants/00000000-0000-4000-8000-000000000000/delivery-zones')
+        .post(
+          '/api/restaurants/00000000-0000-4000-8000-000000000000/delivery-zones',
+        )
         .set(ownerHeaders())
         .send({ name: 'Ghost Zone', radiusKm: 1, baseFee: 0, perKmRate: 0 });
 
@@ -324,7 +332,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('owner can update name and returns 200', async () => {
       const res = await http
-        .patch(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`)
+        .patch(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Updated Zone Name' });
 
@@ -334,7 +344,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('owner can update baseFee', async () => {
       const res = await http
-        .patch(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`)
+        .patch(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`,
+        )
         .set(ownerHeaders())
         .send({ baseFee: 18000 });
 
@@ -349,7 +361,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
       const originalRadius = before.body.radiusKm as number;
 
       const res = await http
-        .patch(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`)
+        .patch(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`,
+        )
         .set(ownerHeaders())
         .send({ perKmRate: 3500 });
 
@@ -360,7 +374,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('returns 401 when unauthenticated', async () => {
       const res = await http
-        .patch(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`)
+        .patch(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`,
+        )
         .set(noAuthHeaders())
         .send({ name: 'Hack' });
 
@@ -369,7 +385,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('returns 403 for non-owner', async () => {
       const res = await http
-        .patch(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`)
+        .patch(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`,
+        )
         .set(otherUserHeaders())
         .send({ name: 'Hack' });
 
@@ -408,7 +426,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('deactivates zone and returns 200 with isActive: false', async () => {
       const res = await http
-        .patch(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`)
+        .patch(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`,
+        )
         .set(ownerHeaders())
         .send({ isActive: false });
 
@@ -418,7 +438,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('reactivates zone and returns 200 with isActive: true', async () => {
       const res = await http
-        .patch(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`)
+        .patch(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`,
+        )
         .set(ownerHeaders())
         .send({ isActive: true });
 
@@ -428,7 +450,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('GET after deactivate shows isActive: false', async () => {
       await http
-        .patch(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`)
+        .patch(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`,
+        )
         .set(ownerHeaders())
         .send({ isActive: false });
 
@@ -461,7 +485,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('returns 401 when unauthenticated', async () => {
       const res = await http
-        .delete(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${deletableZoneId}`)
+        .delete(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${deletableZoneId}`,
+        )
         .set(noAuthHeaders());
 
       expect(res.status).toBe(401);
@@ -469,7 +495,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('returns 403 for non-owner', async () => {
       const res = await http
-        .delete(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${deletableZoneId}`)
+        .delete(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${deletableZoneId}`,
+        )
         .set(otherUserHeaders());
 
       expect(res.status).toBe(403);
@@ -477,7 +505,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('owner can delete zone and returns 204', async () => {
       const res = await http
-        .delete(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${deletableZoneId}`)
+        .delete(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${deletableZoneId}`,
+        )
         .set(ownerHeaders());
 
       expect(res.status).toBe(204);
@@ -485,7 +515,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('returns 404 when fetching deleted zone', async () => {
       const res = await http
-        .get(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${deletableZoneId}`)
+        .get(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${deletableZoneId}`,
+        )
         .set(ownerHeaders());
 
       expect(res.status).toBe(404);
@@ -553,7 +585,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('returns 200 with valid estimate for nearby customer', async () => {
       const res = await http
-        .get(`/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`)
+        .get(
+          `/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`,
+        )
         .query({ lat: CUSTOMER_NEARBY_LAT, lon: CUSTOMER_NEARBY_LON })
         .set(noAuthHeaders());
 
@@ -568,7 +602,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('estimate response contains full breakdown', async () => {
       const res = await http
-        .get(`/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`)
+        .get(
+          `/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`,
+        )
         .query({ lat: CUSTOMER_NEARBY_LAT, lon: CUSTOMER_NEARBY_LON })
         .set(noAuthHeaders());
 
@@ -595,7 +631,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('deliveryFee = baseFee + distanceFee', async () => {
       const res = await http
-        .get(`/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`)
+        .get(
+          `/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`,
+        )
         .query({ lat: CUSTOMER_NEARBY_LAT, lon: CUSTOMER_NEARBY_LON })
         .set(noAuthHeaders());
 
@@ -609,17 +647,19 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('estimatedMinutes = prep + travel + buffer', async () => {
       const res = await http
-        .get(`/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`)
+        .get(
+          `/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`,
+        )
         .query({ lat: CUSTOMER_NEARBY_LAT, lon: CUSTOMER_NEARBY_LON })
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const { prepTimeMinutes, travelTimeMinutes, bufferMinutes } =
-        res.body.breakdown as {
-          prepTimeMinutes: number;
-          travelTimeMinutes: number;
-          bufferMinutes: number;
-        };
+      const { prepTimeMinutes, travelTimeMinutes, bufferMinutes } = res.body
+        .breakdown as {
+        prepTimeMinutes: number;
+        travelTimeMinutes: number;
+        bufferMinutes: number;
+      };
       expect(res.body.estimatedMinutes).toBe(
         prepTimeMinutes + travelTimeMinutes + bufferMinutes,
       );
@@ -627,7 +667,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('returns 422 for customer outside all zone radii', async () => {
       const res = await http
-        .get(`/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`)
+        .get(
+          `/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`,
+        )
         .query({ lat: CUSTOMER_FAR_LAT, lon: CUSTOMER_FAR_LON })
         .set(noAuthHeaders());
 
@@ -636,7 +678,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('returns 422 when restaurant has no coordinates', async () => {
       const res = await http
-        .get(`/api/restaurants/${noCoordRestaurantId}/delivery-zones/delivery-estimate`)
+        .get(
+          `/api/restaurants/${noCoordRestaurantId}/delivery-zones/delivery-estimate`,
+        )
         .query({ lat: CUSTOMER_NEARBY_LAT, lon: CUSTOMER_NEARBY_LON })
         .set(noAuthHeaders());
 
@@ -646,12 +690,16 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
     it('returns 422 when all zones are inactive', async () => {
       // Deactivate the estimate zone
       await http
-        .patch(`/api/restaurants/${estimateRestaurantId}/delivery-zones/${estimateZoneId}`)
+        .patch(
+          `/api/restaurants/${estimateRestaurantId}/delivery-zones/${estimateZoneId}`,
+        )
         .set(ownerHeaders())
         .send({ isActive: false });
 
       const res = await http
-        .get(`/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`)
+        .get(
+          `/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`,
+        )
         .query({ lat: CUSTOMER_NEARBY_LAT, lon: CUSTOMER_NEARBY_LON })
         .set(noAuthHeaders());
 
@@ -659,14 +707,18 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
       // Restore
       await http
-        .patch(`/api/restaurants/${estimateRestaurantId}/delivery-zones/${estimateZoneId}`)
+        .patch(
+          `/api/restaurants/${estimateRestaurantId}/delivery-zones/${estimateZoneId}`,
+        )
         .set(ownerHeaders())
         .send({ isActive: true });
     });
 
     it('returns 400 for missing lat', async () => {
       const res = await http
-        .get(`/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`)
+        .get(
+          `/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`,
+        )
         .query({ lon: RESTAURANT_LON })
         .set(noAuthHeaders());
 
@@ -675,7 +727,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('returns 400 for missing lon', async () => {
       const res = await http
-        .get(`/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`)
+        .get(
+          `/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`,
+        )
         .query({ lat: RESTAURANT_LAT })
         .set(noAuthHeaders());
 
@@ -684,7 +738,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('returns 400 for latitude out of range (> 90)', async () => {
       const res = await http
-        .get(`/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`)
+        .get(
+          `/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`,
+        )
         .query({ lat: 999, lon: RESTAURANT_LON })
         .set(noAuthHeaders());
 
@@ -693,7 +749,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('returns 400 for longitude out of range (> 180)', async () => {
       const res = await http
-        .get(`/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`)
+        .get(
+          `/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`,
+        )
         .query({ lat: RESTAURANT_LAT, lon: 999 })
         .set(noAuthHeaders());
 
@@ -702,7 +760,9 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('returns 404 for non-existent restaurant', async () => {
       const res = await http
-        .get('/api/restaurants/00000000-0000-4000-8000-000000000009/delivery-zones/delivery-estimate')
+        .get(
+          '/api/restaurants/00000000-0000-4000-8000-000000000009/delivery-zones/delivery-estimate',
+        )
         .query({ lat: CUSTOMER_NEARBY_LAT, lon: CUSTOMER_NEARBY_LON })
         .set(noAuthHeaders());
 
@@ -711,11 +771,11 @@ describe('Delivery Zone CRUD & Estimate (E2E)', () => {
 
     it('estimate is accessible without authentication (public endpoint)', async () => {
       const res = await http
-        .get(`/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`)
-        .query({ lat: CUSTOMER_NEARBY_LAT, lon: CUSTOMER_NEARBY_LON })
-        // No auth headers
-        ;
-
+        .get(
+          `/api/restaurants/${estimateRestaurantId}/delivery-zones/delivery-estimate`,
+        )
+        .query({ lat: CUSTOMER_NEARBY_LAT, lon: CUSTOMER_NEARBY_LON });
+      // No auth headers
       expect(res.status).toBe(200);
     });
   });

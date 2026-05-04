@@ -30,7 +30,12 @@ import { AppSettingsService } from '../common/app-settings.service';
 @Module({
   imports: [CqrsModule, DatabaseModule],
   controllers: [CartController],
-  providers: [CartService, CartRedisRepository, MenuItemSnapshotRepository, AppSettingsService],
+  providers: [
+    CartService,
+    CartRedisRepository,
+    MenuItemSnapshotRepository,
+    AppSettingsService,
+  ],
   exports: [CartService, CartRedisRepository],
 })
 export class CartModule {}

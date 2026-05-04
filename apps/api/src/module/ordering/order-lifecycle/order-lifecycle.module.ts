@@ -62,4 +62,3 @@ import { OrderRepository } from './repositories/order.repository';
   ],
 })
 export class OrderLifecycleModule {}
-

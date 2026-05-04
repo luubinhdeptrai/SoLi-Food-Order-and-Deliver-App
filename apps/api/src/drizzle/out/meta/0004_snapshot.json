@@ -111,12 +111,8 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -210,12 +206,8 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -225,9 +217,7 @@
         "session_token_unique": {
           "name": "session_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -317,9 +307,7 @@
         "user_email_unique": {
           "name": "user_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -465,12 +453,8 @@
           "name": "delivery_zones_restaurant_id_restaurants_id_fk",
           "tableFrom": "delivery_zones",
           "tableTo": "restaurants",
-          "columnsFrom": [
-            "restaurant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["restaurant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -622,12 +606,8 @@
           "name": "menu_categories_restaurant_id_restaurants_id_fk",
           "tableFrom": "menu_categories",
           "tableTo": "restaurants",
-          "columnsFrom": [
-            "restaurant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["restaurant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -726,12 +706,8 @@
           "name": "menu_items_restaurant_id_restaurants_id_fk",
           "tableFrom": "menu_items",
           "tableTo": "restaurants",
-          "columnsFrom": [
-            "restaurant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["restaurant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -739,12 +715,8 @@
           "name": "menu_items_category_id_menu_categories_id_fk",
           "tableFrom": "menu_items",
           "tableTo": "menu_categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["category_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -820,12 +792,8 @@
           "name": "modifier_groups_menu_item_id_menu_items_id_fk",
           "tableFrom": "modifier_groups",
           "tableTo": "menu_items",
-          "columnsFrom": [
-            "menu_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["menu_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -908,12 +876,8 @@
           "name": "modifier_options_group_id_modifier_groups_id_fk",
           "tableFrom": "modifier_options",
           "tableTo": "modifier_groups",
-          "columnsFrom": [
-            "group_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["group_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -992,12 +956,8 @@
           "name": "order_items_order_id_orders_id_fk",
           "tableFrom": "order_items",
           "tableTo": "orders",
-          "columnsFrom": [
-            "order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["order_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1072,12 +1032,8 @@
           "name": "order_status_logs_order_id_orders_id_fk",
           "tableFrom": "order_status_logs",
           "tableTo": "orders",
-          "columnsFrom": [
-            "order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["order_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1190,9 +1146,7 @@
         "orders_cart_id_unique": {
           "name": "orders_cart_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "cart_id"
-          ]
+          "columns": ["cart_id"]
         }
       },
       "policies": {},
@@ -1371,11 +1325,7 @@
     "public.menu_item_status": {
       "name": "menu_item_status",
       "schema": "public",
-      "values": [
-        "available",
-        "unavailable",
-        "out_of_stock"
-      ]
+      "values": ["available", "unavailable", "out_of_stock"]
     },
     "public.order_status": {
       "name": "order_status",
@@ -1396,30 +1346,17 @@
     "public.order_payment_method": {
       "name": "order_payment_method",
       "schema": "public",
-      "values": [
-        "cod",
-        "vnpay"
-      ]
+      "values": ["cod", "vnpay"]
     },
     "public.order_triggered_by_role": {
       "name": "order_triggered_by_role",
       "schema": "public",
-      "values": [
-        "customer",
-        "restaurant",
-        "shipper",
-        "admin",
-        "system"
-      ]
+      "values": ["customer", "restaurant", "shipper", "admin", "system"]
     },
     "public.ordering_menu_item_status": {
       "name": "ordering_menu_item_status",
       "schema": "public",
-      "values": [
-        "available",
-        "unavailable",
-        "out_of_stock"
-      ]
+      "values": ["available", "unavailable", "out_of_stock"]
     }
   },
   "schemas": {},

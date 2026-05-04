@@ -57,7 +57,10 @@ export class MenuService {
   ): Promise<PaginatedMenuItems> {
     await this.restaurantService.findOne(restaurantId);
     const safeLimit = Math.min(opts.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
-    return this.repo.findByRestaurant(restaurantId, { ...opts, limit: safeLimit });
+    return this.repo.findByRestaurant(restaurantId, {
+      ...opts,
+      limit: safeLimit,
+    });
   }
 
   async findOne(id: string): Promise<MenuItem> {

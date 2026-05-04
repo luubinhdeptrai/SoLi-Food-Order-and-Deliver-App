@@ -8,13 +8,13 @@
 
 ## 1. Summary
 
-| Dimension | Assessment |
-|---|---|
-| **Overall Health** | ✅ All confirmed issues fixed — core CRUD solid, event contract corrected, API surface complete |
-| **Critical Findings** | 1 critical bug → ✅ FIXED (modifier data loss on item update/toggle) |
-| **High Findings** | 3 high-severity → ✅ FIXED (missing endpoints, N+1 query, missing validation) |
-| **Medium Findings** | 3 design/consistency issues → ✅ FIXED (upsert null shadow) + documented |
-| **Low Findings** | 2 minor concerns → ✅ Verified (remove() intentionally keeps `[]`) |
+| Dimension             | Assessment                                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------------------- |
+| **Overall Health**    | ✅ All confirmed issues fixed — core CRUD solid, event contract corrected, API surface complete |
+| **Critical Findings** | 1 critical bug → ✅ FIXED (modifier data loss on item update/toggle)                            |
+| **High Findings**     | 3 high-severity → ✅ FIXED (missing endpoints, N+1 query, missing validation)                   |
+| **Medium Findings**   | 3 design/consistency issues → ✅ FIXED (upsert null shadow) + documented                        |
+| **Low Findings**      | 2 minor concerns → ✅ Verified (remove() intentionally keeps `[]`)                              |
 
 The write path for modifiers (`ModifiersService`) is well-structured and event-correct. The **critical defect is in `MenuService`**: every call to `update()` and `toggleSoldOut()` publishes a `MenuItemUpdatedEvent` with `modifiers: []`, causing the Ordering snapshot to silently wipe the entire modifier tree. The REST API surface is also incomplete — three standard read endpoints are unimplemented despite the service/repository layer supporting them.
 
@@ -27,6 +27,7 @@ The write path for modifiers (`ModifiersService`) is well-structured and event-c
 **Status: ✅ Valid — confirmed missing → ✅ FIXED**
 
 ### Fix Applied
+
 - **What changed:** Added four `@Get` handlers to `ModifiersController`: `findOneGroup`, `findOptionsByGroup`, `findOneOption`; added `findGroupWithOptions` and `findOptionsByGroup` methods to `ModifiersService`.
 - **Why it works:** The service/repository layer already had `findGroup`, `findById` (options), `findByGroup` — they just weren't wired to HTTP routes. The new controller handlers delegate to these methods directly. All three are `@AllowAnonymous()` consistent with the existing `findGroupsByMenuItem`.
 - **Files modified:**
@@ -37,18 +38,18 @@ The write path for modifiers (`ModifiersService`) is well-structured and event-c
 
 The `ModifiersController` exposes the following routes under `menu-items/:menuItemId/modifier-groups`:
 
-| Method | Path | Exists |
-|--------|------|--------|
-| `GET` | `/` | ✅ `findGroupsByMenuItem` |
-| `POST` | `/` | ✅ `createGroup` |
-| `PATCH` | `/:groupId` | ✅ `updateGroup` |
-| `DELETE` | `/:groupId` | ✅ `removeGroup` |
-| `POST` | `/:groupId/options` | ✅ `createOption` |
-| `PATCH` | `/:groupId/options/:optionId` | ✅ `updateOption` |
-| `DELETE` | `/:groupId/options/:optionId` | ✅ `removeOption` |
-| `GET` | `/:groupId` | ❌ **MISSING** |
-| `GET` | `/:groupId/options` | ❌ **MISSING** |
-| `GET` | `/:groupId/options/:optionId` | ❌ **MISSING** |
+| Method   | Path                          | Exists                    |
+| -------- | ----------------------------- | ------------------------- |
+| `GET`    | `/`                           | ✅ `findGroupsByMenuItem` |
+| `POST`   | `/`                           | ✅ `createGroup`          |
+| `PATCH`  | `/:groupId`                   | ✅ `updateGroup`          |
+| `DELETE` | `/:groupId`                   | ✅ `removeGroup`          |
+| `POST`   | `/:groupId/options`           | ✅ `createOption`         |
+| `PATCH`  | `/:groupId/options/:optionId` | ✅ `updateOption`         |
+| `DELETE` | `/:groupId/options/:optionId` | ✅ `removeOption`         |
+| `GET`    | `/:groupId`                   | ❌ **MISSING**            |
+| `GET`    | `/:groupId/options`           | ❌ **MISSING**            |
+| `GET`    | `/:groupId/options/:optionId` | ❌ **MISSING**            |
 
 #### Evidence
 
@@ -117,6 +118,7 @@ findOption(
 **Status: ✅ Valid — confirmed critical bug → ✅ FIXED**
 
 ### Fix Applied
+
 - **What changed:** Applied Option A (null sentinel). `modifiers` type in `MenuItemUpdatedEvent` changed from `MenuItemModifierSnapshot[]` to `MenuItemModifierSnapshot[] | null`. `MenuService.update()` and `MenuService.toggleSoldOut()` now pass `null`. `MenuItemSnapshotRepository.upsert()` skips the `modifiers` column update when the payload is `null`.
 - **Why it works:** `null` is the unambiguous sentinel meaning "this event carries no modifier data". The upsert uses `...(data.modifiers !== null && data.modifiers !== undefined && { modifiers: data.modifiers })` so the column is only overwritten when a modifier-aware event explicitly provides data. New rows inserted with `null` still receive `[]` as the DB default (correct for a freshly-seen item).
 - **`remove()` is intentionally unchanged** — it still passes `[]` with `status='unavailable'`, which correctly clears the snapshot modifiers when an item is deleted.
@@ -154,24 +156,26 @@ PATCH /menu-items/:id
 ```
 
 The same defect exists in `MenuService.toggleSoldOut()` at line ~88:
+
 ```typescript
 const updated = await this.repo.update(id, { status: nextStatus });
-this.publishMenuItemEvent(updated, []);  // ← also loses modifiers
+this.publishMenuItemEvent(updated, []); // ← also loses modifiers
 ```
 
 #### Code References
 
-| File | Location | Problem |
-|---|---|---|
-| `menu.service.ts` | `update()` → `publishMenuItemEvent(item, [])` | Passes hardcoded empty array |
-| `menu.service.ts` | `toggleSoldOut()` → `publishMenuItemEvent(updated, [])` | Same |
-| `menu-item-snapshot.repository.ts` | `upsert()` → `set: { modifiers: data.modifiers ?? [] }` | Overwrites unconditionally |
-| `menu-item.projector.ts` | `handle()` → `menuItemSnapshotRepo.upsert({..., modifiers})` | No guard for empty array |
-| `menu-item-updated.event.ts` | JSDoc comment on `modifiers` field | States intent: `[]` = "no modifier change triggered the event" — but projector ignores this |
+| File                               | Location                                                     | Problem                                                                                     |
+| ---------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `menu.service.ts`                  | `update()` → `publishMenuItemEvent(item, [])`                | Passes hardcoded empty array                                                                |
+| `menu.service.ts`                  | `toggleSoldOut()` → `publishMenuItemEvent(updated, [])`      | Same                                                                                        |
+| `menu-item-snapshot.repository.ts` | `upsert()` → `set: { modifiers: data.modifiers ?? [] }`      | Overwrites unconditionally                                                                  |
+| `menu-item.projector.ts`           | `handle()` → `menuItemSnapshotRepo.upsert({..., modifiers})` | No guard for empty array                                                                    |
+| `menu-item-updated.event.ts`       | JSDoc comment on `modifiers` field                           | States intent: `[]` = "no modifier change triggered the event" — but projector ignores this |
 
 #### The Design Contradiction
 
 The event's own JSDoc documents the intended semantics:
+
 > _"Empty array when no modifier change triggered the event."_
 
 This implies `[]` was meant as a sentinel for "no modifier data in this event", NOT as "the item has zero modifiers". However, the projector and upsert treat `[]` literally and wipe the column.
@@ -207,12 +211,14 @@ export class MenuItemUpdatedEvent {
 ```
 
 Then in `MenuService`:
+
 ```typescript
 // update() and toggleSoldOut() — no modifier data available here
-this.publishMenuItemEvent(item, null);  // null = don't touch modifiers
+this.publishMenuItemEvent(item, null); // null = don't touch modifiers
 ```
 
 And in `MenuItemSnapshotRepository.upsert()`:
+
 ```typescript
 set: {
   restaurantId: data.restaurantId,
@@ -241,6 +247,7 @@ Inject `ModifierGroupRepository` + `ModifierOptionRepository` directly into `Men
 - **File:** `modifiers.service.ts` → `buildGroupsWithOptions()`
 
 ### Fix Applied
+
 - **What changed:** Added `findAllByMenuItem(menuItemId)` to `ModifierOptionRepository`. It fetches all group IDs for the item in one query, then fetches all matching options with a single `inArray` query. `buildGroupsWithOptions` now uses 2 round-trips and groups options in memory using a `Map<string, ModifierOption[]>`.
 - **Why it works:** Eliminates the per-group `SELECT` inside the `for` loop. 5 modifier groups = 2 queries instead of 6.
 - **Files modified:**
@@ -248,6 +255,7 @@ Inject `ModifierGroupRepository` + `ModifierOptionRepository` directly into `Men
   - `modifiers/modifiers.service.ts` — rewrote `buildGroupsWithOptions()`
 
 **Original code (N+1):**
+
 ```typescript
 private async buildGroupsWithOptions(menuItemId: string): Promise<ModifierGroupResponseDto[]> {
   const groups = await this.groupRepo.findByMenuItem(menuItemId); // 1 query
@@ -289,12 +297,14 @@ Then `buildGroupsWithOptions` uses two queries total: one for groups, one for al
 - **File:** `modifiers.service.ts` → `updateGroup()`
 
 ### Fix Applied
+
 - **What changed:** `updateGroup` now calls `this.findGroup(groupId, menuItemId)` first (saves the `existing` object), then merges `dto.minSelections ?? existing.minSelections` and `dto.maxSelections ?? existing.maxSelections` before calling `validateMinMax`. This handles `PartialType` where either field may be absent.
 - **Why it works:** Validation always sees the final merged state, not just the DTO fields. Invalid states (min > max) are rejected with `400 Bad Request` before any DB write.
 - **Files modified:**
   - `modifiers/modifiers.service.ts` — rewritten `updateGroup()`
 
 **Original code (missing validation):**
+
 ```typescript
 async createGroup(menuItemId, requesterId, isAdmin, dto): Promise<ModifierGroup> {
   await this.assertMenuItemOwnership(menuItemId, requesterId, isAdmin);
@@ -304,6 +314,7 @@ async createGroup(menuItemId, requesterId, isAdmin, dto): Promise<ModifierGroup>
 ```
 
 **Code (updateGroup — missing validation):**
+
 ```typescript
 async updateGroup(groupId, menuItemId, requesterId, isAdmin, dto): Promise<ModifierGroup> {
   await this.findGroup(groupId, menuItemId);
@@ -332,7 +343,6 @@ This also eliminates the duplicate `findGroup` call (see issue 3.3).
 
 ---
 
-
 ---
 
 ### 3.4 No `@Get(':groupId/options')` Resolves a Route Ambiguity Risk
@@ -357,15 +367,18 @@ More concretely: `GET /menu-items/:id/modifier-groups/options` would NOT match t
 - **File:** `menu-item-snapshot.repository.ts` → `upsert()`
 
 ### Fix Applied
+
 - **What changed:** The `set` clause in `onConflictDoUpdate` no longer uses `data.modifiers ?? []`. It uses `...(data.modifiers !== null && data.modifiers !== undefined && { modifiers: data.modifiers })`. A `UpsertMenuItemSnapshotData` type (Omit + `modifiers?: MenuItemModifierSnapshot[] | null`) replaces `NewOrderingMenuItemSnapshot` as the parameter type. For the `INSERT` path (new rows), `modifiers` still defaults to `[]` via `data.modifiers ?? []` in the insert values object.
 - **Files modified:**
   - `ordering/acl/repositories/menu-item-snapshot.repository.ts`
+
 ```typescript
 set: {
   modifiers: data.modifiers ?? [],
   ...
 }
 ```
+
 The `?? []` fallback means that if `data.modifiers` is `null` (which it currently is not, but will be after the Issue 2.2 fix is applied using Option A), the coalescing would replace `null` with `[]` — the same broken behavior. After applying the `null` sentinel fix, the repository must be updated to guard against this:
 
 ```typescript
@@ -388,40 +401,39 @@ This is linked to Issue 2.2 but is a separate code site requiring its own change
 
 ---
 
-
 ---
 
 ## 4. Architecture & Design Review
 
 ### 4.1 Event Design
 
-| Aspect | Assessment |
-|---|---|
-| Event class structure | ✅ Clean immutable constructor |
-| Field naming (`status` over `isAvailable`) | ✅ Correct single source of truth |
-| `modifiers` field intent (JSDoc vs behavior) | ✅ Fixed — type is now `null | [] | [...]`; JSDoc updated |
-| Shared event in `src/shared/events/` | ✅ Acceptable for modular monolith |
+| Aspect                                           | Assessment                           |
+| ------------------------------------------------ | ------------------------------------ | --- | --------------------- |
+| Event class structure                            | ✅ Clean immutable constructor       |
+| Field naming (`status` over `isAvailable`)       | ✅ Correct single source of truth    |
+| `modifiers` field intent (JSDoc vs behavior)     | ✅ Fixed — type is now `null         | []  | [...]`; JSDoc updated |
+| Shared event in `src/shared/events/`             | ✅ Acceptable for modular monolith   |
 | Event carries full snapshot (no partial updates) | ✅ Correct for read-model projection |
 
 **Design gap:** The event contract allows `[]` to mean two different things: "no modifiers" (semantic) and "no modifier data in this event payload" (operational). These must be separated via `null` sentinel or a dedicated flag (e.g., `modifiersUpdated: boolean`).
 
 ### 4.2 Projector Design
 
-| Aspect | Assessment |
-|---|---|
-| Idempotency (upsert ON CONFLICT) | ✅ Correct |
-| Error handling (log + rethrow) | ✅ Good observability |
-| No guards/auth in projector | ✅ Correct (internal event handler) |
-| `lastSyncedAt` updated on every upsert | ✅ Useful for staleness detection |
+| Aspect                                 | Assessment                                             |
+| -------------------------------------- | ------------------------------------------------------ |
+| Idempotency (upsert ON CONFLICT)       | ✅ Correct                                             |
+| Error handling (log + rethrow)         | ✅ Good observability                                  |
+| No guards/auth in projector            | ✅ Correct (internal event handler)                    |
+| `lastSyncedAt` updated on every upsert | ✅ Useful for staleness detection                      |
 | Unconditional overwrite of `modifiers` | ✅ Fixed — conditional spread skips update when `null` |
 
 ### 4.3 Module Boundaries
 
-| Aspect | Assessment |
-|---|---|
-| `MenuModule` exports `MenuService` + `MenuRepository` | ✅ Correct — `ModifiersModule` consumes both |
-| `ModifiersModule` imports `MenuModule` (not vice versa) | ✅ Unidirectional dependency, no circular import |
-| Ordering BC imports via event bus only (no direct imports) | ✅ Correct bounded context isolation |
+| Aspect                                                     | Assessment                                       |
+| ---------------------------------------------------------- | ------------------------------------------------ |
+| `MenuModule` exports `MenuService` + `MenuRepository`      | ✅ Correct — `ModifiersModule` consumes both     |
+| `ModifiersModule` imports `MenuModule` (not vice versa)    | ✅ Unidirectional dependency, no circular import |
+| Ordering BC imports via event bus only (no direct imports) | ✅ Correct bounded context isolation             |
 
 | Snapshot schema imports shared event type for JSONB typing | ✅ Acceptable — shared type, not shared runtime module |
 
@@ -449,9 +461,6 @@ The delegation pattern (`ModifiersService` → `MenuService.publishMenuItemEvent
 
 5. **[MEDIUM] Clarify event contract in documentation and enforce via type system**  
    Add a `modifiersPayloadPresent: boolean` flag or use `null` consistently (Option A). Add a comment in `MenuItemUpdatedEvent` explicitly documenting why `MenuService` passes `null` vs `[]`.
-
-
-
 
 ---
 

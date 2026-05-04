@@ -170,7 +170,8 @@ export const MENU_ITEM_STATUS_FILTER_VALUES = [
   ...MENU_ITEM_STATUSES,
   'all',
 ] as const;
-export type MenuItemStatusFilter = (typeof MENU_ITEM_STATUS_FILTER_VALUES)[number];
+export type MenuItemStatusFilter =
+  (typeof MENU_ITEM_STATUS_FILTER_VALUES)[number];
 
 export class QueryMenuItemDto {
   @ApiProperty({
@@ -192,8 +193,8 @@ export class QueryMenuItemDto {
 
   @ApiPropertyOptional({
     description:
-      'Filter by availability status. Defaults to \'available\' for public requests. ' +
-      'Pass \'all\' to include unavailable and out-of-stock items (e.g. for owners).',
+      "Filter by availability status. Defaults to 'available' for public requests. " +
+      "Pass 'all' to include unavailable and out-of-stock items (e.g. for owners).",
     enum: MENU_ITEM_STATUS_FILTER_VALUES,
     example: 'available',
   })
@@ -295,4 +296,3 @@ export class MenuItemListResponseDto {
   })
   total!: number;
 }
-

@@ -65,7 +65,11 @@ describe('Menu Item & Category CRUD (E2E)', () => {
         const res = await http
           .post('/api/menu-items/categories')
           .set(ownerHeaders())
-          .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Starters', displayOrder: 1 });
+          .send({
+            restaurantId: TEST_RESTAURANT_ID,
+            name: 'Starters',
+            displayOrder: 1,
+          });
 
         expect(res.status).toBe(201);
         expect(res.body).toMatchObject({
@@ -162,7 +166,10 @@ describe('Menu Item & Category CRUD (E2E)', () => {
         const createRes = await http
           .post('/api/menu-items/categories')
           .set(ownerHeaders())
-          .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Deletable Category' });
+          .send({
+            restaurantId: TEST_RESTAURANT_ID,
+            name: 'Deletable Category',
+          });
         const disposableId = createRes.body.id as string;
 
         const res = await http
@@ -194,14 +201,11 @@ describe('Menu Item & Category CRUD (E2E)', () => {
 
   describe('§2 POST /api/menu-items', () => {
     it('creates a menu item with required fields and returns 201', async () => {
-      const res = await http
-        .post('/api/menu-items')
-        .set(ownerHeaders())
-        .send({
-          restaurantId: TEST_RESTAURANT_ID,
-          name: 'Margherita Pizza',
-          price: 12.5,
-        });
+      const res = await http.post('/api/menu-items').set(ownerHeaders()).send({
+        restaurantId: TEST_RESTAURANT_ID,
+        name: 'Margherita Pizza',
+        price: 12.5,
+      });
 
       expect(res.status).toBe(201);
       expect(res.body).toMatchObject({
@@ -218,7 +222,10 @@ describe('Menu Item & Category CRUD (E2E)', () => {
       const catRes = await http
         .post('/api/menu-items/categories')
         .set(ownerHeaders())
-        .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Full Fields Category' });
+        .send({
+          restaurantId: TEST_RESTAURANT_ID,
+          name: 'Full Fields Category',
+        });
       const catId = catRes.body.id as string;
 
       const res = await http
@@ -248,10 +255,11 @@ describe('Menu Item & Category CRUD (E2E)', () => {
     });
 
     it('returns 401 when unauthenticated', async () => {
-      const res = await http
-        .post('/api/menu-items')
-        .set(noAuthHeaders())
-        .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Hack Item', price: 1 });
+      const res = await http.post('/api/menu-items').set(noAuthHeaders()).send({
+        restaurantId: TEST_RESTAURANT_ID,
+        name: 'Hack Item',
+        price: 1,
+      });
 
       expect(res.status).toBe(401);
     });
@@ -260,7 +268,11 @@ describe('Menu Item & Category CRUD (E2E)', () => {
       const res = await http
         .post('/api/menu-items')
         .set(otherUserHeaders())
-        .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Intrusion Item', price: 1 });
+        .send({
+          restaurantId: TEST_RESTAURANT_ID,
+          name: 'Intrusion Item',
+          price: 1,
+        });
 
       expect(res.status).toBe(403);
     });
@@ -302,15 +314,12 @@ describe('Menu Item & Category CRUD (E2E)', () => {
     });
 
     it('returns 400 for invalid imageUrl', async () => {
-      const res = await http
-        .post('/api/menu-items')
-        .set(ownerHeaders())
-        .send({
-          restaurantId: TEST_RESTAURANT_ID,
-          name: 'Bad URL',
-          price: 10,
-          imageUrl: 'not-a-url',
-        });
+      const res = await http.post('/api/menu-items').set(ownerHeaders()).send({
+        restaurantId: TEST_RESTAURANT_ID,
+        name: 'Bad URL',
+        price: 10,
+        imageUrl: 'not-a-url',
+      });
 
       expect(res.status).toBe(400);
     });
@@ -436,7 +445,9 @@ describe('Menu Item & Category CRUD (E2E)', () => {
 
       if (total > 1) {
         const offsetRes = await http
-          .get(`/api/menu-items?restaurantId=${TEST_RESTAURANT_ID}&offset=1&limit=100`)
+          .get(
+            `/api/menu-items?restaurantId=${TEST_RESTAURANT_ID}&offset=1&limit=100`,
+          )
           .set(noAuthHeaders());
         expect(offsetRes.status).toBe(200);
         expect(offsetRes.body.data.length).toBe(total - 1);
@@ -444,9 +455,7 @@ describe('Menu Item & Category CRUD (E2E)', () => {
     });
 
     it('returns 400 for missing restaurantId', async () => {
-      const res = await http
-        .get('/api/menu-items')
-        .set(noAuthHeaders());
+      const res = await http.get('/api/menu-items').set(noAuthHeaders());
 
       expect(res.status).toBe(400);
     });
@@ -466,14 +475,11 @@ describe('Menu Item & Category CRUD (E2E)', () => {
     let itemId: string;
 
     beforeAll(async () => {
-      const res = await http
-        .post('/api/menu-items')
-        .set(ownerHeaders())
-        .send({
-          restaurantId: TEST_RESTAURANT_ID,
-          name: 'Spaghetti Carbonara',
-          price: 14.5,
-        });
+      const res = await http.post('/api/menu-items').set(ownerHeaders()).send({
+        restaurantId: TEST_RESTAURANT_ID,
+        name: 'Spaghetti Carbonara',
+        price: 14.5,
+      });
       itemId = res.body.id as string;
     });
 
@@ -528,14 +534,11 @@ describe('Menu Item & Category CRUD (E2E)', () => {
     let itemId: string;
 
     beforeAll(async () => {
-      const res = await http
-        .post('/api/menu-items')
-        .set(ownerHeaders())
-        .send({
-          restaurantId: TEST_RESTAURANT_ID,
-          name: 'Tiramisu',
-          price: 6.5,
-        });
+      const res = await http.post('/api/menu-items').set(ownerHeaders()).send({
+        restaurantId: TEST_RESTAURANT_ID,
+        name: 'Tiramisu',
+        price: 6.5,
+      });
       itemId = res.body.id as string;
     });
 
@@ -566,7 +569,9 @@ describe('Menu Item & Category CRUD (E2E)', () => {
         .send({ tags: ['dessert', 'italian'] });
 
       expect(res.status).toBe(200);
-      expect(res.body.tags).toEqual(expect.arrayContaining(['dessert', 'italian']));
+      expect(res.body.tags).toEqual(
+        expect.arrayContaining(['dessert', 'italian']),
+      );
     });
 
     it('returns 401 when unauthenticated', async () => {
@@ -608,14 +613,22 @@ describe('Menu Item & Category CRUD (E2E)', () => {
       const toggleRes = await http
         .post('/api/menu-items')
         .set(ownerHeaders())
-        .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Toggle Burger', price: 10 });
+        .send({
+          restaurantId: TEST_RESTAURANT_ID,
+          name: 'Toggle Burger',
+          price: 10,
+        });
       toggleItemId = toggleRes.body.id as string;
 
       // Create item and manually set to unavailable via status update
       const unavailableRes = await http
         .post('/api/menu-items')
         .set(ownerHeaders())
-        .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Unavailable Item', price: 5 });
+        .send({
+          restaurantId: TEST_RESTAURANT_ID,
+          name: 'Unavailable Item',
+          price: 5,
+        });
       unavailableItemId = unavailableRes.body.id as string;
       // Set to unavailable via update
       await http
@@ -673,10 +686,11 @@ describe('Menu Item & Category CRUD (E2E)', () => {
     let deletableItemId: string;
 
     beforeAll(async () => {
-      const res = await http
-        .post('/api/menu-items')
-        .set(ownerHeaders())
-        .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Deletable Item', price: 5 });
+      const res = await http.post('/api/menu-items').set(ownerHeaders()).send({
+        restaurantId: TEST_RESTAURANT_ID,
+        name: 'Deletable Item',
+        price: 5,
+      });
       deletableItemId = res.body.id as string;
     });
 
@@ -740,7 +754,11 @@ describe('Menu Item & Category CRUD (E2E)', () => {
       const createRes = await http
         .post('/api/menu-items')
         .set(ownerHeaders())
-        .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Snapshot Item', price: 9.99 });
+        .send({
+          restaurantId: TEST_RESTAURANT_ID,
+          name: 'Snapshot Item',
+          price: 9.99,
+        });
       expect(createRes.status).toBe(201);
       plainItemId = createRes.body.id as string;
 

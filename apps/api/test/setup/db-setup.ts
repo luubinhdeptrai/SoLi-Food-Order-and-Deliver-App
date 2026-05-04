@@ -59,7 +59,9 @@ export function getTestDb(): NodePgDatabase<typeof schema> {
       'Set TEST_DATABASE_URL (or DATABASE_URL) before running E2E tests.',
     );
   }
-  _db = drizzle({ connection: { connectionString: url } }) as NodePgDatabase<typeof schema>;
+  _db = drizzle({ connection: { connectionString: url } }) as NodePgDatabase<
+    typeof schema
+  >;
   return _db;
 }
 
@@ -133,7 +135,7 @@ export async function seedBaseRestaurant(ownerId: string): Promise<void> {
   const db = getTestDb();
   await db.insert(restaurants).values({
     id: TEST_RESTAURANT_ID,
-    ownerId,                   // ← dynamic UUID from TestAuthManager
+    ownerId, // ← dynamic UUID from TestAuthManager
     name: 'E2E Test Restaurant',
     description: 'Seeded for automated E2E tests',
     address: '1 Test Street, Ho Chi Minh City',

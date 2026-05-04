@@ -222,4 +222,3 @@ export class DeliveryEstimateResponseDto {
   @ApiProperty({ type: DeliveryFeeBreakdownDto })
   breakdown!: DeliveryFeeBreakdownDto;
 }
-

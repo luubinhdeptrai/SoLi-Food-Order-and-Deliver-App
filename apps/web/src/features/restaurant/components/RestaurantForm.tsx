@@ -55,11 +55,7 @@ export function RestaurantForm({
 
       <div>
         <Label htmlFor="phone">Phone</Label>
-        <Input
-          id="phone"
-          placeholder="Phone number"
-          {...register('phone')}
-        />
+        <Input id="phone" placeholder="Phone number" {...register('phone')} />
         {errors.phone && (
           <span className="text-sm text-red-500">{errors.phone.message}</span>
         )}

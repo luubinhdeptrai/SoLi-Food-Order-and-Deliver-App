@@ -9,7 +9,8 @@ import { ApiProperty } from '@nestjs/swagger';
  */
 export class CancelOrderDto {
   @ApiProperty({
-    description: 'Reason for cancellation (required for all cancel transitions)',
+    description:
+      'Reason for cancellation (required for all cancel transitions)',
     example: 'Restaurant out of stock',
     maxLength: 500,
   })

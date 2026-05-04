@@ -69,14 +69,9 @@ export class OrderLifecycleService {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  private assertCustomerOwnership(
-    order: Order,
-    actorId: string | null,
-  ): void {
+  private assertCustomerOwnership(order: Order, actorId: string | null): void {
     if (!actorId || order.customerId !== actorId) {
-      throw new ForbiddenException(
-        'You do not own this order.',
-      );
+      throw new ForbiddenException('You do not own this order.');
     }
   }
 
@@ -88,10 +83,11 @@ export class OrderLifecycleService {
       throw new ForbiddenException('Restaurant actor must be authenticated.');
     }
 
-    const snapshot = await this.restaurantSnapshotRepo.findByRestaurantIdAndOwnerId(
-      order.restaurantId,
-      actorId,
-    );
+    const snapshot =
+      await this.restaurantSnapshotRepo.findByRestaurantIdAndOwnerId(
+        order.restaurantId,
+        actorId,
+      );
 
     if (!snapshot) {
       this.logger.warn(

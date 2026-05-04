@@ -64,7 +64,11 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
     const itemRes = await http
       .post('/api/menu-items')
       .set(ownerHeaders())
-      .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Modifier Test Item', price: 12.5 });
+      .send({
+        restaurantId: TEST_RESTAURANT_ID,
+        name: 'Modifier Test Item',
+        price: 12.5,
+      });
     expect(itemRes.status).toBe(201);
     menuItemId = itemRes.body.id as string;
   });
@@ -80,7 +84,12 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
       const res = await http
         .post(`/api/menu-items/${menuItemId}/modifier-groups`)
         .set(ownerHeaders())
-        .send({ name: 'Spice Level', minSelections: 0, maxSelections: 1, displayOrder: 1 });
+        .send({
+          name: 'Spice Level',
+          minSelections: 0,
+          maxSelections: 1,
+          displayOrder: 1,
+        });
 
       expect(res.status).toBe(201);
       expect(res.body).toMatchObject({
@@ -156,7 +165,9 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
 
       // Add an option to verify embedded options in list
       await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${listedGroupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${listedGroupId}/options`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Ketchup', price: 0 });
     });
@@ -179,7 +190,9 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
 
     it('returns 404 for non-existent menuItemId', async () => {
       const res = await http
-        .get('/api/menu-items/99999999-9999-4999-8999-999999999999/modifier-groups')
+        .get(
+          '/api/menu-items/99999999-9999-4999-8999-999999999999/modifier-groups',
+        )
         .set(noAuthHeaders());
 
       expect(res.status).toBe(404);
@@ -200,7 +213,9 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
       groupId = gRes.body.id as string;
 
       const oRes = await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Hot', price: 0, isDefault: true });
       optionId = oRes.body.id as string;
@@ -330,7 +345,9 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
       groupId = gRes.body.id as string;
 
       const oRes = await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Extra Cheese', price: 1.0 });
       optionId = oRes.body.id as string;
@@ -398,9 +415,17 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
 
     it('creates an option with all fields and returns 201', async () => {
       const res = await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`,
+        )
         .set(ownerHeaders())
-        .send({ name: 'Cola', price: 2.5, isDefault: false, displayOrder: 1, isAvailable: true });
+        .send({
+          name: 'Cola',
+          price: 2.5,
+          isDefault: false,
+          displayOrder: 1,
+          isAvailable: true,
+        });
 
       expect(res.status).toBe(201);
       expect(res.body).toMatchObject({
@@ -416,7 +441,9 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
 
     it('creates an option with defaults applied', async () => {
       const res = await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Water' });
 
@@ -429,7 +456,9 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
 
     it('returns 401 when unauthenticated', async () => {
       const res = await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`,
+        )
         .set(noAuthHeaders())
         .send({ name: 'Hack' });
 
@@ -438,7 +467,9 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
 
     it('returns 403 for non-owner', async () => {
       const res = await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`,
+        )
         .set(otherUserHeaders())
         .send({ name: 'Hack' });
 
@@ -447,7 +478,9 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
 
     it('returns 400 for missing name', async () => {
       const res = await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`,
+        )
         .set(ownerHeaders())
         .send({ price: 1.0 });
 
@@ -468,11 +501,15 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
       groupId = gRes.body.id as string;
 
       await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Spaghetti', price: 0, isDefault: true });
       await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Penne', price: 0.5 });
     });
@@ -514,7 +551,9 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
       groupId = gRes.body.id as string;
 
       const oRes = await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Cheddar', price: 1.5 });
       optionId = oRes.body.id as string;
@@ -569,7 +608,9 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
       groupId = gRes.body.id as string;
 
       const oRes = await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Chicken', price: 3.0 });
       optionId = oRes.body.id as string;
@@ -607,7 +648,10 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
       const snapshot = await getSnapshot(menuItemId);
       expect(snapshot).not.toBeNull();
       const group = (
-        snapshot!.modifiers as { groupId: string; options: { optionId: string; price: number }[] }[]
+        snapshot!.modifiers as {
+          groupId: string;
+          options: { optionId: string; price: number }[];
+        }[]
       ).find((g) => g.groupId === groupId);
       expect(group).toBeDefined();
       const option = group!.options.find((o) => o.optionId === optionId);
@@ -652,7 +696,9 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
       groupId = gRes.body.id as string;
 
       const oRes = await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Extra Shot', price: 1.0 });
       optionId = oRes.body.id as string;
@@ -793,9 +839,9 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
       await new Promise((r) => setTimeout(r, 100));
 
       const snapshot = await getSnapshot(menuItemId);
-      const group = (
-        snapshot!.modifiers as MenuItemModifierSnapshot[]
-      ).find((g) => g.groupId === gId);
+      const group = (snapshot!.modifiers as MenuItemModifierSnapshot[]).find(
+        (g) => g.groupId === gId,
+      );
       expect(group).toBeDefined();
       expect(group!.options.length).toBe(2);
     });
@@ -849,7 +895,9 @@ describe('Modifier Group & Option CRUD (E2E)', () => {
       const secGroupId = gRes.body.id as string;
 
       const oRes = await http
-        .post(`/api/menu-items/${menuItemId}/modifier-groups/${secGroupId}/options`)
+        .post(
+          `/api/menu-items/${menuItemId}/modifier-groups/${secGroupId}/options`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Security Option' });
       const secOptionId = oRes.body.id as string;

@@ -45,7 +45,10 @@ export class ModifierGroupRepository {
     return result[0] ?? null;
   }
 
-  async create(menuItemId: string, dto: CreateModifierGroupDto): Promise<ModifierGroup> {
+  async create(
+    menuItemId: string,
+    dto: CreateModifierGroupDto,
+  ): Promise<ModifierGroup> {
     const data: NewModifierGroup = {
       menuItemId,
       name: dto.name,
@@ -57,7 +60,10 @@ export class ModifierGroupRepository {
     return row;
   }
 
-  async update(id: string, dto: UpdateModifierGroupDto): Promise<ModifierGroup> {
+  async update(
+    id: string,
+    dto: UpdateModifierGroupDto,
+  ): Promise<ModifierGroup> {
     const [row] = await this.db
       .update(modifierGroups)
       .set({ ...dto, updatedAt: new Date() })
@@ -98,7 +104,10 @@ export class ModifierOptionRepository {
     return result[0] ?? null;
   }
 
-  async create(groupId: string, dto: CreateModifierOptionDto): Promise<ModifierOption> {
+  async create(
+    groupId: string,
+    dto: CreateModifierOptionDto,
+  ): Promise<ModifierOption> {
     const data: NewModifierOption = {
       groupId,
       name: dto.name,
@@ -107,11 +116,17 @@ export class ModifierOptionRepository {
       displayOrder: dto.displayOrder ?? 0,
       isAvailable: dto.isAvailable ?? true,
     };
-    const [row] = await this.db.insert(modifierOptions).values(data).returning();
+    const [row] = await this.db
+      .insert(modifierOptions)
+      .values(data)
+      .returning();
     return row;
   }
 
-  async update(id: string, dto: UpdateModifierOptionDto): Promise<ModifierOption> {
+  async update(
+    id: string,
+    dto: UpdateModifierOptionDto,
+  ): Promise<ModifierOption> {
     const [row] = await this.db
       .update(modifierOptions)
       .set({ ...dto, updatedAt: new Date() })

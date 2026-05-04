@@ -14,10 +14,7 @@
 
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import {
-  createTestApp,
-  teardownTestApp,
-} from '../setup/app-factory';
+import { createTestApp, teardownTestApp } from '../setup/app-factory';
 import {
   resetDb,
   seedBaseRestaurant,
@@ -40,7 +37,7 @@ const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const RESTAURANT_B_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 // Simple, fixed UUIDs used for "no-snapshot" / unknown-item cart adds
-const UNKNOWN_ITEM_ID   = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const UNKNOWN_ITEM_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const UNKNOWN_ITEM_ID_2 = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const UNKNOWN_CART_ITEM_ID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 
@@ -51,14 +48,14 @@ describe('Cart API (E2E)', () => {
   let http: ReturnType<typeof request>;
 
   // Seeded via HTTP → has a real ACL snapshot after propagation
-  let snapshotItemId: string;  // basic item – no modifiers
-  let modItemId: string;       // item with modifier groups
-  let reqGroupId: string;      // required modifier group (minSelections=1, maxSelections=1)
-  let defaultOptId: string;    // default option in reqGroup
-  let altOptId: string;        // non-default option in reqGroup
-  let optGroupId: string;      // optional group (minSelections=0, maxSelections=2)
-  let optOptAId: string;       // option A in optional group
-  let optOptBId: string;       // option B in optional group
+  let snapshotItemId: string; // basic item – no modifiers
+  let modItemId: string; // item with modifier groups
+  let reqGroupId: string; // required modifier group (minSelections=1, maxSelections=1)
+  let defaultOptId: string; // default option in reqGroup
+  let altOptId: string; // non-default option in reqGroup
+  let optGroupId: string; // optional group (minSelections=0, maxSelections=2)
+  let optOptAId: string; // option A in optional group
+  let optOptBId: string; // option B in optional group
 
   // ─── Global setup ──────────────────────────────────────────────────────────
 
@@ -73,17 +70,22 @@ describe('Cart API (E2E)', () => {
     await seedBaseRestaurant(testAuth.ownerUserId);
 
     // ── Create basic item (no modifiers) ──
-    const basic = await http
-      .post('/api/menu-items')
-      .set(ownerHeaders())
-      .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Plain Burger', price: 10.0 });
+    const basic = await http.post('/api/menu-items').set(ownerHeaders()).send({
+      restaurantId: TEST_RESTAURANT_ID,
+      name: 'Plain Burger',
+      price: 10.0,
+    });
     snapshotItemId = basic.body.id as string;
 
     // ── Create item with modifiers ──
     const modItem = await http
       .post('/api/menu-items')
       .set(ownerHeaders())
-      .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Fancy Burger', price: 15.0 });
+      .send({
+        restaurantId: TEST_RESTAURANT_ID,
+        name: 'Fancy Burger',
+        price: 15.0,
+      });
     modItemId = modItem.body.id as string;
 
     // Required modifier group (minSelections=1, maxSelections=1)
@@ -100,14 +102,18 @@ describe('Cart API (E2E)', () => {
 
     // Route: POST /api/menu-items/:menuItemId/modifier-groups/:groupId/options
     const defOptRes = await http
-      .post(`/api/menu-items/${modItemId}/modifier-groups/${reqGroupId}/options`)
+      .post(
+        `/api/menu-items/${modItemId}/modifier-groups/${reqGroupId}/options`,
+      )
       .set(ownerHeaders())
       .send({ name: 'White Bread', price: 0, isDefault: true });
     defaultOptId = defOptRes.body.id as string;
     await delay(200);
 
     const altOptRes = await http
-      .post(`/api/menu-items/${modItemId}/modifier-groups/${reqGroupId}/options`)
+      .post(
+        `/api/menu-items/${modItemId}/modifier-groups/${reqGroupId}/options`,
+      )
       .set(ownerHeaders())
       .send({ name: 'Whole Wheat', price: 0.5, isDefault: false });
     altOptId = altOptRes.body.id as string;
@@ -122,14 +128,18 @@ describe('Cart API (E2E)', () => {
     await delay(200);
 
     const optARes = await http
-      .post(`/api/menu-items/${modItemId}/modifier-groups/${optGroupId}/options`)
+      .post(
+        `/api/menu-items/${modItemId}/modifier-groups/${optGroupId}/options`,
+      )
       .set(ownerHeaders())
       .send({ name: 'Extra Cheese', price: 1.0, isDefault: false });
     optOptAId = optARes.body.id as string;
     await delay(200);
 
     const optBRes = await http
-      .post(`/api/menu-items/${modItemId}/modifier-groups/${optGroupId}/options`)
+      .post(
+        `/api/menu-items/${modItemId}/modifier-groups/${optGroupId}/options`,
+      )
       .set(ownerHeaders())
       .send({ name: 'Bacon', price: 1.5, isDefault: false });
     optOptBId = optBRes.body.id as string;
@@ -161,17 +171,14 @@ describe('Cart API (E2E)', () => {
     });
 
     it('C-02 returns full CartResponseDto after adding an item', async () => {
-      await http
-        .post('/api/carts/my/items')
-        .set(ownerHeaders())
-        .send({
-          menuItemId: snapshotItemId,
-          restaurantId: TEST_RESTAURANT_ID,
-          restaurantName: 'Test Restaurant',
-          itemName: 'Plain Burger',
-          unitPrice: 10.0,
-          quantity: 2,
-        });
+      await http.post('/api/carts/my/items').set(ownerHeaders()).send({
+        menuItemId: snapshotItemId,
+        restaurantId: TEST_RESTAURANT_ID,
+        restaurantName: 'Test Restaurant',
+        itemName: 'Plain Burger',
+        unitPrice: 10.0,
+        quantity: 2,
+      });
 
       const res = await http.get('/api/carts/my').set(ownerHeaders());
       expect(res.status).toBe(200);
@@ -250,9 +257,9 @@ describe('Cart API (E2E)', () => {
         .send({ ...payload, quantity: 3 });
 
       expect(res.status).toBe(201);
-      const item = (res.body.items as { menuItemId: string; quantity: number }[]).find(
-        (i) => i.menuItemId === snapshotItemId,
-      );
+      const item = (
+        res.body.items as { menuItemId: string; quantity: number }[]
+      ).find((i) => i.menuItemId === snapshotItemId);
       expect(item?.quantity).toBe(5); // 2 + 3
     });
 
@@ -335,7 +342,8 @@ describe('Cart API (E2E)', () => {
           unitPrice: 10.0,
           quantity: 3,
         });
-      cartItemId = (addRes.body.items as { cartItemId: string }[])[0].cartItemId;
+      cartItemId = (addRes.body.items as { cartItemId: string }[])[0]
+        .cartItemId;
     });
 
     it('C-08 PATCH qty updates quantity and returns 200 CartResponseDto', async () => {
@@ -345,9 +353,9 @@ describe('Cart API (E2E)', () => {
         .send({ quantity: 5 });
 
       expect(res.status).toBe(200);
-      const item = (res.body.items as { cartItemId: string; quantity: number }[]).find(
-        (i) => i.cartItemId === cartItemId,
-      );
+      const item = (
+        res.body.items as { cartItemId: string; quantity: number }[]
+      ).find((i) => i.cartItemId === cartItemId);
       expect(item?.quantity).toBe(5);
     });
 
@@ -373,9 +381,9 @@ describe('Cart API (E2E)', () => {
           unitPrice: 5.0,
           quantity: 1,
         });
-      const secondItemId = (add2.body.items as { cartItemId: string; menuItemId: string }[]).find(
-        (i) => i.menuItemId === UNKNOWN_ITEM_ID,
-      )!.cartItemId;
+      const secondItemId = (
+        add2.body.items as { cartItemId: string; menuItemId: string }[]
+      ).find((i) => i.menuItemId === UNKNOWN_ITEM_ID)!.cartItemId;
 
       // Remove the first item (cartItemId) — second should remain
       const res = await http
@@ -384,7 +392,9 @@ describe('Cart API (E2E)', () => {
         .send({ quantity: 0 });
 
       expect(res.status).toBe(200);
-      const ids = (res.body.items as { cartItemId: string }[]).map((i) => i.cartItemId);
+      const ids = (res.body.items as { cartItemId: string }[]).map(
+        (i) => i.cartItemId,
+      );
       expect(ids).not.toContain(cartItemId);
       expect(ids).toContain(secondItemId);
     });
@@ -424,7 +434,8 @@ describe('Cart API (E2E)', () => {
           quantity: 1,
           selectedOptions: [{ groupId: reqGroupId, optionId: defaultOptId }],
         });
-      cartItemId = (addRes.body.items as { cartItemId: string }[])[0].cartItemId;
+      cartItemId = (addRes.body.items as { cartItemId: string }[])[0]
+        .cartItemId;
     });
 
     it('C-12 replaces modifier selection and returns 200 CartResponseDto', async () => {
@@ -439,9 +450,9 @@ describe('Cart API (E2E)', () => {
         });
 
       expect(res.status).toBe(200);
-      const item = (res.body.items as { cartItemId: string; selectedModifiers: unknown[] }[]).find(
-        (i) => i.cartItemId === cartItemId,
-      );
+      const item = (
+        res.body.items as { cartItemId: string; selectedModifiers: unknown[] }[]
+      ).find((i) => i.cartItemId === cartItemId);
       expect(item?.selectedModifiers).toBeDefined();
     });
 
@@ -472,7 +483,9 @@ describe('Cart API (E2E)', () => {
       const res = await http
         .patch(`/api/carts/my/items/${UNKNOWN_CART_ITEM_ID}/modifiers`)
         .set(ownerHeaders())
-        .send({ selectedOptions: [{ groupId: reqGroupId, optionId: defaultOptId }] });
+        .send({
+          selectedOptions: [{ groupId: reqGroupId, optionId: defaultOptId }],
+        });
 
       expect(res.status).toBe(404);
     });
@@ -510,7 +523,8 @@ describe('Cart API (E2E)', () => {
           unitPrice: 5.0,
           quantity: 1,
         });
-      const item1Id = (add1.body.items as { cartItemId: string }[])[0].cartItemId;
+      const item1Id = (add1.body.items as { cartItemId: string }[])[0]
+        .cartItemId;
 
       await http.post('/api/carts/my/items').set(ownerHeaders()).send({
         menuItemId: UNKNOWN_ITEM_ID,
@@ -526,7 +540,9 @@ describe('Cart API (E2E)', () => {
         .set(ownerHeaders());
 
       expect(res.status).toBe(200);
-      const ids = (res.body.items as { cartItemId: string }[]).map((i) => i.cartItemId);
+      const ids = (res.body.items as { cartItemId: string }[]).map(
+        (i) => i.cartItemId,
+      );
       expect(ids).not.toContain(item1Id);
       expect(ids.length).toBe(1);
     });
@@ -543,9 +559,12 @@ describe('Cart API (E2E)', () => {
           unitPrice: 8.0,
           quantity: 1,
         });
-      const itemId = (addRes.body.items as { cartItemId: string }[])[0].cartItemId;
+      const itemId = (addRes.body.items as { cartItemId: string }[])[0]
+        .cartItemId;
 
-      const res = await http.delete(`/api/carts/my/items/${itemId}`).set(ownerHeaders());
+      const res = await http
+        .delete(`/api/carts/my/items/${itemId}`)
+        .set(ownerHeaders());
       expect(res.status).toBe(204);
     });
 
@@ -610,14 +629,17 @@ describe('Cart API (E2E)', () => {
         quantity: 1,
       });
 
-      const res = await http.post('/api/carts/my/items').set(ownerHeaders()).send({
-        menuItemId: UNKNOWN_ITEM_ID,
-        restaurantId: RESTAURANT_B_ID,
-        restaurantName: 'Other Restaurant',
-        itemName: 'Item B',
-        unitPrice: 6.0,
-        quantity: 1,
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(ownerHeaders())
+        .send({
+          menuItemId: UNKNOWN_ITEM_ID,
+          restaurantId: RESTAURANT_B_ID,
+          restaurantName: 'Other Restaurant',
+          itemName: 'Item B',
+          unitPrice: 6.0,
+          quantity: 1,
+        });
 
       expect(res.status).toBe(409);
     });
@@ -634,14 +656,17 @@ describe('Cart API (E2E)', () => {
 
       await http.delete('/api/carts/my').set(ownerHeaders());
 
-      const res = await http.post('/api/carts/my/items').set(ownerHeaders()).send({
-        menuItemId: UNKNOWN_ITEM_ID,
-        restaurantId: RESTAURANT_B_ID,
-        restaurantName: 'Other Restaurant',
-        itemName: 'Item B',
-        unitPrice: 6.0,
-        quantity: 1,
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(ownerHeaders())
+        .send({
+          menuItemId: UNKNOWN_ITEM_ID,
+          restaurantId: RESTAURANT_B_ID,
+          restaurantName: 'Other Restaurant',
+          itemName: 'Item B',
+          unitPrice: 6.0,
+          quantity: 1,
+        });
 
       expect(res.status).toBe(201);
     });
@@ -659,50 +684,69 @@ describe('Cart API (E2E)', () => {
     });
 
     it('C-23 auto-injects default option when required group has a default and no selection given', async () => {
-      const res = await http.post('/api/carts/my/items').set(ownerHeaders()).send({
-        menuItemId: modItemId,
-        restaurantId: TEST_RESTAURANT_ID,
-        restaurantName: 'Test Restaurant',
-        itemName: 'Fancy Burger',
-        unitPrice: 15.0,
-        quantity: 1,
-        selectedOptions: [], // empty — service should inject default for reqGroup
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(ownerHeaders())
+        .send({
+          menuItemId: modItemId,
+          restaurantId: TEST_RESTAURANT_ID,
+          restaurantName: 'Test Restaurant',
+          itemName: 'Fancy Burger',
+          unitPrice: 15.0,
+          quantity: 1,
+          selectedOptions: [], // empty — service should inject default for reqGroup
+        });
 
       // Should succeed — default is auto-injected
       expect(res.status).toBe(201);
-      const item = (res.body.items as { selectedModifiers: { optionId: string }[] }[])[0];
+      const item = (
+        res.body.items as { selectedModifiers: { optionId: string }[] }[]
+      )[0];
       const optionIds = item.selectedModifiers.map((m) => m.optionId);
       expect(optionIds).toContain(defaultOptId);
     });
 
     it('C-24 returns 400 when an unknown groupId is sent', async () => {
-      const res = await http.post('/api/carts/my/items').set(ownerHeaders()).send({
-        menuItemId: modItemId,
-        restaurantId: TEST_RESTAURANT_ID,
-        restaurantName: 'Test Restaurant',
-        itemName: 'Fancy Burger',
-        unitPrice: 15.0,
-        quantity: 1,
-        selectedOptions: [{ groupId: 'ffffffff-ffff-4fff-8fff-ffffffffffff', optionId: defaultOptId }],
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(ownerHeaders())
+        .send({
+          menuItemId: modItemId,
+          restaurantId: TEST_RESTAURANT_ID,
+          restaurantName: 'Test Restaurant',
+          itemName: 'Fancy Burger',
+          unitPrice: 15.0,
+          quantity: 1,
+          selectedOptions: [
+            {
+              groupId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+              optionId: defaultOptId,
+            },
+          ],
+        });
 
       // CartService.resolveModifierOptions throws BadRequestException (400) for unknown groupId
       expect(res.status).toBe(400);
     });
 
     it('C-25 returns 400 when an unknown optionId is sent for a known groupId', async () => {
-      const res = await http.post('/api/carts/my/items').set(ownerHeaders()).send({
-        menuItemId: modItemId,
-        restaurantId: TEST_RESTAURANT_ID,
-        restaurantName: 'Test Restaurant',
-        itemName: 'Fancy Burger',
-        unitPrice: 15.0,
-        quantity: 1,
-        selectedOptions: [
-          { groupId: reqGroupId, optionId: 'ffffffff-ffff-4fff-8fff-ffffffffffff' },
-        ],
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(ownerHeaders())
+        .send({
+          menuItemId: modItemId,
+          restaurantId: TEST_RESTAURANT_ID,
+          restaurantName: 'Test Restaurant',
+          itemName: 'Fancy Burger',
+          unitPrice: 15.0,
+          quantity: 1,
+          selectedOptions: [
+            {
+              groupId: reqGroupId,
+              optionId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+            },
+          ],
+        });
 
       // CartService.resolveModifierOptions throws BadRequestException (400) for unknown optionId
       expect(res.status).toBe(400);
@@ -710,29 +754,35 @@ describe('Cart API (E2E)', () => {
 
     it('C-26 returns 400 when item has no snapshot but selectedOptions are provided', async () => {
       // UNKNOWN_ITEM_ID_2 has no snapshot — providing options is an error
-      const res = await http.post('/api/carts/my/items').set(ownerHeaders()).send({
-        menuItemId: UNKNOWN_ITEM_ID_2,
-        restaurantId: TEST_RESTAURANT_ID,
-        restaurantName: 'Test Restaurant',
-        itemName: 'Ghost Item',
-        unitPrice: 5.0,
-        quantity: 1,
-        selectedOptions: [{ groupId: reqGroupId, optionId: defaultOptId }],
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(ownerHeaders())
+        .send({
+          menuItemId: UNKNOWN_ITEM_ID_2,
+          restaurantId: TEST_RESTAURANT_ID,
+          restaurantName: 'Test Restaurant',
+          itemName: 'Ghost Item',
+          unitPrice: 5.0,
+          quantity: 1,
+          selectedOptions: [{ groupId: reqGroupId, optionId: defaultOptId }],
+        });
 
       expect(res.status).toBe(400);
     });
 
     it('C-27 succeeds for item with no snapshot and no selectedOptions (Phase 2 fallback)', async () => {
       // No snapshot → service trusts client data when no modifiers requested
-      const res = await http.post('/api/carts/my/items').set(ownerHeaders()).send({
-        menuItemId: UNKNOWN_ITEM_ID_2,
-        restaurantId: TEST_RESTAURANT_ID,
-        restaurantName: 'Test Restaurant',
-        itemName: 'Ghost Item',
-        unitPrice: 5.0,
-        quantity: 1,
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(ownerHeaders())
+        .send({
+          menuItemId: UNKNOWN_ITEM_ID_2,
+          restaurantId: TEST_RESTAURANT_ID,
+          restaurantName: 'Test Restaurant',
+          itemName: 'Ghost Item',
+          unitPrice: 5.0,
+          quantity: 1,
+        });
 
       expect(res.status).toBe(201);
     });
@@ -750,49 +800,61 @@ describe('Cart API (E2E)', () => {
     });
 
     it('C-28 returns 400 when menuItemId is missing from add-item body', async () => {
-      const res = await http.post('/api/carts/my/items').set(ownerHeaders()).send({
-        restaurantId: TEST_RESTAURANT_ID,
-        restaurantName: 'Test Restaurant',
-        itemName: 'No ID Item',
-        unitPrice: 5.0,
-        quantity: 1,
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(ownerHeaders())
+        .send({
+          restaurantId: TEST_RESTAURANT_ID,
+          restaurantName: 'Test Restaurant',
+          itemName: 'No ID Item',
+          unitPrice: 5.0,
+          quantity: 1,
+        });
       expect(res.status).toBe(400);
     });
 
     it('C-29 returns 400 when quantity is 0 in add-item (min is 1)', async () => {
-      const res = await http.post('/api/carts/my/items').set(ownerHeaders()).send({
-        menuItemId: snapshotItemId,
-        restaurantId: TEST_RESTAURANT_ID,
-        restaurantName: 'Test Restaurant',
-        itemName: 'Test',
-        unitPrice: 5.0,
-        quantity: 0,
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(ownerHeaders())
+        .send({
+          menuItemId: snapshotItemId,
+          restaurantId: TEST_RESTAURANT_ID,
+          restaurantName: 'Test Restaurant',
+          itemName: 'Test',
+          unitPrice: 5.0,
+          quantity: 0,
+        });
       expect(res.status).toBe(400);
     });
 
     it('C-30 returns 400 when quantity is 100 in add-item (max is 99)', async () => {
-      const res = await http.post('/api/carts/my/items').set(ownerHeaders()).send({
-        menuItemId: snapshotItemId,
-        restaurantId: TEST_RESTAURANT_ID,
-        restaurantName: 'Test Restaurant',
-        itemName: 'Test',
-        unitPrice: 5.0,
-        quantity: 100,
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(ownerHeaders())
+        .send({
+          menuItemId: snapshotItemId,
+          restaurantId: TEST_RESTAURANT_ID,
+          restaurantName: 'Test Restaurant',
+          itemName: 'Test',
+          unitPrice: 5.0,
+          quantity: 100,
+        });
       expect(res.status).toBe(400);
     });
 
     it('C-31 PATCH quantity returns 400 when quantity > 99', async () => {
-      const add = await http.post('/api/carts/my/items').set(ownerHeaders()).send({
-        menuItemId: snapshotItemId,
-        restaurantId: TEST_RESTAURANT_ID,
-        restaurantName: 'Test Restaurant',
-        itemName: 'Item',
-        unitPrice: 5.0,
-        quantity: 1,
-      });
+      const add = await http
+        .post('/api/carts/my/items')
+        .set(ownerHeaders())
+        .send({
+          menuItemId: snapshotItemId,
+          restaurantId: TEST_RESTAURANT_ID,
+          restaurantName: 'Test Restaurant',
+          itemName: 'Item',
+          unitPrice: 5.0,
+          quantity: 1,
+        });
       const id = (add.body.items as { cartItemId: string }[])[0].cartItemId;
 
       const res = await http
@@ -897,7 +959,11 @@ describe('Cart API (E2E)', () => {
         .post('/api/carts/my/checkout')
         .set(ownerHeaders())
         .send({
-          deliveryAddress: { street: '123 Main St', district: 'D1', city: 'HCM' },
+          deliveryAddress: {
+            street: '123 Main St',
+            district: 'D1',
+            city: 'HCM',
+          },
           paymentMethod: 'cod',
         });
 
@@ -919,7 +985,11 @@ describe('Cart API (E2E)', () => {
         .post('/api/carts/my/checkout')
         .set(ownerHeaders())
         .send({
-          deliveryAddress: { street: '123 Main St', district: 'D1', city: 'HCM' },
+          deliveryAddress: {
+            street: '123 Main St',
+            district: 'D1',
+            city: 'HCM',
+          },
           paymentMethod: 'bitcoin',
         });
 
@@ -932,7 +1002,11 @@ describe('Cart API (E2E)', () => {
         .set(ownerHeaders())
         .set('Idempotency-Key', 'abc123')
         .send({
-          deliveryAddress: { street: '123 Main St', district: 'D1', city: 'HCM' },
+          deliveryAddress: {
+            street: '123 Main St',
+            district: 'D1',
+            city: 'HCM',
+          },
           paymentMethod: 'cod',
         });
 
@@ -945,7 +1019,11 @@ describe('Cart API (E2E)', () => {
         .set(ownerHeaders())
         .set('Idempotency-Key', 'not_valid!!!')
         .send({
-          deliveryAddress: { street: '123 Main St', district: 'D1', city: 'HCM' },
+          deliveryAddress: {
+            street: '123 Main St',
+            district: 'D1',
+            city: 'HCM',
+          },
           paymentMethod: 'cod',
         });
 
@@ -971,7 +1049,11 @@ describe('Cart API (E2E)', () => {
         .set(ownerHeaders())
         .set('Idempotency-Key', validKey)
         .send({
-          deliveryAddress: { street: '123 Main St', district: 'D1', city: 'HCM' },
+          deliveryAddress: {
+            street: '123 Main St',
+            district: 'D1',
+            city: 'HCM',
+          },
           paymentMethod: 'cod',
         });
 

@@ -13,12 +13,12 @@
 
 Before running tests ensure the DB has:
 
-| Entity | ID (example) | Notes |
-|---|---|---|
-| Restaurant | `11111111-1111-1111-1111-111111111111` | `ownerId` must match `$RESTAURANT_USER_ID` |
-| Menu item | `22222222-2222-2222-2222-222222222222` | `restaurantId` = restaurant above, `status = available` |
-| Modifier group | `33333333-3333-3333-3333-333333333333` | `menuItemId` = item above, `name = "Size"`, min=1, max=1 |
-| Modifier option | `44444444-4444-4444-4444-444444444444` | `groupId` = group above, `name = "Large"`, `price = 5.00` |
+| Entity          | ID (example)                           | Notes                                                                         |
+| --------------- | -------------------------------------- | ----------------------------------------------------------------------------- |
+| Restaurant      | `11111111-1111-1111-1111-111111111111` | `ownerId` must match `$RESTAURANT_USER_ID`                                    |
+| Menu item       | `22222222-2222-2222-2222-222222222222` | `restaurantId` = restaurant above, `status = available`                       |
+| Modifier group  | `33333333-3333-3333-3333-333333333333` | `menuItemId` = item above, `name = "Size"`, min=1, max=1                      |
+| Modifier option | `44444444-4444-4444-4444-444444444444` | `groupId` = group above, `name = "Large"`, `price = 5.00`                     |
 | Modifier option | `55555555-5555-5555-5555-555555555555` | `groupId` = group above, `name = "Small"`, `price = 0.00`, `isDefault = true` |
 
 The seeds can be run via `pnpm db:seed`. Verify with:
@@ -359,6 +359,7 @@ GET /menu-items/22222222-2222-2222-2222-222222222222/modifier-groups/33333333-33
 
 Expected: `200 OK`  
 Expected body:
+
 ```json
 {
   "id": "33333333-3333-3333-3333-333333333333",
@@ -368,8 +369,20 @@ Expected body:
   "maxSelections": 1,
   "displayOrder": 0,
   "options": [
-    { "id": "55555555-...", "name": "Small", "price": 0, "isDefault": true, "isAvailable": true },
-    { "id": "44444444-...", "name": "Large", "price": 5, "isDefault": false, "isAvailable": true }
+    {
+      "id": "55555555-...",
+      "name": "Small",
+      "price": 0,
+      "isDefault": true,
+      "isAvailable": true
+    },
+    {
+      "id": "44444444-...",
+      "name": "Large",
+      "price": 5,
+      "isDefault": false,
+      "isAvailable": true
+    }
   ]
 }
 ```
@@ -387,6 +400,7 @@ GET /menu-items/22222222-2222-2222-2222-222222222222/modifier-groups/33333333-33
 
 Expected: `200 OK`  
 Expected body: array of `ModifierOptionResponseDto`, e.g.:
+
 ```json
 [
   { "id": "55555555-...", "name": "Small", "price": 0, "isDefault": true },
@@ -406,6 +420,7 @@ GET /menu-items/22222222-2222-2222-2222-222222222222/modifier-groups/33333333-33
 
 Expected: `200 OK`  
 Expected body:
+
 ```json
 {
   "id": "44444444-4444-4444-4444-444444444444",
@@ -652,27 +667,27 @@ Expected `modifiers` shape:
 
 ### Snapshot invariants to verify
 
-| Invariant | SQL check |
-|---|---|
-| `modifiers` is never `null` | `SELECT COUNT(*) FROM ordering_menu_item_snapshots WHERE modifiers IS NULL` → 0 |
-| After item update (non-modifier), modifiers unchanged | Compare before/after JSON |
-| After modifier create/update/delete, modifiers reflects new state | Check group/option count in JSONB |
-| After item delete, `status = 'unavailable'` and `modifiers = '[]'` | Direct query |
-| `lastSyncedAt` advances on every event | `SELECT last_synced_at` before and after any mutation |
+| Invariant                                                          | SQL check                                                                       |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `modifiers` is never `null`                                        | `SELECT COUNT(*) FROM ordering_menu_item_snapshots WHERE modifiers IS NULL` → 0 |
+| After item update (non-modifier), modifiers unchanged              | Compare before/after JSON                                                       |
+| After modifier create/update/delete, modifiers reflects new state  | Check group/option count in JSONB                                               |
+| After item delete, `status = 'unavailable'` and `modifiers = '[]'` | Direct query                                                                    |
+| `lastSyncedAt` advances on every event                             | `SELECT last_synced_at` before and after any mutation                           |
 
 ---
 
 ## Quick Reference: Endpoint Table
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `GET` | `/menu-items/:id/modifier-groups` | Public | List all groups + options |
-| `GET` | `/menu-items/:id/modifier-groups/:groupId` | Public | **[NEW]** Get one group + options |
-| `GET` | `/menu-items/:id/modifier-groups/:groupId/options` | Public | **[NEW]** List options for group |
-| `GET` | `/menu-items/:id/modifier-groups/:groupId/options/:optionId` | Public | **[NEW]** Get one option |
-| `POST` | `/menu-items/:id/modifier-groups` | restaurant/admin | Create group |
-| `PATCH` | `/menu-items/:id/modifier-groups/:groupId` | restaurant/admin | Update group |
-| `DELETE` | `/menu-items/:id/modifier-groups/:groupId` | restaurant/admin | Delete group (cascades) |
-| `POST` | `/menu-items/:id/modifier-groups/:groupId/options` | restaurant/admin | Add option to group |
-| `PATCH` | `/menu-items/:id/modifier-groups/:groupId/options/:optionId` | restaurant/admin | Update option |
-| `DELETE` | `/menu-items/:id/modifier-groups/:groupId/options/:optionId` | restaurant/admin | Delete option |
+| Method   | Path                                                         | Auth             | Description                       |
+| -------- | ------------------------------------------------------------ | ---------------- | --------------------------------- |
+| `GET`    | `/menu-items/:id/modifier-groups`                            | Public           | List all groups + options         |
+| `GET`    | `/menu-items/:id/modifier-groups/:groupId`                   | Public           | **[NEW]** Get one group + options |
+| `GET`    | `/menu-items/:id/modifier-groups/:groupId/options`           | Public           | **[NEW]** List options for group  |
+| `GET`    | `/menu-items/:id/modifier-groups/:groupId/options/:optionId` | Public           | **[NEW]** Get one option          |
+| `POST`   | `/menu-items/:id/modifier-groups`                            | restaurant/admin | Create group                      |
+| `PATCH`  | `/menu-items/:id/modifier-groups/:groupId`                   | restaurant/admin | Update group                      |
+| `DELETE` | `/menu-items/:id/modifier-groups/:groupId`                   | restaurant/admin | Delete group (cascades)           |
+| `POST`   | `/menu-items/:id/modifier-groups/:groupId/options`           | restaurant/admin | Add option to group               |
+| `PATCH`  | `/menu-items/:id/modifier-groups/:groupId/options/:optionId` | restaurant/admin | Update option                     |
+| `DELETE` | `/menu-items/:id/modifier-groups/:groupId/options/:optionId` | restaurant/admin | Delete option                     |

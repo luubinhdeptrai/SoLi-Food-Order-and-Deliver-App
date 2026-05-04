@@ -16,7 +16,10 @@ import type { MenuItemModifierSnapshot } from '@/shared/events/menu-item-updated
  *  []        → item has no modifier groups (or was deleted); clear the column.
  *  [...]     → replace snapshot modifiers with this new tree.
  */
-type UpsertMenuItemSnapshotData = Omit<NewOrderingMenuItemSnapshot, 'modifiers'> & {
+type UpsertMenuItemSnapshotData = Omit<
+  NewOrderingMenuItemSnapshot,
+  'modifiers'
+> & {
   modifiers?: MenuItemModifierSnapshot[] | null;
 };
 

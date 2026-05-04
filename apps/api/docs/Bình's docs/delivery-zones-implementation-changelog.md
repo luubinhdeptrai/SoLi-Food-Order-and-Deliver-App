@@ -29,6 +29,7 @@ Pure Haversine math service. No DB access.
 ### `src/drizzle/out/0005_delivery_zones_dynamic_pricing.sql` ✅ NEW
 
 Migration applied to development database:
+
 - `DROP COLUMN IF EXISTS delivery_fee`
 - `DROP COLUMN IF EXISTS estimated_minutes`
 - `ADD COLUMN IF NOT EXISTS base_fee NUMERIC(10,2) DEFAULT 0`
@@ -46,6 +47,7 @@ Migration applied to development database:
 ### `src/module/restaurant-catalog/restaurant/restaurant.schema.ts`
 
 **Changes:**
+
 - Added `zoneFeeColumn` custom type (`customType<{ data: number; driverData: string }>`) — uses `NUMERIC(10,2)` with `fromDriver: parseFloat` + `toDriver: String`. Avoids Drizzle's built-in `numeric()` which returns `string` from the driver.
 - Replaced flat `deliveryFee` + `estimatedMinutes` columns with:
   - `baseFee: zoneFeeColumn('base_fee').notNull().default(0)`
@@ -61,14 +63,14 @@ Migration applied to development database:
 
 **Changes (full rewrite of relevant sections):**
 
-| Class | What changed |
-|---|---|
-| `CreateDeliveryZoneDto` | Added `baseFee` (required), `perKmRate` (required), `avgSpeedKmh?`, `prepTimeMinutes?`, `bufferMinutes?` |
-| `UpdateDeliveryZoneDto` | Extends `PartialType(CreateDeliveryZoneDto)` — inherits all new optional fields + `isActive?` |
-| `DeliveryZoneResponseDto` | Added all new columns |
-| `DeliveryEstimateQueryDto` | **NEW** — `lat` + `lon` with `@Type(() => Number)` (critical for string→number coercion from query params), `@IsLatitude()`, `@IsLongitude()`, `@IsNumber()` |
-| `DeliveryFeeBreakdownDto` | **NEW** — `baseFee`, `distanceFee`, `prepTimeMinutes`, `travelTimeMinutes`, `bufferMinutes` |
-| `DeliveryEstimateResponseDto` | **NEW** — `restaurantId`, `distanceKm`, `zone: {id, name, radiusKm}`, `deliveryFee`, `estimatedMinutes`, `breakdown` |
+| Class                         | What changed                                                                                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CreateDeliveryZoneDto`       | Added `baseFee` (required), `perKmRate` (required), `avgSpeedKmh?`, `prepTimeMinutes?`, `bufferMinutes?`                                                     |
+| `UpdateDeliveryZoneDto`       | Extends `PartialType(CreateDeliveryZoneDto)` — inherits all new optional fields + `isActive?`                                                                |
+| `DeliveryZoneResponseDto`     | Added all new columns                                                                                                                                        |
+| `DeliveryEstimateQueryDto`    | **NEW** — `lat` + `lon` with `@Type(() => Number)` (critical for string→number coercion from query params), `@IsLatitude()`, `@IsLongitude()`, `@IsNumber()` |
+| `DeliveryFeeBreakdownDto`     | **NEW** — `baseFee`, `distanceFee`, `prepTimeMinutes`, `travelTimeMinutes`, `bufferMinutes`                                                                  |
+| `DeliveryEstimateResponseDto` | **NEW** — `restaurantId`, `distanceKm`, `zone: {id, name, radiusKm}`, `deliveryFee`, `estimatedMinutes`, `breakdown`                                         |
 
 ---
 
@@ -76,10 +78,10 @@ Migration applied to development database:
 
 **Changes:**
 
-| Method | Change |
-|---|---|
-| `create()` | Now inserts `baseFee`, `perKmRate`, `avgSpeedKmh ?? 20`, `prepTimeMinutes ?? 15`, `bufferMinutes ?? 5` |
-| `update()` | Uses `{ ...dto, updatedAt: new Date() }` spread (simpler than proposal's explicit mapping) |
+| Method                                    | Change                                                                                                                  |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `create()`                                | Now inserts `baseFee`, `perKmRate`, `avgSpeedKmh ?? 20`, `prepTimeMinutes ?? 15`, `bufferMinutes ?? 5`                  |
+| `update()`                                | Uses `{ ...dto, updatedAt: new Date() }` spread (simpler than proposal's explicit mapping)                              |
 | `findActiveByRestaurantOrderedByRadius()` | **NEW** — `WHERE is_active = TRUE ORDER BY radius_km ASC` using `and(eq(...), eq(...))` + `asc(deliveryZones.radiusKm)` |
 
 ---
@@ -87,6 +89,7 @@ Migration applied to development database:
 ### `src/module/restaurant-catalog/restaurant/zones/zones.service.ts`
 
 **Changes:**
+
 - Injected `GeoService`
 - Added `estimateDelivery(restaurantId, customerCoords)`:
   1. Loads restaurant → checks `latitude`/`longitude` not null → 422 if missing
@@ -103,6 +106,7 @@ Migration applied to development database:
 ### `src/module/restaurant-catalog/restaurant/zones/zones.controller.ts`
 
 **Changes:**
+
 - Added `GET delivery-estimate` endpoint **before** `GET :id` (required — NestJS route registration order; `ParseUUIDPipe` would reject the literal string "delivery-estimate" with 400 if `:id` came first)
 - `@AllowAnonymous()` on the new endpoint (public — no auth required to estimate delivery)
 - Uses `@Query() query: DeliveryEstimateQueryDto` (class-transformer coerces string params to number via `@Type(() => Number)`)
@@ -113,6 +117,7 @@ Migration applied to development database:
 ### `src/module/restaurant-catalog/search/search.repository.ts`
 
 **Changes:**
+
 - Replaced Euclidean degree-difference approximation (`POWER(...) <= radiusKm / 111`) with Haversine SQL:
 
 ```sql
@@ -130,6 +135,7 @@ Migration applied to development database:
 ### `src/module/ordering/order/commands/place-order.handler.ts`
 
 **Changes:**
+
 - Added imports: `GeoService` from `@/lib/geo/geo.service`, `deliveryZones` from `@/drizzle/schema`, `and` from `drizzle-orm`
 - Added local `interface DeliveryZoneInfo { radiusKm: number }` — D3-B compliant (no cross-BC type import)
 - Injected `GeoService` in constructor
@@ -147,6 +153,7 @@ Migration applied to development database:
 ### `src/app.module.ts`
 
 **Changes:**
+
 - Added `import { GeoModule } from './lib/geo/geo.module'`
 - Added `GeoModule` to the `imports` array (declared before `RestaurantCatalogModule`)
 
@@ -158,13 +165,14 @@ All issues below have been **fixed**. The original description is preserved for 
 
 ### 1. ~~🟠~~ ✅ FIXED — `avgSpeedKmh` default value inconsistency
 
-| Location | Value | Proposal |
-|---|---|---|
-| `restaurant.schema.ts` — Drizzle `.default()` | `30` | `30` ✅ |
-| `0005_...sql` migration — `DEFAULT` | ~~`20`~~ → **`30`** | `30` ✅ |
-| `zones.repository.ts` — `create()` fallback `??` | ~~`?? 20`~~ → **`?? 30`** | `30` ✅ |
+| Location                                         | Value                     | Proposal |
+| ------------------------------------------------ | ------------------------- | -------- |
+| `restaurant.schema.ts` — Drizzle `.default()`    | `30`                      | `30` ✅  |
+| `0005_...sql` migration — `DEFAULT`              | ~~`20`~~ → **`30`**       | `30` ✅  |
+| `zones.repository.ts` — `create()` fallback `??` | ~~`?? 20`~~ → **`?? 30`** | `30` ✅  |
 
 **Fix applied:**
+
 - `zones.repository.ts`: `avgSpeedKmh ?? 20` → `avgSpeedKmh ?? 30`
 - `0005_delivery_zones_dynamic_pricing.sql`: `DEFAULT 20` → `DEFAULT 30`
 
@@ -219,9 +227,11 @@ The leftover opening `/**` block from the old `assertDeliveryRadiusIfApplicable`
 ### 8. ~~🟢~~ ✅ FIXED — Missing `@ApiBadRequestResponse` on delivery-estimate endpoint
 
 `zones.controller.ts` `estimateDelivery` now includes:
+
 ```typescript
 @ApiBadRequestResponse({ description: 'Invalid or missing lat/lon query parameters' })
 ```
+
 `ApiBadRequestResponse` also added to the Swagger import block.
 
 ---
@@ -237,6 +247,7 @@ The leftover opening `/**` block from the old `assertDeliveryRadiusIfApplicable`
 The following §12 items were out of scope for this implementation phase:
 
 ### Tests (all pending)
+
 - [ ] Unit tests for `GeoService.calculateDistanceKm()` (known coordinate pairs)
 - [ ] Unit tests for `ZonesService.estimateDelivery()` (happy path, outside zones, missing coords)
 - [ ] E2E test for `GET /restaurants/:id/delivery-zones/delivery-estimate`
@@ -244,6 +255,7 @@ The following §12 items were out of scope for this implementation phase:
 - [ ] Update existing zone CRUD e2e tests to use new DTO fields
 
 ### Downstream / ACL (deferred)
+
 - [ ] `RestaurantUpdatedEvent` / `RestaurantSnapshotProjector` — propagating zone data to ACL (optional, lower priority)
 - [ ] `docs/Những yêu cầu cho các BC/restaurant-catalog.md` — remove "UPSTREAM MISSING" notes
 
@@ -251,11 +263,11 @@ The following §12 items were out of scope for this implementation phase:
 
 ## Architecture Decisions Made (or Confirmed)
 
-| Decision | Rationale |
-|---|---|
-| `GeoModule` is `@Global()` | Avoids explicit import in every module that needs geo math (ZonesModule, PlaceOrderHandler's module) |
-| `PlaceOrderHandler` queries `delivery_zones` directly | Pragmatic for Phase 4 — same database, avoids ACL complexity. Zone data is not yet projected into `ordering_restaurant_snapshots`. Tracked as future improvement. |
-| Local `DeliveryZoneInfo` interface in `PlaceOrderHandler` | Satisfies D3-B (no cross-BC type imports) — only `radiusKm` is needed for the check |
-| `@Get('delivery-estimate')` before `@Get(':id')` | NestJS registers routes in declaration order; `ParseUUIDPipe` on `:id` would 400 on the literal string "delivery-estimate" |
-| `@Type(() => Number)` on `DeliveryEstimateQueryDto` | HTTP query params are always strings; class-transformer must coerce before class-validator runs numeric checks |
+| Decision                                                    | Rationale                                                                                                                                                                                |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GeoModule` is `@Global()`                                  | Avoids explicit import in every module that needs geo math (ZonesModule, PlaceOrderHandler's module)                                                                                     |
+| `PlaceOrderHandler` queries `delivery_zones` directly       | Pragmatic for Phase 4 — same database, avoids ACL complexity. Zone data is not yet projected into `ordering_restaurant_snapshots`. Tracked as future improvement.                        |
+| Local `DeliveryZoneInfo` interface in `PlaceOrderHandler`   | Satisfies D3-B (no cross-BC type imports) — only `radiusKm` is needed for the check                                                                                                      |
+| `@Get('delivery-estimate')` before `@Get(':id')`            | NestJS registers routes in declaration order; `ParseUUIDPipe` on `:id` would 400 on the literal string "delivery-estimate"                                                               |
+| `@Type(() => Number)` on `DeliveryEstimateQueryDto`         | HTTP query params are always strings; class-transformer must coerce before class-validator runs numeric checks                                                                           |
 | `zoneFeeColumn` (not `numeric()`) for `baseFee`/`perKmRate` | Drizzle's built-in `numeric()` returns `string` from the node-postgres driver; `customType` with `fromDriver: parseFloat` ensures `DeliveryZone.baseFee` is typed and valued as `number` |

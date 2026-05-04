@@ -168,7 +168,8 @@ export class CartController {
   })
   @ApiNotFoundResponse({ description: 'Cart or cart item not found' })
   @ApiBadRequestResponse({
-    description: 'Modifier validation failure (invalid groupId/optionId, min/max violation, unavailable option)',
+    description:
+      'Modifier validation failure (invalid groupId/optionId, min/max violation, unavailable option)',
   })
   async updateItemModifiers(
     @Session() session: UserSession,

@@ -175,11 +175,31 @@ async function seedSearchTestData(ownerId: string): Promise<void> {
   ]);
 
   await db.insert(menuCategories).values([
-    { id: S.catR1Noodles, restaurantId: S.R1, name: 'Noodles', displayOrder: 1 },
+    {
+      id: S.catR1Noodles,
+      restaurantId: S.R1,
+      name: 'Noodles',
+      displayOrder: 1,
+    },
     { id: S.catR1Drinks, restaurantId: S.R1, name: 'Drinks', displayOrder: 2 },
-    { id: S.catR2Mains, restaurantId: S.R2, name: 'Main Dishes', displayOrder: 1 },
-    { id: S.catR3Rice, restaurantId: S.R3, name: 'Rice Dishes', displayOrder: 1 },
-    { id: S.catR3Sandwiches, restaurantId: S.R3, name: 'Sandwiches', displayOrder: 2 },
+    {
+      id: S.catR2Mains,
+      restaurantId: S.R2,
+      name: 'Main Dishes',
+      displayOrder: 1,
+    },
+    {
+      id: S.catR3Rice,
+      restaurantId: S.R3,
+      name: 'Rice Dishes',
+      displayOrder: 1,
+    },
+    {
+      id: S.catR3Sandwiches,
+      restaurantId: S.R3,
+      name: 'Sandwiches',
+      displayOrder: 2,
+    },
     { id: S.catR3Drinks, restaurantId: S.R3, name: 'Drinks', displayOrder: 3 },
     { id: S.catR4Bbq, restaurantId: S.R4, name: 'BBQ', displayOrder: 1 },
     { id: S.catR4Stews, restaurantId: S.R4, name: 'Stews', displayOrder: 2 },
@@ -382,7 +402,9 @@ describe('Search API (E2E)', () => {
       const res = await http.get('/api/search?q=pho').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1); // "Phở Bắc" name matches
       expect(restaurantIds).not.toContain(S.R2); // closed
 
@@ -395,7 +417,9 @@ describe('Search API (E2E)', () => {
       const res = await http.get('/api/search?q=Pho').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
     });
 
@@ -403,7 +427,9 @@ describe('Search API (E2E)', () => {
       const res = await http.get('/api/search?q=PHO').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
     });
 
@@ -413,7 +439,9 @@ describe('Search API (E2E)', () => {
       expect(res.status).toBe(200);
       // R3 (Cơm Tấm Sài Gòn) carries Bánh Mì Thịt Nướng → appears in restaurants
       // R5 (Sushi Hana) carries Bánh Mì Cá Hồi → appears in restaurants
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R3);
       expect(restaurantIds).toContain(S.R5);
 
@@ -436,7 +464,9 @@ describe('Search API (E2E)', () => {
       const res = await http.get('/api/search?q=com+tam').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R3); // "Cơm Tấm Sài Gòn" name match
 
       const itemIds = (res.body.items as { id: string }[]).map((i) => i.id);
@@ -463,7 +493,9 @@ describe('Search API (E2E)', () => {
       const res = await http.get('/api/search?q=Seoul').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R4);
     });
 
@@ -471,7 +503,9 @@ describe('Search API (E2E)', () => {
       const res = await http.get('/api/search?q=seoul').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R4);
     });
 
@@ -479,7 +513,9 @@ describe('Search API (E2E)', () => {
       const res = await http.get('/api/search?q=bac').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
     });
 
@@ -487,7 +523,9 @@ describe('Search API (E2E)', () => {
       const res = await http.get('/api/search?q=Seoul').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R4);
       // Items section only shows items whose own name/tags/category matches q.
       // No item at Seoul BBQ is named "Seoul", so items is empty.
@@ -510,7 +548,9 @@ describe('Search API (E2E)', () => {
       const res = await http.get('/api/search?q=kimchi').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R4);
 
       const itemIds = (res.body.items as { id: string }[]).map((i) => i.id);
@@ -547,7 +587,9 @@ describe('Search API (E2E)', () => {
 
       expect(res.status).toBe(200);
       // R5 (Sushi Hana) description mentions "sashimi" → restaurant section shows it.
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R5);
       // The Sashimi item is out_of_stock → never returned in items section.
       expect(res.body.items).toEqual([]);
@@ -561,7 +603,9 @@ describe('Search API (E2E)', () => {
       const res = await http.get('/api/search?tag=spicy').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
       expect(restaurantIds).toContain(S.R4);
       expect(restaurantIds).not.toContain(S.R2); // closed
@@ -574,10 +618,14 @@ describe('Search API (E2E)', () => {
     });
 
     it('T-02: tag=vegetarian returns R3, item: Cơm Chay', async () => {
-      const res = await http.get('/api/search?tag=vegetarian').set(noAuthHeaders());
+      const res = await http
+        .get('/api/search?tag=vegetarian')
+        .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R3);
       expect(restaurantIds).not.toContain(S.R1);
       expect(restaurantIds).not.toContain(S.R4);
@@ -615,7 +663,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R4);
       expect(restaurantIds).not.toContain(S.R1);
       expect(restaurantIds).not.toContain(S.R3);
@@ -629,7 +679,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R4);
     });
 
@@ -639,7 +691,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
       expect(restaurantIds).toContain(S.R3);
       expect(restaurantIds).not.toContain(S.R2); // closed
@@ -652,7 +706,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R5);
       expect(res.body.total.restaurants).toBe(1);
     });
@@ -663,7 +719,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
       expect(restaurantIds).toContain(S.R3);
     });
@@ -688,7 +746,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
       expect(restaurantIds).not.toContain(S.R3);
       expect(restaurantIds).not.toContain(S.R4);
@@ -700,7 +760,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
       expect(restaurantIds).toContain(S.R3);
       expect(restaurantIds).toContain(S.R4);
@@ -714,7 +776,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
     });
 
@@ -735,9 +799,9 @@ describe('Search API (E2E)', () => {
       expect(res.status).toBe(200);
       // category is a food-level signal — items in that category are returned
       const itemIds = (res.body.items as { id: string }[]).map((i) => i.id);
-      expect(itemIds).toContain(S.r1Pho1);     // Phở Bò in Noodles category
-      expect(itemIds).toContain(S.r1Pho2);     // Phở Gà in Noodles category
-      expect(itemIds).toContain(S.r1BunBo);    // Bún Bò Huế in Noodles category
+      expect(itemIds).toContain(S.r1Pho1); // Phở Bò in Noodles category
+      expect(itemIds).toContain(S.r1Pho2); // Phở Gà in Noodles category
+      expect(itemIds).toContain(S.r1BunBo); // Bún Bò Huế in Noodles category
       expect(res.body.total.items).toBeGreaterThan(0);
     });
   });
@@ -751,7 +815,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
       expect(restaurantIds).not.toContain(S.R4); // Korean excluded by cuisineType
 
@@ -776,7 +842,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R4);
       expect(restaurantIds).not.toContain(S.R1); // Vietnamese excluded
 
@@ -791,7 +859,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R3);
       expect(restaurantIds).not.toContain(S.R5); // Japanese excluded by cuisineType filter
 
@@ -814,7 +884,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
       expect(restaurantIds).toContain(S.R3);
       expect(restaurantIds).not.toContain(S.R4); // ~5.2 km — outside
@@ -828,7 +900,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
       expect(restaurantIds).toContain(S.R3);
       expect(restaurantIds).toContain(S.R4);
@@ -842,7 +916,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
 
       const itemIds = (res.body.items as { id: string }[]).map((i) => i.id);
@@ -856,7 +932,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurantIds = (res.body.restaurants as { id: string }[]).map((r) => r.id);
+      const restaurantIds = (res.body.restaurants as { id: string }[]).map(
+        (r) => r.id,
+      );
       expect(restaurantIds).toContain(S.R1);
       expect(restaurantIds).not.toContain(S.R4); // outside 3km
 
@@ -871,7 +949,10 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurants = res.body.restaurants as { id: string; distanceKm: unknown }[];
+      const restaurants = res.body.restaurants as {
+        id: string;
+        distanceKm: unknown;
+      }[];
       expect(restaurants.length).toBeGreaterThan(0);
       for (const r of restaurants) {
         expect(typeof r.distanceKm).toBe('number');
@@ -905,9 +986,9 @@ describe('Search API (E2E)', () => {
         .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const distances = (
-        res.body.restaurants as { distanceKm: number }[]
-      ).map((r) => r.distanceKm);
+      const distances = (res.body.restaurants as { distanceKm: number }[]).map(
+        (r) => r.distanceKm,
+      );
       for (let i = 1; i < distances.length; i++) {
         expect(distances[i]).toBeGreaterThanOrEqual(distances[i - 1]!);
       }
@@ -918,17 +999,13 @@ describe('Search API (E2E)', () => {
 
   describe('§10 GET /api/search — geo validation errors', () => {
     it('GV-01: lat without lon → 400 Bad Request', async () => {
-      const res = await http
-        .get('/api/search?lat=10.77')
-        .set(noAuthHeaders());
+      const res = await http.get('/api/search?lat=10.77').set(noAuthHeaders());
 
       expect(res.status).toBe(400);
     });
 
     it('GV-02: lon without lat → 400 Bad Request', async () => {
-      const res = await http
-        .get('/api/search?lon=106.67')
-        .set(noAuthHeaders());
+      const res = await http.get('/api/search?lon=106.67').set(noAuthHeaders());
 
       expect(res.status).toBe(400);
     });
@@ -967,9 +1044,7 @@ describe('Search API (E2E)', () => {
 
     it('P-02: limit=200 is silently capped to 100', async () => {
       // Seed only has 4 open restaurants; response will have ≤4 but limit behaviour is still verified
-      const res = await http
-        .get('/api/search?limit=200')
-        .set(noAuthHeaders());
+      const res = await http.get('/api/search?limit=200').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
       // The important assertion: no server error; response shape is intact
@@ -993,7 +1068,9 @@ describe('Search API (E2E)', () => {
 
       expect(res.status).toBe(200);
       // We have 4 restaurants — all returned, well within default limit of 20
-      expect((res.body.restaurants as unknown[]).length).toBeLessThanOrEqual(20);
+      expect((res.body.restaurants as unknown[]).length).toBeLessThanOrEqual(
+        20,
+      );
     });
 
     it('P-05: offset=0 and offset=1 return different pages for q=pho items', async () => {
@@ -1062,7 +1139,9 @@ describe('Search API (E2E)', () => {
       const res = await http.get('/api/search?q=pho').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      for (const item of res.body.items as { restaurant: Record<string, unknown> }[]) {
+      for (const item of res.body.items as {
+        restaurant: Record<string, unknown>;
+      }[]) {
         expect(item.restaurant).not.toHaveProperty('ownerId');
         expect(item.restaurant).not.toHaveProperty('isApproved');
       }
@@ -1177,7 +1256,10 @@ describe('Search API (E2E)', () => {
       const res = await http.get('/api/search?q=pho').set(noAuthHeaders());
 
       expect(res.status).toBe(200);
-      const restaurants = res.body.restaurants as { id: string; score?: number }[];
+      const restaurants = res.body.restaurants as {
+        id: string;
+        score?: number;
+      }[];
       expect(restaurants.length).toBeGreaterThan(0);
       // R1 must be first (highest score — name contains "Phở")
       expect(restaurants[0]!.id).toBe(S.R1);
@@ -1250,7 +1332,9 @@ describe('Search API (E2E)', () => {
     });
 
     it('RK-07: total.items is correct even when category filter is applied', async () => {
-      const res = await http.get('/api/search?category=Stews').set(noAuthHeaders());
+      const res = await http
+        .get('/api/search?category=Stews')
+        .set(noAuthHeaders());
 
       expect(res.status).toBe(200);
       // Only Kimchi Jjigae is in the Stews category (r4Kimchi in catR4Stews)

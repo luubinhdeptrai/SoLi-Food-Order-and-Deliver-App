@@ -216,7 +216,9 @@ export class ZonesService {
     const travelTimeMinutes = (distanceKm / safeSpeed) * 60;
     // Ceiling on the total (same formula as PlaceOrderHandler.estimateDeliveryMinutes)
     // so the preview matches the value stored on the order at checkout.
-    return Math.ceil(zone.prepTimeMinutes + travelTimeMinutes + zone.bufferMinutes);
+    return Math.ceil(
+      zone.prepTimeMinutes + travelTimeMinutes + zone.bufferMinutes,
+    );
   }
 
   private buildEstimateResponse(

@@ -8,11 +8,11 @@
 
 ## Summary of Fixes
 
-| # | Root Cause | File Changed | Tests Fixed |
-|---|-----------|-------------|-------------|
-| 1 | `unaccent` PostgreSQL extension not installed in test DB | `test/setup/db-setup.ts` | All 41 HTTP-500 failures |
-| 2 | `findItems()` did not filter items by `cuisineType` | `src/module/restaurant-catalog/search/search.repository.ts` | CM-02, CM-03, CM-04 |
-| 3 | SEC-01 assertion was logically incorrect | `test/e2e/search.e2e-spec.ts` | SEC-01 |
+| #   | Root Cause                                               | File Changed                                                | Tests Fixed              |
+| --- | -------------------------------------------------------- | ----------------------------------------------------------- | ------------------------ |
+| 1   | `unaccent` PostgreSQL extension not installed in test DB | `test/setup/db-setup.ts`                                    | All 41 HTTP-500 failures |
+| 2   | `findItems()` did not filter items by `cuisineType`      | `src/module/restaurant-catalog/search/search.repository.ts` | CM-02, CM-03, CM-04      |
+| 3   | SEC-01 assertion was logically incorrect                 | `test/e2e/search.e2e-spec.ts`                               | SEC-01                   |
 
 ---
 
@@ -34,11 +34,13 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 ```
 
 However, the database was bootstrapped via `pnpm db:push` (which pushes the schema directly without running migration files). As a result:
+
 - All tables and columns existed correctly
 - But migration `0007` was never executed
 - So the `unaccent` function did not exist in PostgreSQL
 
 Tests that passed without this fix only used filters that do **not** call `unaccent()`:
+
 - Browse mode (no parameters)
 - `tag=` filter (uses `= ANY(mi.tags)`)
 - Geo-only filters (use coordinate arithmetic)
@@ -46,6 +48,7 @@ Tests that passed without this fix only used filters that do **not** call `unacc
 ### Fix Applied
 
 **`test/setup/db-setup.ts`**:
+
 - Added `sql` to the `drizzle-orm` import
 - Added a new exported function `ensureExtensions()`:
 
@@ -61,12 +64,14 @@ export async function ensureExtensions(): Promise<void> {
 - Must be called in `beforeAll` of any test suite that exercises text-based search filters
 
 **`test/e2e/search.e2e-spec.ts`**:
+
 - Added `ensureExtensions` to the import from `../setup/db-setup`
 - Called `await ensureExtensions()` at the top of `beforeAll`, **before** `resetDb()` and data seeding
 
 ### Why This is the Correct Approach
 
 Running `pnpm db:migrate` against the database would also fix the issue, but the code-level fix in `db-setup.ts` is more robust because:
+
 1. It works in any CI environment where migrations haven't been applied
 2. Tests are self-contained — no external setup step required
 3. `CREATE EXTENSION IF NOT EXISTS` is idempotent, so it never fails on a fully-migrated DB
@@ -88,6 +93,7 @@ When `cuisineType` was combined with a food filter (`q`, `tag`, or `item`), the 
 ### Cause
 
 In `SearchRepository.findItems()`, the conditions array only filtered by:
+
 - `menuItems.status = 'available'`
 - `restaurants.isApproved = true`
 - `restaurants.isOpen = true`
@@ -131,6 +137,7 @@ q='; DROP TABLE restaurants; --
 The **correct** behavior of a parameterized query is to treat this as a **literal text value** — the search looks for restaurants/items whose name literally contains `'; DROP TABLE restaurants; --`. No records match, so `total.restaurants = 0`.
 
 The original assertion was:
+
 ```typescript
 expect(res.body.total.restaurants).toBeGreaterThan(0); // WRONG
 ```
@@ -159,6 +166,7 @@ expect(cleanRes.body.total.restaurants).toBeGreaterThan(0);
 ```
 
 **Why this is correct**:
+
 1. `injRes.status === 200` — no 500 crash, the query ran safely
 2. `injRes.total.restaurants === 0` — the injection string was treated as literal text (parameterization confirmed)
 3. `cleanRes.total.restaurants > 0` — the table was NOT dropped (DROP TABLE injection did not execute)
@@ -167,11 +175,11 @@ expect(cleanRes.body.total.restaurants).toBeGreaterThan(0);
 
 ## Files Changed
 
-| File | Change Type | Description |
-|------|------------|-------------|
-| `test/setup/db-setup.ts` | Added function | `ensureExtensions()` — installs `unaccent` + `pg_trgm` extensions idempotently |
-| `test/e2e/search.e2e-spec.ts` | Import + `beforeAll` | Added `ensureExtensions` import; called in `beforeAll`; fixed SEC-01 assertion |
-| `src/module/restaurant-catalog/search/search.repository.ts` | Bug fix | Added `cuisineType` condition to `findItems()` |
+| File                                                        | Change Type          | Description                                                                    |
+| ----------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------ |
+| `test/setup/db-setup.ts`                                    | Added function       | `ensureExtensions()` — installs `unaccent` + `pg_trgm` extensions idempotently |
+| `test/e2e/search.e2e-spec.ts`                               | Import + `beforeAll` | Added `ensureExtensions` import; called in `beforeAll`; fixed SEC-01 assertion |
+| `src/module/restaurant-catalog/search/search.repository.ts` | Bug fix              | Added `cuisineType` condition to `findItems()`                                 |
 
 ---
 
@@ -184,6 +192,7 @@ Time:        ~8 s
 ```
 
 All 14 test sections pass:
+
 - §1 Browse mode (B-01 to B-03)
 - §2 Full-text q= (Q-01 to Q-07)
 - §3 Restaurant name filter (N-01 to N-05)

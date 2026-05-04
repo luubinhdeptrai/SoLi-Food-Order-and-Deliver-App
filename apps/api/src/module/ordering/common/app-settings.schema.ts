@@ -32,7 +32,10 @@ export const appSettings = pgTable('app_settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
   description: text('description'),
-  updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdateFn(() => new Date()),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .notNull()
+    .$onUpdateFn(() => new Date()),
 });
 
 export type AppSetting = typeof appSettings.$inferSelect;
@@ -48,4 +51,5 @@ export const APP_SETTING_KEYS = {
   CART_ABANDONED_TTL_SECONDS: 'CART_ABANDONED_TTL_SECONDS',
 } as const;
 
-export type AppSettingKey = (typeof APP_SETTING_KEYS)[keyof typeof APP_SETTING_KEYS];
+export type AppSettingKey =
+  (typeof APP_SETTING_KEYS)[keyof typeof APP_SETTING_KEYS];

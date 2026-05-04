@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ModifiersController } from './modifiers.controller';
 import { ModifiersService } from './modifiers.service';
-import { ModifierGroupRepository, ModifierOptionRepository } from './modifiers.repository';
+import {
+  ModifierGroupRepository,
+  ModifierOptionRepository,
+} from './modifiers.repository';
 import { DatabaseModule } from '@/drizzle/drizzle.module';
 import { MenuModule } from '../menu.module';
 import { RestaurantModule } from '@/module/restaurant-catalog/restaurant/restaurant.module';
@@ -16,6 +19,10 @@ import { RestaurantModule } from '@/module/restaurant-catalog/restaurant/restaur
 @Module({
   imports: [DatabaseModule, MenuModule, RestaurantModule],
   controllers: [ModifiersController],
-  providers: [ModifiersService, ModifierGroupRepository, ModifierOptionRepository],
+  providers: [
+    ModifiersService,
+    ModifierGroupRepository,
+    ModifierOptionRepository,
+  ],
 })
 export class ModifiersModule {}

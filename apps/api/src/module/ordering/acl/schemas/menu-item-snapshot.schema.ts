@@ -1,4 +1,12 @@
-import { pgTable, pgEnum, uuid, text, timestamp, customType, jsonb } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  pgEnum,
+  uuid,
+  text,
+  timestamp,
+  customType,
+  jsonb,
+} from 'drizzle-orm/pg-core';
 
 // ---------------------------------------------------------------------------
 // Monetary column helper (M-1 fix — mirrors order.schema.ts)
@@ -66,10 +74,17 @@ export const orderingMenuItemSnapshots = pgTable(
     price: moneyColumn('price').notNull(),
     status: orderingMenuItemStatusEnum('status').notNull().default('available'),
     /** Full modifier group+option tree. Empty array when item has no modifiers. */
-    modifiers: jsonb('modifiers').$type<import('@/shared/events/menu-item-updated.event').MenuItemModifierSnapshot[]>().notNull().default([]),
+    modifiers: jsonb('modifiers')
+      .$type<
+        import('@/shared/events/menu-item-updated.event').MenuItemModifierSnapshot[]
+      >()
+      .notNull()
+      .default([]),
     lastSyncedAt: timestamp('last_synced_at').defaultNow().notNull(),
   },
 );
 
-export type OrderingMenuItemSnapshot = typeof orderingMenuItemSnapshots.$inferSelect;
-export type NewOrderingMenuItemSnapshot = typeof orderingMenuItemSnapshots.$inferInsert;
+export type OrderingMenuItemSnapshot =
+  typeof orderingMenuItemSnapshots.$inferSelect;
+export type NewOrderingMenuItemSnapshot =
+  typeof orderingMenuItemSnapshots.$inferInsert;

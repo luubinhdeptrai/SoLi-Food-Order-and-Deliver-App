@@ -1,5 +1,5 @@
-import { RegisterEditorial } from "@/features/auth/components/register/RegisterEditorial";
-import { RegisterForm } from "@/features/auth/components/register/RegisterForm";
+import { RegisterEditorial } from '@/features/auth/components/register/RegisterEditorial';
+import { RegisterForm } from '@/features/auth/components/register/RegisterForm';
 
 export function RegisterPage() {
   return (

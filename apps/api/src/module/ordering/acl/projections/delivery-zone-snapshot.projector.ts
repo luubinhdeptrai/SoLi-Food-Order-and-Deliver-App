@@ -21,9 +21,7 @@ import { DeliveryZoneSnapshotRepository } from '../repositories/delivery-zone-sn
  */
 @Injectable()
 @EventsHandler(DeliveryZoneSnapshotUpdatedEvent)
-export class DeliveryZoneSnapshotProjector
-  implements IEventHandler<DeliveryZoneSnapshotUpdatedEvent>
-{
+export class DeliveryZoneSnapshotProjector implements IEventHandler<DeliveryZoneSnapshotUpdatedEvent> {
   private readonly logger = new Logger(DeliveryZoneSnapshotProjector.name);
 
   constructor(

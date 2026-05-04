@@ -1,13 +1,13 @@
-import { LoginForm } from "@/features/auth/components/login/LoginForm";
-import { LoginAlternativeMethods } from "@/features/auth/components/login/LoginAlternativeMethods";
-import { LoginFooter } from "@/features/auth/components/login/LoginFooter";
+import { LoginForm } from '@/features/auth/components/login/LoginForm';
+import { LoginAlternativeMethods } from '@/features/auth/components/login/LoginAlternativeMethods';
+import { LoginFooter } from '@/features/auth/components/login/LoginFooter';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+} from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 export function LoginPage() {
   return (

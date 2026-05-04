@@ -23,9 +23,7 @@ import { OrderRepository } from '../repositories/order.repository';
  */
 @Injectable()
 @EventsHandler(PaymentConfirmedEvent)
-export class PaymentConfirmedEventHandler
-  implements IEventHandler<PaymentConfirmedEvent>
-{
+export class PaymentConfirmedEventHandler implements IEventHandler<PaymentConfirmedEvent> {
   private readonly logger = new Logger(PaymentConfirmedEventHandler.name);
 
   constructor(
@@ -71,7 +69,7 @@ export class PaymentConfirmedEventHandler
         new TransitionOrderCommand(
           orderId,
           'paid',
-          null,       // system actor — no user ID
+          null, // system actor — no user ID
           'system',
           'PaymentConfirmed',
         ),

@@ -15,10 +15,7 @@
 
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import {
-  createTestApp,
-  teardownTestApp,
-} from '../setup/app-factory';
+import { createTestApp, teardownTestApp } from '../setup/app-factory';
 import {
   resetDb,
   seedBaseRestaurant,
@@ -31,7 +28,11 @@ import {
   otherUserHeaders,
   noAuthHeaders,
 } from '../helpers/auth';
-import { getSnapshot, getRestaurantSnapshot, getDeliveryZoneSnapshot } from '../helpers/db';
+import {
+  getSnapshot,
+  getRestaurantSnapshot,
+  getDeliveryZoneSnapshot,
+} from '../helpers/db';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -39,8 +40,8 @@ const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 // ─── Unknown IDs (no snapshot exists) ────────────────────────────────────────
 
-const UNKNOWN_ITEM_ID   = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-const UNKNOWN_REST_ID   = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const UNKNOWN_ITEM_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const UNKNOWN_REST_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 // ─── Main suite ──────────────────────────────────────────────────────────────
 
@@ -77,7 +78,11 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
       const itemRes = await http
         .post('/api/menu-items')
         .set(ownerHeaders())
-        .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Snapshot Pizza', price: 12.0 });
+        .send({
+          restaurantId: TEST_RESTAURANT_ID,
+          name: 'Snapshot Pizza',
+          price: 12.0,
+        });
       itemId = itemRes.body.id as string;
 
       // Add a modifier group + option so we can verify modifier snapshotting
@@ -128,9 +133,9 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
 
     it('A-04 modifier option is stored inside the group', async () => {
       const row = await getSnapshot(itemId);
-      const group = (row!.modifiers as { groupId: string; options: { optionId: string }[] }[]).find(
-        (g) => g.groupId === groupId,
-      );
+      const group = (
+        row!.modifiers as { groupId: string; options: { optionId: string }[] }[]
+      ).find((g) => g.groupId === groupId);
       const opt = group?.options.find((o) => o.optionId === optionId);
       expect(opt).toBeDefined();
     });
@@ -147,18 +152,24 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
       const after = await getSnapshot(itemId);
       expect(after!.name).toBe('Snapshot Pizza XL');
       expect(after!.price).toBe(14.5);
-      expect(after!.lastSyncedAt.getTime()).toBeGreaterThanOrEqual(before!.lastSyncedAt.getTime());
+      expect(after!.lastSyncedAt.getTime()).toBeGreaterThanOrEqual(
+        before!.lastSyncedAt.getTime(),
+      );
     });
 
     it('A-06 snapshot status becomes out_of_stock after sold-out toggle', async () => {
-      await http.patch(`/api/menu-items/${itemId}/sold-out`).set(ownerHeaders());
+      await http
+        .patch(`/api/menu-items/${itemId}/sold-out`)
+        .set(ownerHeaders());
       await delay(150);
 
       const row = await getSnapshot(itemId);
       expect(row!.status).toBe('out_of_stock');
 
       // Restore
-      await http.patch(`/api/menu-items/${itemId}/sold-out`).set(ownerHeaders());
+      await http
+        .patch(`/api/menu-items/${itemId}/sold-out`)
+        .set(ownerHeaders());
       await delay(150);
     });
 
@@ -214,10 +225,11 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
     let readItemId: string;
 
     beforeAll(async () => {
-      const res = await http
-        .post('/api/menu-items')
-        .set(ownerHeaders())
-        .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Read Test Item', price: 8.0 });
+      const res = await http.post('/api/menu-items').set(ownerHeaders()).send({
+        restaurantId: TEST_RESTAURANT_ID,
+        name: 'Read Test Item',
+        price: 8.0,
+      });
       readItemId = res.body.id as string;
       await delay(150);
     });
@@ -261,7 +273,9 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
 
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
-      const ids = (res.body as { menuItemId: string }[]).map((i) => i.menuItemId);
+      const ids = (res.body as { menuItemId: string }[]).map(
+        (i) => i.menuItemId,
+      );
       expect(ids).toContain(readItemId);
     });
 
@@ -272,7 +286,9 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.length).toBe(1);
-      expect((res.body as { menuItemId: string }[])[0].menuItemId).toBe(readItemId);
+      expect((res.body as { menuItemId: string }[])[0].menuItemId).toBe(
+        readItemId,
+      );
     });
 
     it('A-15 GET ?ids= with all-unknown IDs returns empty array', async () => {
@@ -360,10 +376,11 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
     });
 
     it('A-21 snapshot cuisineType is nullable — null when not provided', async () => {
-      const res = await http
-        .post('/api/restaurants')
-        .set(ownerHeaders())
-        .send({ name: 'No Cuisine Cafe', address: '1 Plain Road', phone: '+84-90-000-0001' });
+      const res = await http.post('/api/restaurants').set(ownerHeaders()).send({
+        name: 'No Cuisine Cafe',
+        address: '1 Plain Road',
+        phone: '+84-90-000-0001',
+      });
 
       if (res.status !== 201) {
         // Owner may already have a restaurant — skip assertion
@@ -408,7 +425,11 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
       const res = await http
         .post('/api/restaurants')
         .set(otherUserHeaders())
-        .send({ name: 'Read Test Eatery', address: '5 Read Lane', phone: '+84-90-000-0003' });
+        .send({
+          name: 'Read Test Eatery',
+          address: '5 Read Lane',
+          phone: '+84-90-000-0003',
+        });
 
       // May fail if otherUser already owns a restaurant from §3
       // In that case, reuse the first restaurant created
@@ -419,7 +440,10 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
         const listRes = await http
           .get('/api/restaurants?limit=20')
           .set(noAuthHeaders());
-        const myRest = (listRes.body?.data ?? listRes.body ?? []) as { id: string; name: string }[];
+        const myRest = (listRes.body?.data ?? listRes.body ?? []) as {
+          id: string;
+          name: string;
+        }[];
         const found = myRest.find((r) => r.name.startsWith('ACL Test Bistro'));
         readRestId = found?.id ?? TEST_RESTAURANT_ID;
       }
@@ -461,7 +485,9 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
 
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
-      const ids = (res.body as { restaurantId: string }[]).map((r) => r.restaurantId);
+      const ids = (res.body as { restaurantId: string }[]).map(
+        (r) => r.restaurantId,
+      );
       expect(ids).toContain(readRestId);
     });
 
@@ -535,7 +561,9 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
 
     it('A-32 snapshot updates when zone is patched', async () => {
       await http
-        .patch(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`)
+        .patch(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`,
+        )
         .set(ownerHeaders())
         .send({ name: 'ACL Zone 1 — Updated', radiusKm: 8 });
       await delay(150);
@@ -547,7 +575,9 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
 
     it('A-33 snapshot isActive=false when zone is deactivated', async () => {
       await http
-        .patch(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`)
+        .patch(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`,
+        )
         .set(ownerHeaders())
         .send({ isActive: false });
       await delay(150);
@@ -557,7 +587,9 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
 
       // Re-activate
       await http
-        .patch(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`)
+        .patch(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`,
+        )
         .set(ownerHeaders())
         .send({ isActive: true });
       await delay(150);
@@ -568,7 +600,12 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
       const dispRes = await http
         .post(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones`)
         .set(ownerHeaders())
-        .send({ name: 'Disposable Zone', radiusKm: 2, baseFee: 5000, perKmRate: 1000 });
+        .send({
+          name: 'Disposable Zone',
+          radiusKm: 2,
+          baseFee: 5000,
+          perKmRate: 1000,
+        });
       const dispZoneId = dispRes.body.id as string;
       await delay(150);
 
@@ -579,7 +616,9 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
 
       // Delete the zone
       await http
-        .delete(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${dispZoneId}`)
+        .delete(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${dispZoneId}`,
+        )
         .set(ownerHeaders());
       await delay(150);
 
@@ -591,13 +630,17 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
 
     it('A-35 snapshot upsert is idempotent — repeated patches do not create duplicate rows', async () => {
       await http
-        .patch(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`)
+        .patch(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Idempotency Check v1' });
       await delay(150);
 
       await http
-        .patch(`/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`)
+        .patch(
+          `/api/restaurants/${TEST_RESTAURANT_ID}/delivery-zones/${zoneId}`,
+        )
         .set(ownerHeaders())
         .send({ name: 'Idempotency Check v2' });
       await delay(150);
@@ -615,10 +658,11 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
 
     beforeAll(async () => {
       // Create a fresh menu item with 'available' status
-      const res = await http
-        .post('/api/menu-items')
-        .set(ownerHeaders())
-        .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Gate Test Item', price: 9.0 });
+      const res = await http.post('/api/menu-items').set(ownerHeaders()).send({
+        restaurantId: TEST_RESTAURANT_ID,
+        name: 'Gate Test Item',
+        price: 9.0,
+      });
       availableItemId = res.body.id as string;
       await delay(150);
 
@@ -634,36 +678,46 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
     });
 
     it('A-36 item with status=available can be added to cart', async () => {
-      const res = await http.post('/api/carts/my/items').set(cartCustomerHeaders).send({
-        menuItemId: availableItemId,
-        restaurantId: TEST_RESTAURANT_ID,
-        restaurantName: 'Test Restaurant',
-        itemName: 'Gate Test Item',
-        unitPrice: 9.0,
-        quantity: 1,
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(cartCustomerHeaders)
+        .send({
+          menuItemId: availableItemId,
+          restaurantId: TEST_RESTAURANT_ID,
+          restaurantName: 'Test Restaurant',
+          itemName: 'Gate Test Item',
+          unitPrice: 9.0,
+          quantity: 1,
+        });
 
       expect(res.status).toBe(201);
     });
 
     it('A-37 item with status=out_of_stock is rejected (409) when adding to cart', async () => {
       // Mark item out of stock
-      await http.patch(`/api/menu-items/${availableItemId}/sold-out`).set(ownerHeaders());
+      await http
+        .patch(`/api/menu-items/${availableItemId}/sold-out`)
+        .set(ownerHeaders());
       await delay(150);
 
-      const res = await http.post('/api/carts/my/items').set(cartCustomerHeaders).send({
-        menuItemId: availableItemId,
-        restaurantId: TEST_RESTAURANT_ID,
-        restaurantName: 'Test Restaurant',
-        itemName: 'Gate Test Item',
-        unitPrice: 9.0,
-        quantity: 1,
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(cartCustomerHeaders)
+        .send({
+          menuItemId: availableItemId,
+          restaurantId: TEST_RESTAURANT_ID,
+          restaurantName: 'Test Restaurant',
+          itemName: 'Gate Test Item',
+          unitPrice: 9.0,
+          quantity: 1,
+        });
 
       expect(res.status).toBe(409);
 
       // Restore
-      await http.patch(`/api/menu-items/${availableItemId}/sold-out`).set(ownerHeaders());
+      await http
+        .patch(`/api/menu-items/${availableItemId}/sold-out`)
+        .set(ownerHeaders());
       await delay(150);
     });
 
@@ -675,14 +729,17 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
         .send({ status: 'unavailable' });
       await delay(150);
 
-      const res = await http.post('/api/carts/my/items').set(cartCustomerHeaders).send({
-        menuItemId: availableItemId,
-        restaurantId: TEST_RESTAURANT_ID,
-        restaurantName: 'Test Restaurant',
-        itemName: 'Gate Test Item',
-        unitPrice: 9.0,
-        quantity: 1,
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(cartCustomerHeaders)
+        .send({
+          menuItemId: availableItemId,
+          restaurantId: TEST_RESTAURANT_ID,
+          restaurantName: 'Test Restaurant',
+          itemName: 'Gate Test Item',
+          unitPrice: 9.0,
+          quantity: 1,
+        });
 
       expect(res.status).toBe(409);
 
@@ -696,22 +753,29 @@ describe('ACL Layer — Snapshot Projection & Read API (E2E)', () => {
 
     it('A-39 item becomes addable again once restored to available status', async () => {
       // Mark out of stock then restore
-      await http.patch(`/api/menu-items/${availableItemId}/sold-out`).set(ownerHeaders());
+      await http
+        .patch(`/api/menu-items/${availableItemId}/sold-out`)
+        .set(ownerHeaders());
       await delay(150);
-      await http.patch(`/api/menu-items/${availableItemId}/sold-out`).set(ownerHeaders()); // toggle back
+      await http
+        .patch(`/api/menu-items/${availableItemId}/sold-out`)
+        .set(ownerHeaders()); // toggle back
       await delay(150);
 
       const row = await getSnapshot(availableItemId);
       expect(row!.status).toBe('available');
 
-      const res = await http.post('/api/carts/my/items').set(cartCustomerHeaders).send({
-        menuItemId: availableItemId,
-        restaurantId: TEST_RESTAURANT_ID,
-        restaurantName: 'Test Restaurant',
-        itemName: 'Gate Test Item',
-        unitPrice: 9.0,
-        quantity: 1,
-      });
+      const res = await http
+        .post('/api/carts/my/items')
+        .set(cartCustomerHeaders)
+        .send({
+          menuItemId: availableItemId,
+          restaurantId: TEST_RESTAURANT_ID,
+          restaurantName: 'Test Restaurant',
+          itemName: 'Gate Test Item',
+          unitPrice: 9.0,
+          quantity: 1,
+        });
 
       expect(res.status).toBe(201);
     });

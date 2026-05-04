@@ -40,14 +40,15 @@ PlaceOrderHandler.step6  ← replaces direct deliveryZones query
 
 ### 2.1 Existing event + projector pattern
 
-| Component | MenuItems | Restaurants |
-|---|---|---|
-| Event | `MenuItemUpdatedEvent` | `RestaurantUpdatedEvent` |
-| Projector | `MenuItemProjector` | `RestaurantSnapshotProjector` |
-| Schema | `ordering_menu_item_snapshots` | `ordering_restaurant_snapshots` |
-| Repository | `MenuItemSnapshotRepository` | `RestaurantSnapshotRepository` |
+| Component  | MenuItems                      | Restaurants                     |
+| ---------- | ------------------------------ | ------------------------------- |
+| Event      | `MenuItemUpdatedEvent`         | `RestaurantUpdatedEvent`        |
+| Projector  | `MenuItemProjector`            | `RestaurantSnapshotProjector`   |
+| Schema     | `ordering_menu_item_snapshots` | `ordering_restaurant_snapshots` |
+| Repository | `MenuItemSnapshotRepository`   | `RestaurantSnapshotRepository`  |
 
 Both follow the same contract:
+
 - One event class in `src/shared/events/`
 - Projector in `ordering/acl/projections/` annotated with `@EventsHandler`
 - Schema in `ordering/acl/schemas/` — Drizzle pgTable, no FK to upstream tables
@@ -79,15 +80,17 @@ export const deliveryZones = pgTable('delivery_zones', {
 
 ```ts
 // place-order.handler.ts — Step 6 (VIOLATION)
-import { deliveryZones } from '@/drizzle/schema';  // ← imports restaurant-catalog table!
+import { deliveryZones } from '@/drizzle/schema'; // ← imports restaurant-catalog table!
 
 const activeZones = await this.db
   .select({ radiusKm: deliveryZones.radiusKm })
   .from(deliveryZones)
-  .where(and(
-    eq(deliveryZones.restaurantId, cart.restaurantId),
-    eq(deliveryZones.isActive, true),
-  ));
+  .where(
+    and(
+      eq(deliveryZones.restaurantId, cart.restaurantId),
+      eq(deliveryZones.isActive, true),
+    ),
+  );
 ```
 
 This is the primary motivation for this proposal.
@@ -139,6 +142,7 @@ src/drizzle/schema.ts                         ← MODIFIED (export new snapshot)
 **Rejected: Extend `RestaurantUpdatedEvent`.**
 
 Justification:
+
 - Zone CRUD is triggered independently of restaurant metadata changes. Bundling them
   would force every restaurant update to carry a full zone array — high payload overhead
   and a misleading contract.
@@ -169,11 +173,11 @@ export class DeliveryZoneSnapshotUpdatedEvent {
 
 ### 4.3 Emission triggers
 
-| Operation | `isDeleted` | `isActive` |
-|---|---|---|
-| `create` | `false` | `true` (default) |
-| `update` | `false` | value from DTO |
-| `remove` | `true` | preserved from DB |
+| Operation | `isDeleted` | `isActive`        |
+| --------- | ----------- | ----------------- |
+| `create`  | `false`     | `true` (default)  |
+| `update`  | `false`     | value from DTO    |
+| `remove`  | `true`      | preserved from DB |
 
 All three operations in `ZonesService` emit the event **after** the DB write succeeds.
 
@@ -269,8 +273,10 @@ source-of-truth but not in the snapshot. Operators can re-trigger a backfill (se
 Replace the direct cross-BC DB query with:
 
 ```ts
-const activeZones = await this.deliveryZoneSnapshotRepo
-  .findActiveByRestaurantId(cart.restaurantId);
+const activeZones =
+  await this.deliveryZoneSnapshotRepo.findActiveByRestaurantId(
+    cart.restaurantId,
+  );
 // Returns DeliveryZoneInfo[] (only radiusKm needed by assertDeliveryZoneIfApplicable)
 ```
 
@@ -328,12 +334,12 @@ are populated, matching current behaviour.
 
 ## 10. Edge Cases
 
-| Scenario | Handling |
-|---|---|
-| Restaurant deleted | `RestaurantUpdatedEvent` already sets `isApproved=false, isOpen=false` on delete, blocking checkout. Zone snapshots become orphans but are never queried because the restaurant snapshot blocks first. |
-| Zone hard-deleted | `remove()` emits `isDeleted=true` → projector sets `isDeleted=true, isActive=false` → excluded from active-zone queries. |
-| All zones removed | `findActiveByRestaurantId` returns `[]` → `assertDeliveryZoneIfApplicable` logs a warning and skips BR-3 (same as today). |
-| No zones ever created | Same as above — skips BR-3. |
-| Zone deactivated (`isActive=false`) | `update()` emits `isActive=false` → projector stores it → excluded from active-zone queries. |
-| Projector fails | Error logged + re-thrown. Snapshot row stale. Backfill restores consistency. |
-| Event replayed | `ON CONFLICT DO UPDATE` — idempotent. |
+| Scenario                            | Handling                                                                                                                                                                                               |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Restaurant deleted                  | `RestaurantUpdatedEvent` already sets `isApproved=false, isOpen=false` on delete, blocking checkout. Zone snapshots become orphans but are never queried because the restaurant snapshot blocks first. |
+| Zone hard-deleted                   | `remove()` emits `isDeleted=true` → projector sets `isDeleted=true, isActive=false` → excluded from active-zone queries.                                                                               |
+| All zones removed                   | `findActiveByRestaurantId` returns `[]` → `assertDeliveryZoneIfApplicable` logs a warning and skips BR-3 (same as today).                                                                              |
+| No zones ever created               | Same as above — skips BR-3.                                                                                                                                                                            |
+| Zone deactivated (`isActive=false`) | `update()` emits `isActive=false` → projector stores it → excluded from active-zone queries.                                                                                                           |
+| Projector fails                     | Error logged + re-thrown. Snapshot row stale. Backfill restores consistency.                                                                                                                           |
+| Event replayed                      | `ON CONFLICT DO UPDATE` — idempotent.                                                                                                                                                                  |

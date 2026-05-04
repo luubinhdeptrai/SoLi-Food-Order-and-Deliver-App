@@ -11,6 +11,7 @@
 The Ordering bounded context integrates with the Delivery context via **domain events only**.
 
 Two key touchpoints:
+
 1. **`OrderPlacedEvent`** (Phase 4) — carries pre-computed `distanceKm` and `estimatedDeliveryMinutes`
    so the Delivery BC can pre-warm shipper dispatch without redundant Haversine calculations.
 2. **`OrderReadyForPickupEvent`** (Phase 5) — triggers shipper assignment.
@@ -29,6 +30,7 @@ Two key touchpoints:
 `READY_FOR_PICKUP`, reducing latency when actual dispatch is triggered.
 
 **Relevant fields for Delivery BC:**
+
 ```typescript
 {
   orderId: string,
@@ -56,15 +58,17 @@ handle this gracefully (null-safe).
 **Consumed by:** Delivery context — dispatch a shipper.
 
 **Required payload:**
+
 ```typescript
 export class OrderReadyForPickupEvent {
   constructor(
-    public readonly orderId: string,           // UUID
-    public readonly restaurantId: string,      // UUID
-    public readonly restaurantName: string,    // snapshot
+    public readonly orderId: string, // UUID
+    public readonly restaurantId: string, // UUID
+    public readonly restaurantName: string, // snapshot
     public readonly restaurantAddress: string, // from ordering_restaurant_snapshots.address
-    public readonly customerId: string,        // UUID
-    public readonly deliveryAddress: {         // from orders.delivery_address
+    public readonly customerId: string, // UUID
+    public readonly deliveryAddress: {
+      // from orders.delivery_address
       street: string;
       district: string;
       city: string;
@@ -88,12 +92,12 @@ The Delivery context may optionally consume this to track order state changes
 
 **Relevant transitions for Delivery context:**
 
-| Transition                       | Meaning for Delivery                              |
-|----------------------------------|---------------------------------------------------|
-| `READY_FOR_PICKUP → PICKED_UP`   | Shipper has collected the order                  |
-| `PICKED_UP → DELIVERING`         | Shipper is en route                              |
-| `DELIVERING → DELIVERED`         | Order delivered — close delivery task            |
-| Any `→ CANCELLED`                | Cancel pending shipper assignment if exists      |
+| Transition                     | Meaning for Delivery                        |
+| ------------------------------ | ------------------------------------------- |
+| `READY_FOR_PICKUP → PICKED_UP` | Shipper has collected the order             |
+| `PICKED_UP → DELIVERING`       | Shipper is en route                         |
+| `DELIVERING → DELIVERED`       | Order delivered — close delivery task       |
+| Any `→ CANCELLED`              | Cancel pending shipper assignment if exists |
 
 ---
 
@@ -101,10 +105,10 @@ The Delivery context may optionally consume this to track order state changes
 
 These are not required for Phase 6 stubs but are needed for full Delivery integration:
 
-| Event                     | Trigger                             | Consumed By |
-|---------------------------|-------------------------------------|-------------|
-| `ShipperAssignedEvent`    | Shipper accepts delivery task       | Notification (push to customer/restaurant) |
-| `DeliveryLocationUpdated` | Shipper GPS update                  | Customer mobile app (real-time) |
+| Event                     | Trigger                       | Consumed By                                |
+| ------------------------- | ----------------------------- | ------------------------------------------ |
+| `ShipperAssignedEvent`    | Shipper accepts delivery task | Notification (push to customer/restaurant) |
+| `DeliveryLocationUpdated` | Shipper GPS update            | Customer mobile app (real-time)            |
 
 These events are out of scope for the Ordering context — they are internal to Delivery.
 
@@ -114,46 +118,46 @@ These events are out of scope for the Ordering context — they are internal to 
 
 ### 3.1 `ordering_restaurant_snapshots` — fields for Delivery context
 
-| Field       | Type   | Source               | Used In                             |
-|-------------|--------|----------------------|-------------------------------------|
-| `address`   | TEXT   | restaurants.address  | `OrderReadyForPickupEvent.restaurantAddress` |
-| `latitude`  | REAL   | restaurants.latitude | BR-3 Haversine + distanceKm computation |
-| `longitude` | REAL   | restaurants.longitude| BR-3 Haversine + distanceKm computation |
+| Field       | Type | Source                | Used In                                      |
+| ----------- | ---- | --------------------- | -------------------------------------------- |
+| `address`   | TEXT | restaurants.address   | `OrderReadyForPickupEvent.restaurantAddress` |
+| `latitude`  | REAL | restaurants.latitude  | BR-3 Haversine + distanceKm computation      |
+| `longitude` | REAL | restaurants.longitude | BR-3 Haversine + distanceKm computation      |
 
 > **Note:** `delivery_radius_km` has been removed from `ordering_restaurant_snapshots`.
 > Delivery radius enforcement is now handled via `ordering_delivery_zone_snapshots` (multi-zone).
 
 ### 3.2 `orders` — fields for Delivery context
 
-| Field                        | Type          | Purpose                                             |
-|------------------------------|---------------|-----------------------------------------------------|
-| `delivery_address`           | JSONB         | Delivery destination (street, district, city, lat, lon) |
+| Field                        | Type          | Purpose                                                   |
+| ---------------------------- | ------------- | --------------------------------------------------------- |
+| `delivery_address`           | JSONB         | Delivery destination (street, district, city, lat, lon)   |
 | `shipping_fee`               | NUMERIC(12,2) | [Phase 4] Fee agreed at checkout — used in shipper payout |
-| `estimated_delivery_minutes` | REAL          | [Phase 4] ETA computed at checkout — shown to customer |
+| `estimated_delivery_minutes` | REAL          | [Phase 4] ETA computed at checkout — shown to customer    |
 
 ### 3.3 `ordering_delivery_zone_snapshots` — zone data
 
 The `ordering_delivery_zone_snapshots` table stores all zone data needed for the
 Delivery BC to understand coverage areas. Fields of interest:
 
-| Field              | Type     | Purpose                                  |
-|--------------------|----------|------------------------------------------|
-| `zone_id`          | UUID     | Delivery zone identifier                 |
-| `restaurant_id`    | UUID     | Which restaurant this zone covers        |
-| `radius_km`        | FLOAT8   | Zone coverage radius                     |
-| `avg_speed_kmh`    | REAL     | Used for ETA computation                 |
-| `prep_time_minutes`| REAL     | Kitchen prep time added to ETA           |
-| `buffer_minutes`   | REAL     | Buffer added to ETA                      |
+| Field               | Type   | Purpose                           |
+| ------------------- | ------ | --------------------------------- |
+| `zone_id`           | UUID   | Delivery zone identifier          |
+| `restaurant_id`     | UUID   | Which restaurant this zone covers |
+| `radius_km`         | FLOAT8 | Zone coverage radius              |
+| `avg_speed_kmh`     | REAL   | Used for ETA computation          |
+| `prep_time_minutes` | REAL   | Kitchen prep time added to ETA    |
+| `buffer_minutes`    | REAL   | Buffer added to ETA               |
 
 ---
 
 ## 4. Phase Dependency
 
-| Phase | Dependency on Delivery Context                                       |
-|-------|----------------------------------------------------------------------|
+| Phase   | Dependency on Delivery Context                                                                             |
+| ------- | ---------------------------------------------------------------------------------------------------------- |
 | Phase 4 | `OrderPlacedEvent` now carries `distanceKm` + `estimatedDeliveryMinutes` — Delivery can consume optionally |
-| Phase 5 | Ordering publishes `OrderReadyForPickupEvent` — Delivery must have a stub handler |
-| Phase 6 | Full event stubs wired, Delivery stub acknowledges the event         |
+| Phase 5 | Ordering publishes `OrderReadyForPickupEvent` — Delivery must have a stub handler                          |
+| Phase 6 | Full event stubs wired, Delivery stub acknowledges the event                                               |
 
 All fields are nullable to remain forward-compatible until upstream provides them.
 
@@ -171,6 +175,7 @@ The `ordering_restaurant_snapshots.delivery_radius_km` column is present and nul
 It cannot be populated until the restaurant-catalog BC adds the column.
 
 **Impact:** BR-3 (delivery radius validation) cannot be enforced until:
+
 1. `restaurants` table gains `delivery_radius_km` column
 2. `RestaurantUpdatedEvent` includes `deliveryRadiusKm` in payload
 3. `RestaurantSnapshotProjector` maps it into the snapshot
@@ -181,7 +186,7 @@ It cannot be populated until the restaurant-catalog BC adds the column.
 
 ## 5. Phase Dependency
 
-| Phase | Dependency on Delivery Context                                       |
-|-------|----------------------------------------------------------------------|
+| Phase   | Dependency on Delivery Context                                                    |
+| ------- | --------------------------------------------------------------------------------- |
 | Phase 5 | Ordering publishes `OrderReadyForPickupEvent` — Delivery must have a stub handler |
-| Phase 6 | Full event stubs wired, Delivery stub acknowledges the event         |
+| Phase 6 | Full event stubs wired, Delivery stub acknowledges the event                      |

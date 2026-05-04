@@ -28,6 +28,7 @@ and will eventually be auto-cancelled by the `OrderTimeoutTask` (Phase 5).
 The Ordering bounded context integrates with the Payment context via **domain events only** — no direct service calls, no shared tables.
 
 This document lists what the Payment context must provide so the Ordering context can:
+
 1. Advance a VNPay order from `PENDING → PAID` after successful payment
 2. Cancel a VNPay order when payment fails or times out
 3. Trigger a refund for `PAID → CANCELLED` scenarios
@@ -46,19 +47,21 @@ This document lists what the Payment context must provide so the Ordering contex
 **Effect:** Transitions order `PENDING → PAID`
 
 **Required payload:**
+
 ```typescript
 export class PaymentConfirmedEvent {
   constructor(
-    public readonly orderId: string,        // UUID
-    public readonly customerId: string,     // UUID
+    public readonly orderId: string, // UUID
+    public readonly customerId: string, // UUID
     public readonly paymentMethod: 'vnpay',
-    public readonly paidAmount: number,     // matches orders.total_amount
+    public readonly paidAmount: number, // matches orders.total_amount
     public readonly paidAt: Date,
   ) {}
 }
 ```
 
 **Why it is required:**
+
 - The `PAID` state is exclusive to VNPay orders (see ORDERING_CONTEXT_PROPOSAL §8.3).
 - `PENDING → PAID` must ONLY be triggered by this system event, never by a direct
   user API call.
@@ -78,19 +81,21 @@ session expires.
 **Effect:** Transitions order `PENDING → CANCELLED`
 
 **Required payload:**
+
 ```typescript
 export class PaymentFailedEvent {
   constructor(
-    public readonly orderId: string,    // UUID
+    public readonly orderId: string, // UUID
     public readonly customerId: string, // UUID
     public readonly paymentMethod: 'vnpay',
-    public readonly reason: string,     // human-readable failure reason
+    public readonly reason: string, // human-readable failure reason
     public readonly failedAt: Date,
   ) {}
 }
 ```
 
 **Why it is required:**
+
 - Without this event, a failed VNPay payment leaves the order in `PENDING`, which
   will time out but only after `RESTAURANT_ACCEPT_TIMEOUT_SECONDS` — creating
   confusion for the customer who already knows the payment failed.
@@ -105,11 +110,13 @@ export class PaymentFailedEvent {
 **File:** `src/shared/events/order-placed.event.ts` ← defined in Phase 0
 
 **The Payment context must handle this event to:**
+
 - For `paymentMethod = 'vnpay'`: create a VNPay payment session and return a
   payment URL (stored in `orders.payment_url` by Ordering at order creation time).
 - For `paymentMethod = 'cod'`: record a COD payment entry (no user action needed).
 
 **Payload the Payment context receives:**
+
 ```typescript
 {
   orderId: string,
@@ -127,6 +134,7 @@ export class PaymentFailedEvent {
 ```
 
 **Why `shippingFee` matters for Payment:**
+
 - VNPay payment session amount must equal `totalAmount` (not itemsTotal alone).
 - `totalAmount = itemsTotal + shippingFee` — Payment BC should use `totalAmount`
   directly and MUST NOT recompute it.
@@ -143,6 +151,7 @@ export class PaymentFailedEvent {
 **The Payment context must handle this event to:** Initiate a VNPay refund.
 
 **Payload:**
+
 ```typescript
 {
   orderId: string,
@@ -174,6 +183,7 @@ this.eventBus.publish(
 ```
 
 **Important:** Import `CqrsModule` in the Payment module:
+
 ```typescript
 @Module({ imports: [CqrsModule], ... })
 export class PaymentModule {}
@@ -185,12 +195,12 @@ export class PaymentModule {}
 
 The `orders` table is designed to accommodate Payment context integration:
 
-| Field                    | Type          | Purpose                                                        |
-|--------------------------|---------------|----------------------------------------------------------------|
-| `payment_url`            | TEXT          | Stores VNPay redirect URL returned after `OrderPlacedEvent`    |
-| `payment_method`         | ENUM          | `cod` or `vnpay` — drives state machine logic                  |
-| `total_amount`           | NUMERIC(12,2) | Immutable total = items + shippingFee. Use this for VNPay.     |
-| `shipping_fee`           | NUMERIC(12,2) | [ADDED Phase 4] Delivery fee component — 0 when zone unknown   |
+| Field            | Type          | Purpose                                                      |
+| ---------------- | ------------- | ------------------------------------------------------------ |
+| `payment_url`    | TEXT          | Stores VNPay redirect URL returned after `OrderPlacedEvent`  |
+| `payment_method` | ENUM          | `cod` or `vnpay` — drives state machine logic                |
+| `total_amount`   | NUMERIC(12,2) | Immutable total = items + shippingFee. Use this for VNPay.   |
+| `shipping_fee`   | NUMERIC(12,2) | [ADDED Phase 4] Delivery fee component — 0 when zone unknown |
 
 No additional schema changes are required in the Ordering context for Payment integration.
 
@@ -198,8 +208,8 @@ No additional schema changes are required in the Ordering context for Payment in
 
 ## 5. Phase Dependency
 
-| Phase | Dependency on Payment Context                                |
-|-------|--------------------------------------------------------------|
-| Phase 4 | Payment context must handle `OrderPlacedEvent` to generate VNPay URL |
+| Phase   | Dependency on Payment Context                                                 |
+| ------- | ----------------------------------------------------------------------------- |
+| Phase 4 | Payment context must handle `OrderPlacedEvent` to generate VNPay URL          |
 | Phase 5 | Payment context must publish `PaymentConfirmedEvent` and `PaymentFailedEvent` |
-| Phase 6 | Full event stubs wired end-to-end                           |
+| Phase 6 | Full event stubs wired end-to-end                                             |

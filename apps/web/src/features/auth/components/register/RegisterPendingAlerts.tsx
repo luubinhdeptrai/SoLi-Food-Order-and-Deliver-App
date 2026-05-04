@@ -7,7 +7,7 @@ export function RegisterPendingAlerts() {
       <div className="relative">
         <span
           className="material-symbols-outlined text-white"
-          style={{ fontSize: "3rem", fontVariationSettings: "'FILL' 1" }}
+          style={{ fontSize: '3rem', fontVariationSettings: "'FILL' 1" }}
         >
           notifications_active
         </span>

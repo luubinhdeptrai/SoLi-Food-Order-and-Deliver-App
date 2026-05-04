@@ -220,10 +220,17 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     // -------------------------------------------------------------------------
     // Step 5 — Validate restaurant and items
     // -------------------------------------------------------------------------
-    this.assertRestaurantIsAcceptingOrders(restaurantSnapshot, cart!.restaurantId);
+    this.assertRestaurantIsAcceptingOrders(
+      restaurantSnapshot,
+      cart!.restaurantId,
+    );
     // C-2 FIX: pass cart.restaurantId so each item's snapshot.restaurantId is
     // verified — prevents a tampered Redis cart from mixing items across restaurants.
-    this.assertAllItemsAreAvailable(cart!.items, menuItemSnapshots, cart!.restaurantId);
+    this.assertAllItemsAreAvailable(
+      cart!.items,
+      menuItemSnapshots,
+      cart!.restaurantId,
+    );
 
     // -------------------------------------------------------------------------
     // Step 5b — Re-validate modifier constraints at checkout (Case 12 fix)
@@ -232,8 +239,12 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     // (options removed, isAvailable flipped, minSelections raised by merchant).
     // Re-checks against the ACL snapshot to guarantee constraints hold at order time.
     // -------------------------------------------------------------------------
-    const snapshotMapForModifiers = this.buildMenuItemSnapshotMap(menuItemSnapshots);
-    this.assertModifierConstraintsAtCheckout(cart!.items, snapshotMapForModifiers);
+    const snapshotMapForModifiers =
+      this.buildMenuItemSnapshotMap(menuItemSnapshots);
+    this.assertModifierConstraintsAtCheckout(
+      cart!.items,
+      snapshotMapForModifiers,
+    );
 
     // -------------------------------------------------------------------------
     // Step 6 — BR-3: Resolve delivery pricing from zone snapshots.
@@ -241,8 +252,10 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     // Returns shipping fee + delivery estimate when coordinates are present;
     // returns null (fee = 0) when coordinates or zones are absent (soft guard).
     // -------------------------------------------------------------------------
-    const activeZones = await this.deliveryZoneSnapshotRepo
-      .findActiveByRestaurantId(cart!.restaurantId);
+    const activeZones =
+      await this.deliveryZoneSnapshotRepo.findActiveByRestaurantId(
+        cart!.restaurantId,
+      );
     const deliveryPricing = this.resolveDeliveryPricing(
       restaurantSnapshot!,
       deliveryAddress,
@@ -267,7 +280,8 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     // parseFloat(toFixed(2)) eliminates floating-point accumulation before write.
     // -------------------------------------------------------------------------
     const shippingFee = deliveryPricing?.shippingFee ?? 0;
-    const estimatedDeliveryMinutes = deliveryPricing?.estimatedDeliveryMinutes ?? null;
+    const estimatedDeliveryMinutes =
+      deliveryPricing?.estimatedDeliveryMinutes ?? null;
     const distanceKm = deliveryPricing?.distanceKm;
     const itemsTotal = this.calculateItemsTotal(snapshotedItems);
     const totalAmount = parseFloat((itemsTotal + shippingFee).toFixed(2));
@@ -327,7 +341,12 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     // -------------------------------------------------------------------------
     // Step 12 — Publish OrderPlacedEvent (Payment + Notification contexts consume it)
     // -------------------------------------------------------------------------
-    this.publishOrderPlacedEvent(order, snapshotedItems, deliveryAddress, distanceKm);
+    this.publishOrderPlacedEvent(
+      order,
+      snapshotedItems,
+      deliveryAddress,
+      distanceKm,
+    );
 
     // -------------------------------------------------------------------------
     // Step 13 — Clear the Redis cart (best-effort).
@@ -509,7 +528,8 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     deliveryAddress: DeliveryAddress,
     activeZones: DeliveryZoneInfo[],
   ): DeliveryPricingResult | null {
-    const { latitude: restaurantLat, longitude: restaurantLng } = restaurantSnapshot;
+    const { latitude: restaurantLat, longitude: restaurantLng } =
+      restaurantSnapshot;
     const { latitude: addressLat, longitude: addressLng } = deliveryAddress;
 
     // Soft guard: skip pricing if either party is missing coordinates.
@@ -545,8 +565,12 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     // Sort ascending by radius so the first match is the innermost (most
     // granular) zone. This gives the most accurate fee for the customer's
     // actual proximity rather than using a large catch-all outer zone.
-    const sortedZones = [...activeZones].sort((a, b) => a.radiusKm - b.radiusKm);
-    const eligibleZone = sortedZones.find((zone) => distanceKm <= zone.radiusKm);
+    const sortedZones = [...activeZones].sort(
+      (a, b) => a.radiusKm - b.radiusKm,
+    );
+    const eligibleZone = sortedZones.find(
+      (zone) => distanceKm <= zone.radiusKm,
+    );
 
     if (!eligibleZone) {
       const maxRadius = sortedZones[sortedZones.length - 1].radiusKm;
@@ -557,7 +581,10 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     }
 
     const shippingFee = this.calculateShippingFee(distanceKm, eligibleZone);
-    const estimatedDeliveryMinutes = this.estimateDeliveryMinutes(distanceKm, eligibleZone);
+    const estimatedDeliveryMinutes = this.estimateDeliveryMinutes(
+      distanceKm,
+      eligibleZone,
+    );
 
     this.logger.debug(
       `Delivery pricing resolved for restaurantId=${restaurantSnapshot.restaurantId}: ` +
@@ -565,7 +592,12 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
         `shippingFee=${shippingFee}, estimatedDeliveryMinutes=${estimatedDeliveryMinutes}`,
     );
 
-    return { zoneId: eligibleZone.zoneId, distanceKm, shippingFee, estimatedDeliveryMinutes };
+    return {
+      zoneId: eligibleZone.zoneId,
+      distanceKm,
+      shippingFee,
+      estimatedDeliveryMinutes,
+    };
   }
 
   /**
@@ -573,7 +605,10 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
    * Both values come from the innermost eligible delivery zone snapshot.
    * Rounded to 2 decimal places to match NUMERIC(12, 2) DB column precision.
    */
-  private calculateShippingFee(distanceKm: number, zone: DeliveryZoneInfo): number {
+  private calculateShippingFee(
+    distanceKm: number,
+    zone: DeliveryZoneInfo,
+  ): number {
     const fee = zone.baseFee + distanceKm * zone.perKmRate;
     return parseFloat(fee.toFixed(2));
   }
@@ -586,10 +621,14 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
    * avgSpeedKmh is clamped to a minimum of 1 km/h to prevent division by zero.
    * Result is ceiling-rounded — fractional minutes are meaningless to customers.
    */
-  private estimateDeliveryMinutes(distanceKm: number, zone: DeliveryZoneInfo): number {
+  private estimateDeliveryMinutes(
+    distanceKm: number,
+    zone: DeliveryZoneInfo,
+  ): number {
     const safeAvgSpeed = Math.max(zone.avgSpeedKmh, 1);
     const travelTimeMinutes = (distanceKm / safeAvgSpeed) * 60;
-    const totalMinutes = zone.prepTimeMinutes + travelTimeMinutes + zone.bufferMinutes;
+    const totalMinutes =
+      zone.prepTimeMinutes + travelTimeMinutes + zone.bufferMinutes;
     return Math.ceil(totalMinutes);
   }
 
@@ -627,25 +666,31 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
       // a group/option is somehow absent (belt-and-suspenders).
       const groupOptionPriceMap = new Map<string, number>(
         snapshot.modifiers.flatMap((g) =>
-          g.options.map((o) => [`${g.groupId}:${o.optionId}`, o.price] as [string, number]),
+          g.options.map(
+            (o) => [`${g.groupId}:${o.optionId}`, o.price] as [string, number],
+          ),
         ),
       );
 
       const modifiersPrice = cartItem.selectedModifiers.reduce((sum, sel) => {
         const price =
-          groupOptionPriceMap.get(`${sel.groupId}:${sel.optionId}`) ?? sel.price;
+          groupOptionPriceMap.get(`${sel.groupId}:${sel.optionId}`) ??
+          sel.price;
         return sum + price;
       }, 0);
 
       // Snapshot modifier selections for the immutable order record (Case 14 fix).
-      const modifiers: OrderModifier[] = cartItem.selectedModifiers.map((sel) => ({
-        groupId: sel.groupId,
-        groupName: sel.groupName,
-        optionId: sel.optionId,
-        optionName: sel.optionName,
-        price:
-          groupOptionPriceMap.get(`${sel.groupId}:${sel.optionId}`) ?? sel.price,
-      }));
+      const modifiers: OrderModifier[] = cartItem.selectedModifiers.map(
+        (sel) => ({
+          groupId: sel.groupId,
+          groupName: sel.groupName,
+          optionId: sel.optionId,
+          optionName: sel.optionName,
+          price:
+            groupOptionPriceMap.get(`${sel.groupId}:${sel.optionId}`) ??
+            sel.price,
+        }),
+      );
 
       const subtotal = parseFloat(
         ((unitPrice + modifiersPrice) * cartItem.quantity).toFixed(2),
@@ -663,9 +708,7 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     });
   }
 
-  private calculateItemsTotal(
-    items: Array<{ subtotal: number }>,
-  ): number {
+  private calculateItemsTotal(items: Array<{ subtotal: number }>): number {
     return items.reduce((sum, item) => sum + item.subtotal, 0);
   }
 
@@ -739,10 +782,10 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
           menuItemId: item.menuItemId,
           itemName: item.itemName,
           unitPrice: item.unitPrice,
-          modifiersPrice: item.modifiersPrice,   // Case 13 fix — kept separate from unitPrice
+          modifiersPrice: item.modifiersPrice, // Case 13 fix — kept separate from unitPrice
           quantity: item.quantity,
           subtotal: item.subtotal,
-          modifiers: item.modifiers,             // Case 14 fix — ACL-re-resolved at checkout
+          modifiers: item.modifiers, // Case 14 fix — ACL-re-resolved at checkout
         }));
 
         await tx.insert(orderItems).values(newOrderItems);
@@ -750,7 +793,7 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
         // 3. Insert the initial status log entry (null → PENDING).
         const initialStatusLog: NewOrderStatusLog = {
           orderId: insertedOrder.id,
-          fromStatus: null,       // null = order creation event (no prior state)
+          fromStatus: null, // null = order creation event (no prior state)
           toStatus: 'pending',
           triggeredBy: customerId,
           triggeredByRole: 'customer',
@@ -871,6 +914,4 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
       .limit(1);
     return result[0] ?? null;
   }
-
 }
-

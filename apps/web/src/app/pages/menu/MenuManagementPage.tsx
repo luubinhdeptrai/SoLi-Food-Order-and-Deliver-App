@@ -1,20 +1,20 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { MenuItemCard } from "@/features/menu/components/MenuItemCard";
-import { MenuSidebar } from "@/features/menu/components/MenuSidebar";
-import { mockMenuItems, mockMenuOverview } from "@/features/menu/api/menu";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { MenuItemCard } from '@/features/menu/components/MenuItemCard';
+import { MenuSidebar } from '@/features/menu/components/MenuSidebar';
+import { mockMenuItems, mockMenuOverview } from '@/features/menu/api/menu';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 // Filter tabs dummy data
-const filterTabs = ["Farm Fresh", "Artisan Bakery", "Dairy & Cheese", "Pantry"];
+const filterTabs = ['Farm Fresh', 'Artisan Bakery', 'Dairy & Cheese', 'Pantry'];
 
 export function MenuManagementPage() {
   const navigate = useNavigate();
   const [storeOnline, setStoreOnline] = useState(true);
 
   const handleAddItem = () => {
-    navigate("/menu/create");
+    navigate('/menu/create');
   };
 
   return (
@@ -44,14 +44,14 @@ export function MenuManagementPage() {
                   Store Visibility
                 </p>
                 <p className="text-sm font-bold text-primary">
-                  {storeOnline ? "Currently Accepting Orders" : "Store Offline"}
+                  {storeOnline ? 'Currently Accepting Orders' : 'Store Offline'}
                 </p>
               </div>
               <Button
                 onClick={() => setStoreOnline(!storeOnline)}
                 className="bg-primary px-6 py-2.5 rounded-full text-white font-bold text-sm shadow-md hover:opacity-90 transition-opacity"
               >
-                {storeOnline ? "Go Offline" : "Go Online"}
+                {storeOnline ? 'Go Offline' : 'Go Online'}
               </Button>
             </CardContent>
           </Card>
@@ -70,7 +70,7 @@ export function MenuManagementPage() {
               >
                 <span className="material-symbols-outlined text-sm font-variation-settings-['FILL'_1]">
                   grid_view
-                </span>{" "}
+                </span>{' '}
                 All Items
               </Button>
 
@@ -101,8 +101,8 @@ export function MenuManagementPage() {
                 <MenuItemCard
                   key={item.id}
                   item={item}
-                  onEdit={(item) => console.log("edit", item)}
-                  onDelete={(id) => console.log("delete", id)}
+                  onEdit={(item) => console.log('edit', item)}
+                  onDelete={(id) => console.log('delete', id)}
                 />
               ))}
             </div>

@@ -1,7 +1,7 @@
 # E2E Testing Playbook — Menu + Modifier Modules
 
 > **Audience**: Backend engineers and AI coding agents working on new modules (cart, ordering, delivery, etc.).
-> **Purpose**: A single, self-contained reference that explains *how* E2E tests are structured, *why* decisions were made, and *how to extend* this setup to any new module — without re-reading the entire codebase.
+> **Purpose**: A single, self-contained reference that explains _how_ E2E tests are structured, _why_ decisions were made, and _how to extend_ this setup to any new module — without re-reading the entire codebase.
 >
 > **Last verified against codebase**: All 52 tests passing (4 suites). Auth system fully dynamic — no hardcoded tokens.
 
@@ -29,24 +29,24 @@
 
 Unit tests and integration tests validate individual functions and service layers in isolation. E2E tests validate the **full request lifecycle** — HTTP routing, guards, pipes, service logic, ORM queries, database writes, and cross-module side-effects — in one shot.
 
-For this project, E2E tests are *mandatory* because:
+For this project, E2E tests are _mandatory_ because:
 
 - **CQRS projections**: A menu item update fires an internal event. The ordering snapshot must be updated as a side-effect. Only E2E tests can verify the projection actually ran.
 - **Auth guards**: The `@thallesp/nestjs-better-auth` guard validates real JWT tokens via the Better Auth service. Mocking this at the test level is unreliable (see [Section 9](#9-common-pitfalls--lessons-learned)).
-- **Cross-module contracts**: The `ordering` BC reads from `ordering_menu_item_snapshots` which is *written* by the `restaurant-catalog` BC. E2E tests are the only way to verify the handshake works.
+- **Cross-module contracts**: The `ordering` BC reads from `ordering_menu_item_snapshots` which is _written_ by the `restaurant-catalog` BC. E2E tests are the only way to verify the handshake works.
 - **Validation pipeline**: DTO validation (`class-validator` + `ValidationPipe`) is only exercised through HTTP.
 
 ### Scope of Current E2E Coverage
 
-| Module | Status |
-|--------|--------|
-| `restaurant-catalog` → Menu Items | ✅ Covered (`menu.e2e-spec.ts`) |
+| Module                                           | Status                               |
+| ------------------------------------------------ | ------------------------------------ |
+| `restaurant-catalog` → Menu Items                | ✅ Covered (`menu.e2e-spec.ts`)      |
 | `restaurant-catalog` → Modifier Groups & Options | ✅ Covered (`modifiers.e2e-spec.ts`) |
-| `ordering` → Snapshot Projection | ✅ Covered (`snapshot.e2e-spec.ts`) |
-| `ordering` → Cart | ⬜ Not yet covered |
-| `ordering` → Orders | ⬜ Not yet covered |
-| `auth` | ⬜ Not yet covered |
-| `delivery` | ⬜ Not yet covered |
+| `ordering` → Snapshot Projection                 | ✅ Covered (`snapshot.e2e-spec.ts`)  |
+| `ordering` → Cart                                | ⬜ Not yet covered                   |
+| `ordering` → Orders                              | ⬜ Not yet covered                   |
+| `auth`                                           | ⬜ Not yet covered                   |
+| `delivery`                                       | ⬜ Not yet covered                   |
 
 ---
 
@@ -78,39 +78,39 @@ apps/api/
 
 ### How the NestJS App Is Bootstrapped
 
-`test/setup/app-factory.ts` creates a *real* NestJS application using the same `AppModule` as production. There are **no module mocks**:
+`test/setup/app-factory.ts` creates a _real_ NestJS application using the same `AppModule` as production. There are **no module mocks**:
 
 ```typescript
 // test/setup/app-factory.ts
 export async function createTestApp(): Promise<INestApplication> {
   const moduleRef = await Test.createTestingModule({
-    imports: [AppModule],   // Real AppModule — all guards, pipes, modules live
+    imports: [AppModule], // Real AppModule — all guards, pipes, modules live
   }).compile();
 
   const app = moduleRef.createNestApplication();
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
-  app.setGlobalPrefix('api');   // Must match production prefix
+  app.setGlobalPrefix('api'); // Must match production prefix
 
   await app.init();
   return app;
 }
 
 export async function teardownTestApp(app: INestApplication): Promise<void> {
-  await app.close();   // Closes HTTP server + all module connections
+  await app.close(); // Closes HTTP server + all module connections
 }
 ```
 
-**Key design decision**: `app.setGlobalPrefix('api')` is repeated here explicitly because `Test.createTestingModule` does *not* inherit the prefix from `main.ts`. All test requests use `/api/...` paths.
+**Key design decision**: `app.setGlobalPrefix('api')` is repeated here explicitly because `Test.createTestingModule` does _not_ inherit the prefix from `main.ts`. All test requests use `/api/...` paths.
 
 ### How Supertest Interacts with the App
 
 ```typescript
-const http = request(app.getHttpServer());  // Supertest wraps the Node HTTP server
+const http = request(app.getHttpServer()); // Supertest wraps the Node HTTP server
 
 // Usage in a test:
 const res = await http
   .post('/api/menu-items')
-  .set(ownerHeaders())             // Authorization: Bearer <token>
+  .set(ownerHeaders()) // Authorization: Bearer <token>
   .send({ name: 'Pizza', price: 12 });
 
 expect(res.status).toBe(201);
@@ -122,9 +122,9 @@ expect(res.status).toBe(201);
 
 There are two DB access patterns in tests:
 
-| Pattern | When to use | How |
-|---------|-------------|-----|
-| **Via HTTP** | When the operation fires events / updates projections | `await http.post('/api/...')` |
+| Pattern              | When to use                                                         | How                              |
+| -------------------- | ------------------------------------------------------------------- | -------------------------------- |
+| **Via HTTP**         | When the operation fires events / updates projections               | `await http.post('/api/...')`    |
 | **Direct ORM query** | When asserting state not exposed by the API (e.g. snapshot columns) | `getTestDb()` from `db-setup.ts` |
 
 ```typescript
@@ -142,7 +142,7 @@ export async function getSnapshot(menuItemId: string) {
 }
 ```
 
-**Rule**: Always create/update data through the HTTP API (so projections fire). Only use direct DB queries for *reading* state in assertions.
+**Rule**: Always create/update data through the HTTP API (so projections fire). Only use direct DB queries for _reading_ state in assertions.
 
 ---
 
@@ -150,14 +150,14 @@ export async function getSnapshot(menuItemId: string) {
 
 ### Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string for app + migrations |
-| `TEST_DATABASE_URL` | Optional | Separate test DB; falls back to `DATABASE_URL` |
-| `BETTER_AUTH_SECRET` | ✅ | Secret for JWT signing (Better Auth) |
-| `BETTER_AUTH_URL` | ✅ | Base URL for Better Auth (e.g. `http://localhost:3000`) |
-| `REDIS_HOST` | ✅ | Redis host (used by OrderingModule for cart/idempotency) |
-| `REDIS_PORT` | ✅ | Redis port (default: `6379`) |
+| Variable             | Required | Description                                              |
+| -------------------- | -------- | -------------------------------------------------------- |
+| `DATABASE_URL`       | ✅       | PostgreSQL connection string for app + migrations        |
+| `TEST_DATABASE_URL`  | Optional | Separate test DB; falls back to `DATABASE_URL`           |
+| `BETTER_AUTH_SECRET` | ✅       | Secret for JWT signing (Better Auth)                     |
+| `BETTER_AUTH_URL`    | ✅       | Base URL for Better Auth (e.g. `http://localhost:3000`)  |
+| `REDIS_HOST`         | ✅       | Redis host (used by OrderingModule for cart/idempotency) |
+| `REDIS_PORT`         | ✅       | Redis port (default: `6379`)                             |
 
 ### .env Resolution Order
 
@@ -166,12 +166,12 @@ export async function getSnapshot(menuItemId: string) {
 ```typescript
 // Loaded via setupFiles in jest-e2e.json
 const envTest = path.join(root, '.env.test');
-const envDev  = path.join(root, '.env');
+const envDev = path.join(root, '.env');
 
 if (fs.existsSync(envTest)) {
-  dotenv.config({ path: envTest, override: true });  // preferred
+  dotenv.config({ path: envTest, override: true }); // preferred
 } else if (fs.existsSync(envDev)) {
-  dotenv.config({ path: envDev, override: true });   // fallback
+  dotenv.config({ path: envDev, override: true }); // fallback
 }
 ```
 
@@ -188,6 +188,7 @@ pnpm db:migrate
 ```
 
 Or in `.env.test`:
+
 ```
 DATABASE_URL=postgresql://food_order:foodordersecret@localhost:5433/food_order_test
 ```
@@ -198,11 +199,11 @@ DATABASE_URL=postgresql://food_order:foodordersecret@localhost:5433/food_order_t
 # docker-compose.yml (relevant services)
 postgres:
   container_name: food_order_db
-  ports: ["5433:5432"]     # host:container — always use 5433 on localhost
+  ports: ['5433:5432'] # host:container — always use 5433 on localhost
 
 redis:
   container_name: food_order_redis
-  ports: ["6379:6379"]
+  ports: ['6379:6379']
 ```
 
 Both must be running before tests execute. Start with: `docker compose up -d`
@@ -217,7 +218,10 @@ The auth library (`@thallesp/nestjs-better-auth`) ships `.mjs` files. Jest requi
   "preset": "ts-jest/presets/default-esm",
   "extensionsToTreatAsEsm": [".ts"],
   "transform": {
-    "^.+\\.tsx?$": ["ts-jest", { "useESM": true, "tsconfig": { "module": "esnext" } }]
+    "^.+\\.tsx?$": [
+      "ts-jest",
+      { "useESM": true, "tsconfig": { "module": "esnext" } }
+    ]
   }
 }
 ```
@@ -257,6 +261,7 @@ export class TestAuthManager {
 ```
 
 **Sign-up endpoint**: `POST /api/auth/sign-up/email`
+
 ```json
 // Request body
 { "email": "e2e-owner@test.soli", "password": "TestAuth1234!", "name": "E2E Owner" }
@@ -269,15 +274,18 @@ The `token` field is a Better Auth **session token** (opaque string, not a JWT).
 
 ### Why Two Users?
 
-| User | Role | Restaurant ownership | Expected result |
-|------|------|---------------------|-----------------|
-| `e2e-owner@test.soli` | `restaurant` | `user.id === restaurant.ownerId` | 200/201 on writes |
-| `e2e-other@test.soli` | `restaurant` | `user.id ≠ restaurant.ownerId` | 403 on ownership-protected writes |
+| User                  | Role         | Restaurant ownership             | Expected result                   |
+| --------------------- | ------------ | -------------------------------- | --------------------------------- |
+| `e2e-owner@test.soli` | `restaurant` | `user.id === restaurant.ownerId` | 200/201 on writes                 |
+| `e2e-other@test.soli` | `restaurant` | `user.id ≠ restaurant.ownerId`   | 403 on ownership-protected writes |
 
 Both users need the `restaurant` role to **reach** the ownership check. Without the role, the request would get a 403 from the role guard — not from the ownership check — making 403 ownership tests semantically wrong. Role is granted via direct Drizzle UPDATE after sign-up:
 
 ```typescript
-await db.update(user).set({ role: 'restaurant' }).where(inArray(user.id, userIds));
+await db
+  .update(user)
+  .set({ role: 'restaurant' })
+  .where(inArray(user.id, userIds));
 ```
 
 ### Test Email Constants
@@ -287,9 +295,9 @@ Defined in `test/setup/db-setup.ts` (NOT in `test-auth.ts`) to prevent a circula
 ```typescript
 // db-setup.ts imports getTestDb; test-auth.ts imports from db-setup
 // If emails lived in test-auth.ts, db-setup importing them → circular
-export const TEST_OWNER_EMAIL   = 'e2e-owner@test.soli';
-export const TEST_OTHER_EMAIL   = 'e2e-other@test.soli';
-export const TEST_USER_EMAILS   = [TEST_OWNER_EMAIL, TEST_OTHER_EMAIL] as const;
+export const TEST_OWNER_EMAIL = 'e2e-owner@test.soli';
+export const TEST_OTHER_EMAIL = 'e2e-other@test.soli';
+export const TEST_USER_EMAILS = [TEST_OWNER_EMAIL, TEST_OTHER_EMAIL] as const;
 ```
 
 Password lives only in `test-auth.ts`: `export const TEST_PASSWORD = 'TestAuth1234!'`.
@@ -300,7 +308,9 @@ Password lives only in `test-auth.ts`: `export const TEST_PASSWORD = 'TestAuth12
 let _manager: TestAuthManager | null = null;
 
 // Called once in beforeAll() after testAuth.initialize()
-export function setAuthManager(mgr: TestAuthManager): void { _manager = mgr; }
+export function setAuthManager(mgr: TestAuthManager): void {
+  _manager = mgr;
+}
 
 // Authenticated owner — passes @Roles guard AND ownership check → 200/201
 export function ownerHeaders(): TestHeaders {
@@ -313,10 +323,14 @@ export function otherUserHeaders(): TestHeaders {
 }
 
 // Alias for ownerHeaders() — emphasises role rather than ownership
-export function restaurantRoleHeaders(): TestHeaders { return ownerHeaders(); }
+export function restaurantRoleHeaders(): TestHeaders {
+  return ownerHeaders();
+}
 
 // No Authorization header → triggers 401
-export function noAuthHeaders(): TestHeaders { return {}; }
+export function noAuthHeaders(): TestHeaders {
+  return {};
+}
 ```
 
 `_manager` starts as `null` in every spec file (Jest module isolation). If any header factory is called before `setAuthManager()`, it throws a descriptive error.
@@ -353,13 +367,13 @@ beforeAll(async () => {
 // Guarded write — authenticated owner
 const res = await http
   .post('/api/menu-items')
-  .set(ownerHeaders())           // { Authorization: 'Bearer <token>' }
+  .set(ownerHeaders()) // { Authorization: 'Bearer <token>' }
   .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Pizza', price: 10 });
 
 // Public read — no auth required
 const res = await http
   .get(`/api/menu-items?restaurantId=${TEST_RESTAURANT_ID}`)
-  .set(noAuthHeaders());         // {} — no header set at all
+  .set(noAuthHeaders()); // {} — no header set at all
 ```
 
 Always use `.set()` — never `.auth()` — to attach headers.
@@ -375,6 +389,7 @@ Always use `.set()` — never `.auth()` — to attach headers.
 Creating via the API ensures that all domain events fire, projections update, and the system state is consistent. Direct DB inserts bypass this and cause snapshot/projection divergence.
 
 **Exception**: The parent restaurant is inserted directly because:
+
 1. It has no projection side-effects relevant to menu tests.
 2. It requires an `ownerId` that must equal the authenticated user's real user ID — only known after `TestAuthManager.initialize()`.
 
@@ -385,7 +400,7 @@ Only the restaurant uses a fixed UUID. User UUIDs are assigned dynamically by Be
 ```typescript
 // test/setup/db-setup.ts
 // Restaurant ID is fixed — used in URL paths throughout all test suites
-export const TEST_RESTAURANT_ID  = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+export const TEST_RESTAURANT_ID = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
 // User IDs are NOT fixed — obtained at runtime from TestAuthManager.ownerUserId
 // TEST_OWNER_ID and TEST_OTHER_USER_ID no longer exist
@@ -433,7 +448,7 @@ export async function resetDb(): Promise<void> {
   // 2. restaurants — cascade-deletes menu_items, modifier_groups, modifier_options
   await db.delete(restaurants);
   // 3. test users (by email) — cascade-deletes their sessions + accounts
-  await resetUsers();  // deletes rows WHERE email IN (TEST_OWNER_EMAIL, TEST_OTHER_EMAIL)
+  await resetUsers(); // deletes rows WHERE email IN (TEST_OWNER_EMAIL, TEST_OTHER_EMAIL)
 }
 ```
 
@@ -446,7 +461,7 @@ export async function seedBaseRestaurant(ownerId: string): Promise<void> {
   const db = getTestDb();
   await db.insert(restaurants).values({
     id: TEST_RESTAURANT_ID,
-    ownerId,                   // ← dynamic UUID from TestAuthManager.ownerUserId
+    ownerId, // ← dynamic UUID from TestAuthManager.ownerUserId
     name: 'E2E Test Restaurant',
     description: 'Seeded for automated E2E tests',
     address: '1 Test Street, Ho Chi Minh City',
@@ -474,14 +489,11 @@ describe('POST /api/menu-items', () => {
     // (data already seeded in beforeAll: restaurant exists, DB is clean)
 
     // ─── Act ─────────────────────────────────────────────────────────────
-    const res = await http
-      .post('/api/menu-items')
-      .set(ownerHeaders())
-      .send({
-        restaurantId: TEST_RESTAURANT_ID,
-        name: 'Margherita Pizza',
-        price: 12.5,
-      });
+    const res = await http.post('/api/menu-items').set(ownerHeaders()).send({
+      restaurantId: TEST_RESTAURANT_ID,
+      name: 'Margherita Pizza',
+      price: 12.5,
+    });
 
     // ─── Assert: HTTP response ────────────────────────────────────────────
     expect(res.status).toBe(201);
@@ -496,7 +508,7 @@ describe('POST /api/menu-items', () => {
     // ─── Assert: DB state ─────────────────────────────────────────────────
     const snapshot = await getSnapshot(res.body.id);
     expect(snapshot).not.toBeNull();
-    expect(snapshot!.modifiers).toEqual([]);  // empty array, never null
+    expect(snapshot!.modifiers).toEqual([]); // empty array, never null
   });
 });
 ```
@@ -507,7 +519,7 @@ describe('POST /api/menu-items', () => {
 it('returns 401 when unauthenticated', async () => {
   const res = await http
     .post('/api/menu-items')
-    .set(noAuthHeaders())          // {} = no Authorization header
+    .set(noAuthHeaders()) // {} = no Authorization header
     .send({ restaurantId: TEST_RESTAURANT_ID, name: 'Hack', price: 1 });
 
   expect(res.status).toBe(401);
@@ -526,14 +538,18 @@ it('cascade-deletes the child option when parent group is deleted', async () => 
 
   // Assert child (option) is gone via the API
   const optionRes = await http
-    .get(`/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options/${optionId}`)
+    .get(
+      `/api/menu-items/${menuItemId}/modifier-groups/${groupId}/options/${optionId}`,
+    )
     .set(noAuthHeaders());
 
   expect(optionRes.status).toBe(404);
 
   // Also assert DB-level state if needed
   const snapshot = await getSnapshot(menuItemId);
-  const groupIds = (snapshot!.modifiers as { groupId: string }[]).map(g => g.groupId);
+  const groupIds = (snapshot!.modifiers as { groupId: string }[]).map(
+    (g) => g.groupId,
+  );
   expect(groupIds).not.toContain(groupId);
 });
 ```
@@ -544,7 +560,7 @@ Tests within a `describe` block that share state use a local `beforeAll`:
 
 ```typescript
 describe('PATCH /api/menu-items/:id', () => {
-  let itemId: string;   // scoped to this describe block
+  let itemId: string; // scoped to this describe block
 
   beforeAll(async () => {
     const res = await http
@@ -554,8 +570,12 @@ describe('PATCH /api/menu-items/:id', () => {
     itemId = res.body.id as string;
   });
 
-  it('updates name', async () => { /* ... uses itemId */ });
-  it('returns 401 unauthenticated', async () => { /* ... uses itemId */ });
+  it('updates name', async () => {
+    /* ... uses itemId */
+  });
+  it('returns 401 unauthenticated', async () => {
+    /* ... uses itemId */
+  });
 });
 ```
 
@@ -570,6 +590,7 @@ describe('PATCH /api/menu-items/:id', () => {
 It is a **read model** (projection) in the `ordering` bounded context. When the `restaurant-catalog` BC mutates a menu item or its modifiers, it publishes a domain event. The `ordering` BC handles that event and writes/updates a row in `ordering_menu_item_snapshots`.
 
 The row structure:
+
 ```
 ordering_menu_item_snapshots {
   menuItemId   UUID      (references menu_items.id — logical FK, no DB constraint)
@@ -603,7 +624,8 @@ This was the primary bug class driving the snapshot test suite:
 ```typescript
 // snapshot.e2e-spec.ts — Section 2.1
 it('snapshot modifiers are unchanged after name update', async () => {
-  await http.patch(`/api/menu-items/${menuItemId}`)
+  await http
+    .patch(`/api/menu-items/${menuItemId}`)
     .set(ownerHeaders())
     .send({ name: 'Updated Name' });
 
@@ -630,9 +652,14 @@ Every mutation must advance `lastSyncedAt`. This verifies the projector is actua
 
 ```typescript
 const before = await getSnapshot(menuItemId);
-await http.patch(`/api/menu-items/${menuItemId}`).set(ownerHeaders()).send({ name: 'New Name' });
+await http
+  .patch(`/api/menu-items/${menuItemId}`)
+  .set(ownerHeaders())
+  .send({ name: 'New Name' });
 const after = await getSnapshot(menuItemId);
-expect(after!.lastSyncedAt.getTime()).toBeGreaterThan(before!.lastSyncedAt.getTime());
+expect(after!.lastSyncedAt.getTime()).toBeGreaterThan(
+  before!.lastSyncedAt.getTime(),
+);
 ```
 
 ---
@@ -641,60 +668,60 @@ expect(after!.lastSyncedAt.getTime()).toBeGreaterThan(before!.lastSyncedAt.getTi
 
 ### `menu.e2e-spec.ts` — Menu Item CRUD
 
-| # | Scenario | Method + Path | Expected |
-|---|----------|---------------|----------|
-| 1.1 | Create item (authenticated owner) | `POST /api/menu-items` | 201 + item body |
-| 1.2 | Create item (unauthenticated) | `POST /api/menu-items` | 401 |
-| 1.3 | Create item (non-owner user) | `POST /api/menu-items` | 403 |
-| 2.1 | List items by restaurantId (public) | `GET /api/menu-items?restaurantId=...` | 200 + array |
-| 2.2 | Get single item by id (public) | `GET /api/menu-items/:id` | 200 + item |
-| 3.1 | Update item name (owner) | `PATCH /api/menu-items/:id` | 200 + updated body |
-| 3.2 | Update item (unauthenticated) | `PATCH /api/menu-items/:id` | 401 |
-| 3.3 | Update item (non-owner) | `PATCH /api/menu-items/:id` | 403 |
-| 4.1 | Toggle sold-out → out_of_stock | `PATCH /api/menu-items/:id/sold-out` | 200 + status |
-| 4.2 | Toggle sold-out → available | `PATCH /api/menu-items/:id/sold-out` | 200 + status |
-| 5.1 | Delete item | `DELETE /api/menu-items/:id` | 204 |
-| 5.2 | Fetch deleted item | `GET /api/menu-items/:id` | 404 |
-| 5.3 | Snapshot tombstoned after delete | DB assertion | status=unavailable, modifiers=[] |
-| 6.1 | New item snapshot has modifiers=[] | DB assertion | modifiers is `[]` not `null` |
-| 6.2 | After price update, modifiers stays [] | DB assertion | modifiers still `[]` |
+| #   | Scenario                               | Method + Path                          | Expected                         |
+| --- | -------------------------------------- | -------------------------------------- | -------------------------------- |
+| 1.1 | Create item (authenticated owner)      | `POST /api/menu-items`                 | 201 + item body                  |
+| 1.2 | Create item (unauthenticated)          | `POST /api/menu-items`                 | 401                              |
+| 1.3 | Create item (non-owner user)           | `POST /api/menu-items`                 | 403                              |
+| 2.1 | List items by restaurantId (public)    | `GET /api/menu-items?restaurantId=...` | 200 + array                      |
+| 2.2 | Get single item by id (public)         | `GET /api/menu-items/:id`              | 200 + item                       |
+| 3.1 | Update item name (owner)               | `PATCH /api/menu-items/:id`            | 200 + updated body               |
+| 3.2 | Update item (unauthenticated)          | `PATCH /api/menu-items/:id`            | 401                              |
+| 3.3 | Update item (non-owner)                | `PATCH /api/menu-items/:id`            | 403                              |
+| 4.1 | Toggle sold-out → out_of_stock         | `PATCH /api/menu-items/:id/sold-out`   | 200 + status                     |
+| 4.2 | Toggle sold-out → available            | `PATCH /api/menu-items/:id/sold-out`   | 200 + status                     |
+| 5.1 | Delete item                            | `DELETE /api/menu-items/:id`           | 204                              |
+| 5.2 | Fetch deleted item                     | `GET /api/menu-items/:id`              | 404                              |
+| 5.3 | Snapshot tombstoned after delete       | DB assertion                           | status=unavailable, modifiers=[] |
+| 6.1 | New item snapshot has modifiers=[]     | DB assertion                           | modifiers is `[]` not `null`     |
+| 6.2 | After price update, modifiers stays [] | DB assertion                           | modifiers still `[]`             |
 
 ### `modifiers.e2e-spec.ts` — Modifier Groups & Options
 
-| # | Scenario | Method + Path | Expected |
-|---|----------|---------------|----------|
-| 3.1 | Create modifier group | `POST .../modifier-groups` | 201 + group body |
-| 3.2 | Update group with valid min/max | `PATCH .../modifier-groups/:id` | 200 |
-| 3.3 | Update group with min > max | `PATCH .../modifier-groups/:id` | 400 |
-| 3.4 | Partial update (maxSelections only) | `PATCH .../modifier-groups/:id` | 200, minSelections unchanged |
-| 3.5 | Delete group + cascade options | `DELETE .../modifier-groups/:id` | 204; option returns 404 |
-| 3.6 | Create modifier option | `POST .../options` | 201 + option body |
-| 3.7 | Update option price + availability | `PATCH .../options/:id` | 200; snapshot reflects new price |
-| 3.8 | Delete option | `DELETE .../options/:id` | 204 |
-| 4.1 | GET single group with embedded options | `GET .../modifier-groups/:id` | 200 + options array |
-| 4.2 | GET flat options list | `GET .../modifier-groups/:id/options` | 200 + flat array |
-| 4.3 | GET single option | `GET .../options/:optionId` | 200 + option body |
-| 4.4 | GET group with wrong menuItemId | `GET /wrong-id/modifier-groups/:id` | 404 |
-| 4.5 | GET option with wrong groupId | `GET .../wrong-group/options/:id` | 404 |
-| 5.2a | Create group with min=0, max=0 | `POST .../modifier-groups` | 201 (optional group) |
-| 5.2b | Create group with min > max | `POST .../modifier-groups` | 400 |
-| 5.3 | Empty group in snapshot has options=[] | DB assertion | emptyGroup.options = [] |
-| 5.4 | Write without auth | `POST .../modifier-groups` | 401 |
-| 5.5 | Write by non-owner | `POST .../modifier-groups` | 403 |
-| 5.6 | Non-UUID string as groupId param | `GET .../modifier-groups/options` | 400 (ParseUUIDPipe) |
+| #    | Scenario                               | Method + Path                         | Expected                         |
+| ---- | -------------------------------------- | ------------------------------------- | -------------------------------- |
+| 3.1  | Create modifier group                  | `POST .../modifier-groups`            | 201 + group body                 |
+| 3.2  | Update group with valid min/max        | `PATCH .../modifier-groups/:id`       | 200                              |
+| 3.3  | Update group with min > max            | `PATCH .../modifier-groups/:id`       | 400                              |
+| 3.4  | Partial update (maxSelections only)    | `PATCH .../modifier-groups/:id`       | 200, minSelections unchanged     |
+| 3.5  | Delete group + cascade options         | `DELETE .../modifier-groups/:id`      | 204; option returns 404          |
+| 3.6  | Create modifier option                 | `POST .../options`                    | 201 + option body                |
+| 3.7  | Update option price + availability     | `PATCH .../options/:id`               | 200; snapshot reflects new price |
+| 3.8  | Delete option                          | `DELETE .../options/:id`              | 204                              |
+| 4.1  | GET single group with embedded options | `GET .../modifier-groups/:id`         | 200 + options array              |
+| 4.2  | GET flat options list                  | `GET .../modifier-groups/:id/options` | 200 + flat array                 |
+| 4.3  | GET single option                      | `GET .../options/:optionId`           | 200 + option body                |
+| 4.4  | GET group with wrong menuItemId        | `GET /wrong-id/modifier-groups/:id`   | 404                              |
+| 4.5  | GET option with wrong groupId          | `GET .../wrong-group/options/:id`     | 404                              |
+| 5.2a | Create group with min=0, max=0         | `POST .../modifier-groups`            | 201 (optional group)             |
+| 5.2b | Create group with min > max            | `POST .../modifier-groups`            | 400                              |
+| 5.3  | Empty group in snapshot has options=[] | DB assertion                          | emptyGroup.options = []          |
+| 5.4  | Write without auth                     | `POST .../modifier-groups`            | 401                              |
+| 5.5  | Write by non-owner                     | `POST .../modifier-groups`            | 403                              |
+| 5.6  | Non-UUID string as groupId param       | `GET .../modifier-groups/options`     | 400 (ParseUUIDPipe)              |
 
 ### `snapshot.e2e-spec.ts` — Modifier Preservation Invariants
 
-| # | Scenario | Assert | Expected |
-|---|----------|--------|----------|
-| baseline | Snapshot has Size group (Large + Small) after setup | DB | modifiers populated |
-| 2.1 | Update name → modifiers unchanged | DB | Size group still present |
-| 2.2 | Update price → modifiers unchanged, price updated | DB | snapshot.price=15.99, modifiers intact |
-| 2.3a | First sold-out toggle → modifiers unchanged | DB | status=out_of_stock, modifiers intact |
-| 2.3b | Second sold-out toggle → modifiers unchanged | DB | status=available, modifiers intact |
-| inv | lastSyncedAt advances on every mutation | DB | after.lastSyncedAt > before.lastSyncedAt |
-| 2.4 | Delete item → snapshot tombstoned | DB | status=unavailable, modifiers=[] |
-| 2.4b | Deleted item returns 404 from API | HTTP | 404 |
+| #        | Scenario                                            | Assert | Expected                                 |
+| -------- | --------------------------------------------------- | ------ | ---------------------------------------- |
+| baseline | Snapshot has Size group (Large + Small) after setup | DB     | modifiers populated                      |
+| 2.1      | Update name → modifiers unchanged                   | DB     | Size group still present                 |
+| 2.2      | Update price → modifiers unchanged, price updated   | DB     | snapshot.price=15.99, modifiers intact   |
+| 2.3a     | First sold-out toggle → modifiers unchanged         | DB     | status=out_of_stock, modifiers intact    |
+| 2.3b     | Second sold-out toggle → modifiers unchanged        | DB     | status=available, modifiers intact       |
+| inv      | lastSyncedAt advances on every mutation             | DB     | after.lastSyncedAt > before.lastSyncedAt |
+| 2.4      | Delete item → snapshot tombstoned                   | DB     | status=unavailable, modifiers=[]         |
+| 2.4b     | Deleted item returns 404 from API                   | HTTP   | 404                                      |
 
 ---
 
@@ -729,6 +756,7 @@ expect(after!.lastSyncedAt.getTime()).toBeGreaterThan(before!.lastSyncedAt.getTi
 **Root cause**: The Jest config uses `ts-jest/presets/default-esm`, which processes files as ES Modules. `__dirname` is a CommonJS global and does not exist in ESM.
 
 **Solution**:
+
 ```typescript
 import { fileURLToPath } from 'url';
 import * as path from 'path';
@@ -754,6 +782,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 **Root cause**: Jest 30.x `expect()` does not accept a second "message" argument. The signature is `expect(value)` only.
 
 **Solution**: Move the context message to a `// comment` above the assertion:
+
 ```typescript
 // [after name update] Size group must still be present
 expect(sizeGroup).toBeDefined();
@@ -792,6 +821,7 @@ expect(sizeGroup).toBeDefined();
 **Fix**: Replaced with `TestAuthManager` — two real users signed up dynamically, both granted `restaurant` role, restaurant seeded with the owner's real UUID. See Section 4 for full details.
 
 **Key lesson**: For ownership-check 403 tests to work, you need:
+
 1. Two separate users with different user IDs
 2. Both must have the role required by the guard (so both reach the ownership check)
 3. The test restaurant's `ownerId` must be set to the owner's actual UUID (not a hardcoded constant)
@@ -859,10 +889,15 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { createTestApp, teardownTestApp } from '../setup/app-factory';
 import {
-  resetDb, seedBaseRestaurant, TEST_RESTAURANT_ID,
+  resetDb,
+  seedBaseRestaurant,
+  TEST_RESTAURANT_ID,
 } from '../setup/db-setup';
 import {
-  setAuthManager, ownerHeaders, otherUserHeaders, noAuthHeaders,
+  setAuthManager,
+  ownerHeaders,
+  otherUserHeaders,
+  noAuthHeaders,
 } from '../helpers/auth';
 import { TestAuthManager } from '../helpers/test-auth';
 
@@ -898,10 +933,10 @@ If the new module writes to tables not currently deleted by `resetDb()`, add del
 export async function resetDb(): Promise<void> {
   const db = getTestDb();
   await db.delete(orderingMenuItemSnapshots);
-  await db.delete(cartItems);           // ← add new tables here (child first)
+  await db.delete(cartItems); // ← add new tables here (child first)
   await db.delete(carts);
-  await db.delete(restaurants);         // cascade-deletes menu items
-  await resetUsers();                   // deletes by email — safe on shared DB
+  await db.delete(restaurants); // cascade-deletes menu items
+  await resetUsers(); // deletes by email — safe on shared DB
 }
 ```
 
@@ -911,7 +946,11 @@ export async function resetDb(): Promise<void> {
 // test/helpers/db.ts
 export async function getCart(cartId: string) {
   const db = getTestDb();
-  const rows = await db.select().from(carts).where(eq(carts.id, cartId)).limit(1);
+  const rows = await db
+    .select()
+    .from(carts)
+    .where(eq(carts.id, cartId))
+    .limit(1);
   return rows[0] ?? null;
 }
 ```
@@ -923,12 +962,14 @@ export async function getCart(cartId: string) {
 **Dependencies**: Menu items must exist before cart items can be added.
 
 **Seeding flow**:
+
 1. `resetDb()` → `TestAuthManager.initialize()` → `setAuthManager()` → `seedBaseRestaurant(ownerUserId)`
 2. Create menu item via `POST /api/menu-items`
 3. Create modifier group + options via `POST .../modifier-groups` and `POST .../options`
 4. Then test cart operations
 
 **Key scenarios to cover**:
+
 - `POST /api/cart` — create/get cart (authenticated user)
 - `POST /api/cart/items` — add item with modifiers
 - `GET /api/cart` — retrieve cart with totals
@@ -937,6 +978,7 @@ export async function getCart(cartId: string) {
 - Add item that references a deleted menu item (snapshot `status=unavailable`) → expect error
 
 **New tables to add to `resetDb()`**:
+
 - `cart_items` (before `carts`)
 - `carts`
 
@@ -947,17 +989,20 @@ export async function getCart(cartId: string) {
 **Dependencies**: Cart must be non-empty; payment intent may be required.
 
 **Seeding flow**:
+
 1. Full menu + modifier setup (as above)
 2. Create and populate a cart
 3. Submit order
 
 **Key scenarios to cover**:
+
 - `POST /api/orders` — checkout from cart
 - `GET /api/orders/:id` — retrieve order with items
 - `PATCH /api/orders/:id/status` — update order status (admin/restaurant only)
 - Verify `ordering_menu_item_snapshots` are copied into order line items (snapshot isolation)
 
 **New tables to add to `resetDb()`**:
+
 - `order_items` (before `orders`)
 - `orders`
 
@@ -1000,18 +1045,18 @@ order (seed via HTTP from cart)
 
 ### Reusable Helpers
 
-| Helper | Location | Purpose |
-|--------|----------|---------|
-| `ownerHeaders()` | `test/helpers/auth.ts` | Standard auth header |
-| `noAuthHeaders()` | `test/helpers/auth.ts` | Empty header for 401 tests |
-| `getSnapshot(id)` | `test/helpers/db.ts` | Assert ordering snapshot state |
-| `createTestApp()` | `test/setup/app-factory.ts` | Boot NestJS app |
-| `teardownTestApp()` | `test/setup/app-factory.ts` | Shut down cleanly |
-| `resetDb()` | `test/setup/db-setup.ts` | Wipe all test data |
-| `seedBaseRestaurant(ownerId)` | `test/setup/db-setup.ts` | Insert test restaurant with dynamic owner UUID |
-| `TestAuthManager` | `test/helpers/test-auth.ts` | Sign up users, get tokens, grant roles |
-| `setAuthManager(mgr)` | `test/helpers/auth.ts` | Wire token manager before first header call |
-| `otherUserHeaders()` | `test/helpers/auth.ts` | Non-owner auth header for 403 tests |
+| Helper                        | Location                    | Purpose                                        |
+| ----------------------------- | --------------------------- | ---------------------------------------------- |
+| `ownerHeaders()`              | `test/helpers/auth.ts`      | Standard auth header                           |
+| `noAuthHeaders()`             | `test/helpers/auth.ts`      | Empty header for 401 tests                     |
+| `getSnapshot(id)`             | `test/helpers/db.ts`        | Assert ordering snapshot state                 |
+| `createTestApp()`             | `test/setup/app-factory.ts` | Boot NestJS app                                |
+| `teardownTestApp()`           | `test/setup/app-factory.ts` | Shut down cleanly                              |
+| `resetDb()`                   | `test/setup/db-setup.ts`    | Wipe all test data                             |
+| `seedBaseRestaurant(ownerId)` | `test/setup/db-setup.ts`    | Insert test restaurant with dynamic owner UUID |
+| `TestAuthManager`             | `test/helpers/test-auth.ts` | Sign up users, get tokens, grant roles         |
+| `setAuthManager(mgr)`         | `test/helpers/auth.ts`      | Wire token manager before first header call    |
+| `otherUserHeaders()`          | `test/helpers/auth.ts`      | Non-owner auth header for 403 tests            |
 
 Add new helpers to `test/helpers/db.ts` when you need to assert DB state not exposed by any API. Keep HTTP-level assertions inside the spec files.
 
@@ -1025,6 +1070,7 @@ Add new helpers to `test/helpers/db.ts` when you need to assert DB state not exp
 ### CI Considerations
 
 For continuous integration:
+
 1. Add `--forceExit` to the `test:e2e` script if connections don't close cleanly.
 2. Ensure the test DB and test `DATABASE_URL` are configured in CI environment variables.
 3. Run `docker compose up -d` in the CI pipeline before running tests.

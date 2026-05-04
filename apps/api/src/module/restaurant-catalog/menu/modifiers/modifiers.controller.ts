@@ -72,7 +72,8 @@ export class ModifiersController {
   @AllowAnonymous()
   @ApiOperation({
     summary: 'Get a single modifier group (with options)',
-    description: 'Returns one modifier group and its embedded options by groupId.',
+    description:
+      'Returns one modifier group and its embedded options by groupId.',
   })
   @ApiParam({ name: 'menuItemId', format: 'uuid' })
   @ApiParam({ name: 'groupId', format: 'uuid' })

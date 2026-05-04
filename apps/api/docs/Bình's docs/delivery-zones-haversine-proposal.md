@@ -12,18 +12,18 @@
 
 > This document was reviewed after initial drafting. All issues below were fixed **in place** — the code sections already reflect the corrected versions.
 
-| # | Severity | Section | Issue |
-|---|---|---|---|
-| 1 | 🔴 Critical | §6.1, §11.5 | **URL mismatch** — `ZonesController` prefix is `delivery-zones`, so the actual endpoint is `/restaurants/:id/delivery-zones/delivery-estimate`, not `/restaurants/:id/delivery-estimate` |
-| 2 | 🔴 Critical | §11.2 | **Missing `@Type(() => Number)`** in `DeliveryEstimateQueryDto` — HTTP query params arrive as strings; without this decorator `@IsNumber()` always fails at runtime |
-| 3 | 🟠 High | §11.4 | **Dead code** — `calculateDeliveryFee()` and `calculateEstimatedMinutes()` were defined but never called; `buildEstimateResponse()` duplicated their logic inline (DRY violation) |
-| 4 | 🟠 High | §11.7 | **Array mutation** — `activeZones.sort()` sorts in-place and mutates the caller's array; must use `[...activeZones].sort()` |
-| 5 | 🟠 High | §2.2, §11.3, §11.4 | **`numeric` Drizzle column returns `string`** — Drizzle's built-in `numeric()` returns `string` from the DB driver; `DeliveryZoneResponseDto` declares `number`; all CRUD responses would serialize strings, not numbers |
-| 6 | 🟡 Medium | §2.2 | **Missing import** — `numeric` from `drizzle-orm/pg-core` not shown; replaced with `customType` approach (same as ordering BC's `moneyColumn`) |
-| 7 | 🟡 Medium | §11.7 | **Cross-BC type import** — `PlaceOrderHandler` imported `DeliveryZone` from `restaurant-catalog` BC, violating D3-B (no cross-module service calls); replaced with a local `DeliveryZoneInfo` interface |
-| 8 | 🟡 Medium | §11.5 | **Route ordering** — `@Get('delivery-estimate')` must be declared **before** `@Get(':id')`; NestJS registers routes in declaration order and `ParseUUIDPipe` on `:id` would reject `delivery-estimate` with 400 |
-| 9 | 🟡 Medium | §11.5 | **Missing Swagger imports** — `ApiUnprocessableEntityResponse` and `ApiQuery` not listed in the controller import snippet |
-| 10 | 🟢 Minor | §11.2 | `@IsNumber()` is technically redundant alongside `@IsLatitude()`/`@IsLongitude()` (those already validate type) but kept for explicit intent |
+| #   | Severity    | Section            | Issue                                                                                                                                                                                                                    |
+| --- | ----------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | 🔴 Critical | §6.1, §11.5        | **URL mismatch** — `ZonesController` prefix is `delivery-zones`, so the actual endpoint is `/restaurants/:id/delivery-zones/delivery-estimate`, not `/restaurants/:id/delivery-estimate`                                 |
+| 2   | 🔴 Critical | §11.2              | **Missing `@Type(() => Number)`** in `DeliveryEstimateQueryDto` — HTTP query params arrive as strings; without this decorator `@IsNumber()` always fails at runtime                                                      |
+| 3   | 🟠 High     | §11.4              | **Dead code** — `calculateDeliveryFee()` and `calculateEstimatedMinutes()` were defined but never called; `buildEstimateResponse()` duplicated their logic inline (DRY violation)                                        |
+| 4   | 🟠 High     | §11.7              | **Array mutation** — `activeZones.sort()` sorts in-place and mutates the caller's array; must use `[...activeZones].sort()`                                                                                              |
+| 5   | 🟠 High     | §2.2, §11.3, §11.4 | **`numeric` Drizzle column returns `string`** — Drizzle's built-in `numeric()` returns `string` from the DB driver; `DeliveryZoneResponseDto` declares `number`; all CRUD responses would serialize strings, not numbers |
+| 6   | 🟡 Medium   | §2.2               | **Missing import** — `numeric` from `drizzle-orm/pg-core` not shown; replaced with `customType` approach (same as ordering BC's `moneyColumn`)                                                                           |
+| 7   | 🟡 Medium   | §11.7              | **Cross-BC type import** — `PlaceOrderHandler` imported `DeliveryZone` from `restaurant-catalog` BC, violating D3-B (no cross-module service calls); replaced with a local `DeliveryZoneInfo` interface                  |
+| 8   | 🟡 Medium   | §11.5              | **Route ordering** — `@Get('delivery-estimate')` must be declared **before** `@Get(':id')`; NestJS registers routes in declaration order and `ParseUUIDPipe` on `:id` would reject `delivery-estimate` with 400          |
+| 9   | 🟡 Medium   | §11.5              | **Missing Swagger imports** — `ApiUnprocessableEntityResponse` and `ApiQuery` not listed in the controller import snippet                                                                                                |
+| 10  | 🟢 Minor    | §11.2              | `@IsNumber()` is technically redundant alongside `@IsLatitude()`/`@IsLongitude()` (those already validate type) but kept for explicit intent                                                                             |
 
 ---
 
@@ -31,17 +31,17 @@
 
 > All code sections in this document were **implemented in full**. The table below records deviations found during a post-implementation audit. See `delivery-zones-implementation-changelog.md` for the complete file-by-file record.
 
-| # | Severity | File | Deviation |
-|---|---|---|---|
-| 1 | 🟠 High | `zones.repository.ts`, migration SQL | **`avgSpeedKmh` default = 20 instead of 30** — `create()` fallback is `?? 20`; migration `DEFAULT 20`; Drizzle schema says `default(30)`. Fix: change fallback to `?? 30` and fix migration default. |
-| 2 | 🟠 High | `zones.service.ts` | **`estimatedMinutes` not rounded** — `buildEstimateResponse` returns raw float sum; proposal uses `Math.round()`. Risk: API returns fractional minutes if `prepTimeMinutes`/`bufferMinutes` are set to non-integers. |
-| 3 | 🟡 Medium | `zones.repository.ts` | **`update()` uses `...dto` spread** — proposal uses explicit per-field conditional mapping. Drizzle treats `undefined` as no-op, so functionally correct but relies on undocumented behaviour. |
-| 4 | 🟡 Medium | `zones.dto.ts` | **Missing `@Max(120)` on `avgSpeedKmh`** — `@Min(1)` present but no upper bound; proposal has `@Min(1) @Max(120)`. |
-| 5 | 🟢 Minor | `zones.service.ts` | **`distanceKm` rounded to 3dp** — implementation uses `toFixed(3)`; proposal uses `Math.round(… * 100) / 100` (2dp). |
-| 6 | 🟢 Minor | `zones.service.ts` | **`deliveryFee` rounded to 2dp** — implementation uses `toFixed(2)`; proposal uses `Math.round()` (whole VND integer). |
-| 7 | 🟢 Minor | `place-order.handler.ts` | **Orphaned JSDoc fragment** — old `assertDeliveryRadiusIfApplicable` comment not fully removed; the opening `/**` leaked before the new method's JSDoc. Not a runtime bug but messy. |
-| 8 | 🟢 Minor | `zones.controller.ts` | **Missing `@ApiBadRequestResponse`** on `estimateDelivery` — Swagger docs incomplete but no runtime effect. |
-| 9 | 🟢 Minor | `restaurant-snapshot.schema.ts` | **No `@deprecated` note on `deliveryRadiusKm`** — checklist item not actioned. Column remains nullable (correct), but no deprecation annotation added. |
+| #   | Severity  | File                                 | Deviation                                                                                                                                                                                                            |
+| --- | --------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 🟠 High   | `zones.repository.ts`, migration SQL | **`avgSpeedKmh` default = 20 instead of 30** — `create()` fallback is `?? 20`; migration `DEFAULT 20`; Drizzle schema says `default(30)`. Fix: change fallback to `?? 30` and fix migration default.                 |
+| 2   | 🟠 High   | `zones.service.ts`                   | **`estimatedMinutes` not rounded** — `buildEstimateResponse` returns raw float sum; proposal uses `Math.round()`. Risk: API returns fractional minutes if `prepTimeMinutes`/`bufferMinutes` are set to non-integers. |
+| 3   | 🟡 Medium | `zones.repository.ts`                | **`update()` uses `...dto` spread** — proposal uses explicit per-field conditional mapping. Drizzle treats `undefined` as no-op, so functionally correct but relies on undocumented behaviour.                       |
+| 4   | 🟡 Medium | `zones.dto.ts`                       | **Missing `@Max(120)` on `avgSpeedKmh`** — `@Min(1)` present but no upper bound; proposal has `@Min(1) @Max(120)`.                                                                                                   |
+| 5   | 🟢 Minor  | `zones.service.ts`                   | **`distanceKm` rounded to 3dp** — implementation uses `toFixed(3)`; proposal uses `Math.round(… * 100) / 100` (2dp).                                                                                                 |
+| 6   | 🟢 Minor  | `zones.service.ts`                   | **`deliveryFee` rounded to 2dp** — implementation uses `toFixed(2)`; proposal uses `Math.round()` (whole VND integer).                                                                                               |
+| 7   | 🟢 Minor  | `place-order.handler.ts`             | **Orphaned JSDoc fragment** — old `assertDeliveryRadiusIfApplicable` comment not fully removed; the opening `/**` leaked before the new method's JSDoc. Not a runtime bug but messy.                                 |
+| 8   | 🟢 Minor  | `zones.controller.ts`                | **Missing `@ApiBadRequestResponse`** on `estimateDelivery` — Swagger docs incomplete but no runtime effect.                                                                                                          |
+| 9   | 🟢 Minor  | `restaurant-snapshot.schema.ts`      | **No `@deprecated` note on `deliveryRadiusKm`** — checklist item not actioned. Column remains nullable (correct), but no deprecation annotation added.                                                               |
 
 ---
 
@@ -77,25 +77,25 @@ The previous model stored a single `deliveryFee` (flat fee) and `estimatedMinute
 
 Each restaurant defines one or more **delivery zones** (concentric or overlapping radii). Each zone carries:
 
-| Column | Purpose |
-|---|---|
-| `radius_km` | Outer boundary of the zone |
-| `base_fee` | Fixed component of the delivery fee |
-| `per_km_rate` | Variable component per kilometre |
-| `avg_speed_kmh` | Driver's expected average speed for ETA |
-| `prep_time_minutes` | Kitchen preparation time |
-| `buffer_minutes` | Safety margin added to every ETA |
+| Column              | Purpose                                 |
+| ------------------- | --------------------------------------- |
+| `radius_km`         | Outer boundary of the zone              |
+| `base_fee`          | Fixed component of the delivery fee     |
+| `per_km_rate`       | Variable component per kilometre        |
+| `avg_speed_kmh`     | Driver's expected average speed for ETA |
+| `prep_time_minutes` | Kitchen preparation time                |
+| `buffer_minutes`    | Safety margin added to every ETA        |
 
 **Haversine** gives the straight-line ("as-the-crow-flies") great-circle distance between two GPS points. It is accurate within ±0.5 % for typical city distances (< 20 km) without requiring PostGIS.
 
 ### Brief Comparison
 
-| Approach | Fee accuracy | ETA accuracy | Complexity | DB dependency |
-|---|---|---|---|---|
-| Flat fee per zone | ❌ ignores distance | ❌ static | Low | Minimal |
-| Radius-only gate | ❌ binary in/out | ❌ static | Low | Minimal |
-| **Zones + Haversine** ✅ | ✅ distance-proportional | ✅ distance-based | Medium | Minimal — no PostGIS |
-| Zones + PostGIS | ✅ polygon-level | ✅ road-aware (with OSRM) | High | PostGIS extension |
+| Approach                 | Fee accuracy             | ETA accuracy              | Complexity | DB dependency        |
+| ------------------------ | ------------------------ | ------------------------- | ---------- | -------------------- |
+| Flat fee per zone        | ❌ ignores distance      | ❌ static                 | Low        | Minimal              |
+| Radius-only gate         | ❌ binary in/out         | ❌ static                 | Low        | Minimal              |
+| **Zones + Haversine** ✅ | ✅ distance-proportional | ✅ distance-based         | Medium     | Minimal — no PostGIS |
+| Zones + PostGIS          | ✅ polygon-level         | ✅ road-aware (with OSRM) | High       | PostGIS extension    |
 
 ---
 
@@ -142,8 +142,14 @@ CREATE TABLE delivery_zones (
 // src/module/restaurant-catalog/restaurant/restaurant.schema.ts
 
 import {
-  boolean, customType, doublePrecision, pgTable,
-  real, text, timestamp, uuid,
+  boolean,
+  customType,
+  doublePrecision,
+  pgTable,
+  real,
+  text,
+  timestamp,
+  uuid,
 } from 'drizzle-orm/pg-core';
 
 // ---------------------------------------------------------------------------
@@ -155,29 +161,35 @@ import {
 // ensures the driver value is automatically parsed to a JS number on read.
 // ---------------------------------------------------------------------------
 const zoneFeeColumn = customType<{ data: number; driverData: string }>({
-  dataType() { return 'numeric(10, 2)'; },
-  fromDriver(value) { return parseFloat(value as string); },
-  toDriver(value)   { return String(value); },
+  dataType() {
+    return 'numeric(10, 2)';
+  },
+  fromDriver(value) {
+    return parseFloat(value as string);
+  },
+  toDriver(value) {
+    return String(value);
+  },
 });
 
 export const deliveryZones = pgTable('delivery_zones', {
-  id:               uuid('id').defaultRandom().primaryKey(),
-  restaurantId:     uuid('restaurant_id')
-                      .notNull()
-                      .references(() => restaurants.id, { onDelete: 'cascade' }),
-  name:             text('name').notNull(),
-  radiusKm:         doublePrecision('radius_km').notNull(),
-  baseFee:          zoneFeeColumn('base_fee').notNull().default(0),
-  perKmRate:        zoneFeeColumn('per_km_rate').notNull().default(0),
-  avgSpeedKmh:      real('avg_speed_kmh').notNull().default(30),
-  prepTimeMinutes:  real('prep_time_minutes').notNull().default(15),
-  bufferMinutes:    real('buffer_minutes').notNull().default(5),
-  isActive:         boolean('is_active').notNull().default(true),
-  createdAt:        timestamp('created_at').defaultNow().notNull(),
-  updatedAt:        timestamp('updated_at').defaultNow().notNull(),
+  id: uuid('id').defaultRandom().primaryKey(),
+  restaurantId: uuid('restaurant_id')
+    .notNull()
+    .references(() => restaurants.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  radiusKm: doublePrecision('radius_km').notNull(),
+  baseFee: zoneFeeColumn('base_fee').notNull().default(0),
+  perKmRate: zoneFeeColumn('per_km_rate').notNull().default(0),
+  avgSpeedKmh: real('avg_speed_kmh').notNull().default(30),
+  prepTimeMinutes: real('prep_time_minutes').notNull().default(15),
+  bufferMinutes: real('buffer_minutes').notNull().default(5),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-export type DeliveryZone    = typeof deliveryZones.$inferSelect;
+export type DeliveryZone = typeof deliveryZones.$inferSelect;
 export type NewDeliveryZone = typeof deliveryZones.$inferInsert;
 ```
 
@@ -215,14 +227,14 @@ All queries in `ZonesRepository` filter by `restaurant_id`, so the first index i
 
 ### 2.5 Constraints & Validations Summary
 
-| Column | Constraint | Reason |
-|---|---|---|
-| `radius_km` | `> 0` | A zero-radius zone is meaningless |
-| `base_fee` | `>= 0` | Cannot charge negative |
-| `per_km_rate` | `>= 0` | Cannot charge negative |
-| `avg_speed_kmh` | `> 0` | Division-by-zero guard |
-| `prep_time_minutes` | `>= 0` | Non-negative time |
-| `buffer_minutes` | `>= 0` | Non-negative time |
+| Column              | Constraint | Reason                            |
+| ------------------- | ---------- | --------------------------------- |
+| `radius_km`         | `> 0`      | A zero-radius zone is meaningless |
+| `base_fee`          | `>= 0`     | Cannot charge negative            |
+| `per_km_rate`       | `>= 0`     | Cannot charge negative            |
+| `avg_speed_kmh`     | `> 0`      | Division-by-zero guard            |
+| `prep_time_minutes` | `>= 0`     | Non-negative time                 |
+| `buffer_minutes`    | `>= 0`     | Non-negative time                 |
 
 ---
 
@@ -241,6 +253,7 @@ d = 2R \cdot \arcsin\!\left(\sqrt{a}\right)
 $$
 
 Where:
+
 - $\phi$ = latitude in radians
 - $\lambda$ = longitude in radians
 - $R$ = Earth's mean radius = **6371 km**
@@ -248,13 +261,13 @@ Where:
 
 ### 3.2 Where It Is Used
 
-| Location | Purpose |
-|---|---|
-| `GeoService.calculateDistanceKm()` | Canonical implementation — called everywhere |
-| `ZonesService.findEligibleZone()` | Determines which zone the customer falls into |
-| `ZonesService.estimateDelivery()` | Powers the `GET /restaurants/:id/delivery-zones/delivery-estimate` endpoint |
-| `PlaceOrderHandler.assertDeliveryZoneIfApplicable()` | Replaces the old `assertDeliveryRadiusIfApplicable()` at checkout |
-| `SearchRepository` | Replace Euclidean approximation with Haversine for accurate geo-search |
+| Location                                             | Purpose                                                                     |
+| ---------------------------------------------------- | --------------------------------------------------------------------------- |
+| `GeoService.calculateDistanceKm()`                   | Canonical implementation — called everywhere                                |
+| `ZonesService.findEligibleZone()`                    | Determines which zone the customer falls into                               |
+| `ZonesService.estimateDelivery()`                    | Powers the `GET /restaurants/:id/delivery-zones/delivery-estimate` endpoint |
+| `PlaceOrderHandler.assertDeliveryZoneIfApplicable()` | Replaces the old `assertDeliveryRadiusIfApplicable()` at checkout           |
+| `SearchRepository`                                   | Replace Euclidean approximation with Haversine for accurate geo-search      |
 
 ### 3.3 TypeScript Implementation
 
@@ -270,7 +283,7 @@ const EARTH_RADIUS_KM = 6371;
 const DEGREES_TO_RADIANS = Math.PI / 180;
 
 export interface Coordinates {
-  latitude:  number;
+  latitude: number;
   longitude: number;
 }
 
@@ -292,9 +305,9 @@ export class GeoService {
    * @returns Distance in kilometres (always non-negative).
    */
   calculateDistanceKm(from: Coordinates, to: Coordinates): number {
-    const fromLatRad  = from.latitude  * DEGREES_TO_RADIANS;
-    const toLatRad    = to.latitude    * DEGREES_TO_RADIANS;
-    const deltaLatRad = (to.latitude  - from.latitude)  * DEGREES_TO_RADIANS;
+    const fromLatRad = from.latitude * DEGREES_TO_RADIANS;
+    const toLatRad = to.latitude * DEGREES_TO_RADIANS;
+    const deltaLatRad = (to.latitude - from.latitude) * DEGREES_TO_RADIANS;
     const deltaLonRad = (to.longitude - from.longitude) * DEGREES_TO_RADIANS;
 
     const sinHalfDeltaLat = Math.sin(deltaLatRad / 2);
@@ -302,8 +315,10 @@ export class GeoService {
 
     const haversineAngle =
       sinHalfDeltaLat * sinHalfDeltaLat +
-      Math.cos(fromLatRad) * Math.cos(toLatRad) *
-      sinHalfDeltaLon * sinHalfDeltaLon;
+      Math.cos(fromLatRad) *
+        Math.cos(toLatRad) *
+        sinHalfDeltaLon *
+        sinHalfDeltaLon;
 
     const centralAngle = 2 * Math.asin(Math.sqrt(haversineAngle));
 
@@ -315,9 +330,9 @@ export class GeoService {
    * from the origin point.
    */
   isWithinRadius(
-    origin:      Coordinates,
+    origin: Coordinates,
     destination: Coordinates,
-    radiusKm:    number,
+    radiusKm: number,
   ): boolean {
     return this.calculateDistanceKm(origin, destination) <= radiusKm;
   }
@@ -352,7 +367,7 @@ sql`
     + COS(RADIANS(${filters.lat})) * COS(RADIANS(${restaurants.latitude}))
     * POWER(SIN(RADIANS(${restaurants.longitude} - ${filters.lon}) / 2), 2)
   ))) <= ${radiusKm}
-`
+`;
 ```
 
 ---
@@ -368,6 +383,7 @@ delivery_fee = base_fee + (distance_km × per_km_rate)
 Both `base_fee` and `per_km_rate` come from the selected zone.
 
 **Example:**
+
 - Zone: `base_fee = 10_000 VND`, `per_km_rate = 5_000 VND/km`, `radius_km = 10`
 - Customer distance: 3.2 km
 - Fee: `10_000 + (3.2 × 5_000)` = **26_000 VND**
@@ -389,13 +405,13 @@ Customer at 3.5 km → Zone A rejected (3.5 > 2) → Zone B matched (3.5 ≤ 5) 
 
 ### 4.3 Edge Cases
 
-| Scenario | Behaviour |
-|---|---|
-| **Outside all zones** | Return `404` or a structured `"delivery_not_available"` response — do NOT invent a fee |
-| **Multiple matching zones** | Select the innermost (smallest `radius_km` that still covers the distance) |
-| **All zones inactive** | Treat as "outside all zones" |
-| **No zones configured** | Return `"delivery_not_available"` — restaurant has not set up delivery |
-| **Distance = 0** | `fee = base_fee` (valid — customer at restaurant door; e.g. same building) |
+| Scenario                    | Behaviour                                                                              |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| **Outside all zones**       | Return `404` or a structured `"delivery_not_available"` response — do NOT invent a fee |
+| **Multiple matching zones** | Select the innermost (smallest `radius_km` that still covers the distance)             |
+| **All zones inactive**      | Treat as "outside all zones"                                                           |
+| **No zones configured**     | Return `"delivery_not_available"` — restaurant has not set up delivery                 |
+| **Distance = 0**            | `fee = base_fee` (valid — customer at restaurant door; e.g. same building)             |
 
 ---
 
@@ -409,13 +425,14 @@ eta_minutes = prep_time_minutes + ceil((distance_km / avg_speed_kmh) × 60) + bu
 
 **Component breakdown:**
 
-| Component | Source | Meaning |
-|---|---|---|
-| `prep_time_minutes` | Zone column | Time until food is ready for pickup |
-| `(distance / speed) × 60` | Haversine + zone column | Travel time from restaurant to customer |
-| `buffer_minutes` | Zone column | Safety margin (traffic, finding address, etc.) |
+| Component                 | Source                  | Meaning                                        |
+| ------------------------- | ----------------------- | ---------------------------------------------- |
+| `prep_time_minutes`       | Zone column             | Time until food is ready for pickup            |
+| `(distance / speed) × 60` | Haversine + zone column | Travel time from restaurant to customer        |
+| `buffer_minutes`          | Zone column             | Safety margin (traffic, finding address, etc.) |
 
 **Example:**
+
 - Zone: `avg_speed_kmh = 25`, `prep_time_minutes = 15`, `buffer_minutes = 5`
 - Distance: 3.2 km
 - Travel time: `ceil((3.2 / 25) × 60)` = `ceil(7.68)` = **8 minutes**
@@ -446,11 +463,11 @@ GET /restaurants/:restaurantId/delivery-zones/delivery-estimate?lat=<number>&lon
 
 #### Request
 
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `restaurantId` | `UUID` (path) | ✅ | Target restaurant |
-| `lat` | `number` (query) | ✅ | Customer latitude |
-| `lon` | `number` (query) | ✅ | Customer longitude |
+| Parameter      | Type             | Required | Description        |
+| -------------- | ---------------- | -------- | ------------------ |
+| `restaurantId` | `UUID` (path)    | ✅       | Target restaurant  |
+| `lat`          | `number` (query) | ✅       | Customer latitude  |
+| `lon`          | `number` (query) | ✅       | Customer longitude |
 
 #### Response `200 OK`
 
@@ -554,36 +571,36 @@ src/module/restaurant-catalog/restaurant/zones/
 
 ### 7.3 `ZonesService` — Responsibilities
 
-| Method | Responsibility |
-|---|---|
-| `findByRestaurant(restaurantId)` | List all zones (unchanged) |
-| `findOne(id, restaurantId)` | Find single zone (unchanged) |
-| `create(...)` | Create zone (body updated) |
-| `update(...)` | Update zone (body updated) |
-| `remove(...)` | Delete zone (unchanged) |
+| Method                                           | Responsibility                                    |
+| ------------------------------------------------ | ------------------------------------------------- |
+| `findByRestaurant(restaurantId)`                 | List all zones (unchanged)                        |
+| `findOne(id, restaurantId)`                      | Find single zone (unchanged)                      |
+| `create(...)`                                    | Create zone (body updated)                        |
+| `update(...)`                                    | Update zone (body updated)                        |
+| `remove(...)`                                    | Delete zone (unchanged)                           |
 | `estimateDelivery(restaurantId, customerCoords)` | **New** — orchestrates zone selection + fee + ETA |
 
 ### 7.4 `ZonesRepository` — New Methods
 
-| Method | SQL |
-|---|---|
+| Method                                                | SQL                                                                               |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------- |
 | `findActiveByRestaurantOrderedByRadius(restaurantId)` | `SELECT ... WHERE restaurant_id = $1 AND is_active = TRUE ORDER BY radius_km ASC` |
 
 ---
 
 ## 8. Edge Cases & Error Handling
 
-| Scenario | Where detected | Response |
-|---|---|---|
-| **No active zones for restaurant** | `ZonesService.estimateDelivery()` | `422 UnprocessableEntity` — "delivery not available" |
-| **Customer outside all zones** | `ZonesService.findEligibleZone()` | `422 UnprocessableEntity` — "restaurant does not service this area" |
-| **Invalid coordinates** (NaN, out-of-range) | DTO validation (`@IsLatitude`, `@IsLongitude`) | `400 BadRequest` |
-| **Restaurant missing coordinates** | `ZonesService.estimateDelivery()` | `422 UnprocessableEntity` — "restaurant location not configured" |
-| **Restaurant inactive / not approved** | `RestaurantService.findOne()` (pre-existing) | `404 NotFound` |
-| **Distance = 0** (customer at restaurant) | `calculateDeliveryFee()` | Valid — `fee = base_fee`, `eta = prep + buffer` |
-| **Extremely large distance** (> 500 km) | Naturally falls outside all zones | Handled by "outside all zones" path — no special case needed |
-| **Checkout with delivery address outside zones** | `PlaceOrderHandler` | `422 UnprocessableEntity` — prevents order creation |
-| **Zone `avg_speed_kmh` = 0** | DB constraint `CHECK (avg_speed_kmh > 0)` | Insert/update rejected at DB level |
+| Scenario                                         | Where detected                                 | Response                                                            |
+| ------------------------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------- |
+| **No active zones for restaurant**               | `ZonesService.estimateDelivery()`              | `422 UnprocessableEntity` — "delivery not available"                |
+| **Customer outside all zones**                   | `ZonesService.findEligibleZone()`              | `422 UnprocessableEntity` — "restaurant does not service this area" |
+| **Invalid coordinates** (NaN, out-of-range)      | DTO validation (`@IsLatitude`, `@IsLongitude`) | `400 BadRequest`                                                    |
+| **Restaurant missing coordinates**               | `ZonesService.estimateDelivery()`              | `422 UnprocessableEntity` — "restaurant location not configured"    |
+| **Restaurant inactive / not approved**           | `RestaurantService.findOne()` (pre-existing)   | `404 NotFound`                                                      |
+| **Distance = 0** (customer at restaurant)        | `calculateDeliveryFee()`                       | Valid — `fee = base_fee`, `eta = prep + buffer`                     |
+| **Extremely large distance** (> 500 km)          | Naturally falls outside all zones              | Handled by "outside all zones" path — no special case needed        |
+| **Checkout with delivery address outside zones** | `PlaceOrderHandler`                            | `422 UnprocessableEntity` — prevents order creation                 |
+| **Zone `avg_speed_kmh` = 0**                     | DB constraint `CHECK (avg_speed_kmh > 0)`      | Insert/update rejected at DB level                                  |
 
 ---
 
@@ -598,12 +615,12 @@ src/module/restaurant-catalog/restaurant/zones/
 
 ### When Optimisation Becomes Necessary
 
-| Traffic level | Concern | Action |
-|---|---|---|
-| < 1,000 RPM | None | Current approach is fine |
-| 1,000–10,000 RPM | Zone list fetched per request | Cache zone list in Redis (TTL ~5 min) keyed by `restaurant_id` |
-| > 10,000 RPM | Large zone tables | Add PostGIS (`ST_DWithin`) — see §10 |
-| Restaurant density search | Euclidean is inaccurate | Already fixed by Haversine in `SearchRepository` |
+| Traffic level             | Concern                       | Action                                                         |
+| ------------------------- | ----------------------------- | -------------------------------------------------------------- |
+| < 1,000 RPM               | None                          | Current approach is fine                                       |
+| 1,000–10,000 RPM          | Zone list fetched per request | Cache zone list in Redis (TTL ~5 min) keyed by `restaurant_id` |
+| > 10,000 RPM              | Large zone tables             | Add PostGIS (`ST_DWithin`) — see §10                           |
+| Restaurant density search | Euclidean is inaccurate       | Already fixed by Haversine in `SearchRepository`               |
 
 The current Euclidean approximation in `search.repository.ts` divides `radiusKm / 111` to convert to degrees, which is only accurate near the equator and wrong at Vietnam's latitude (~21°N). The Haversine SQL replacement in §3.4 fixes this.
 
@@ -611,14 +628,14 @@ The current Euclidean approximation in `search.repository.ts` divides `radiusKm 
 
 ## 10. Future Improvements
 
-| Improvement | Description |
-|---|---|
-| **PostGIS `ST_DWithin`** | Use `geography` type for polygon-based zones (irregular shapes — e.g. avoid water bodies). Requires PostGIS extension. |
-| **Zone caching (Redis)** | Cache active zones per restaurant to avoid repeated DB reads on the hot `delivery-estimate` path. |
-| **Dynamic surge pricing** | Add a `surge_multiplier NUMERIC` column on `delivery_zones` (default `1.0`). `fee = (base_fee + distance × per_km_rate) × surge_multiplier`. Triggered by an admin API or a time-based rule. |
-| **Traffic-aware ETA** | Replace `avg_speed_kmh` with a call to a routing API (Google Maps Distance Matrix, OSRM). Store routing provider config in `app_settings`. |
-| **Road distance vs Haversine** | Road distance is typically 20–40 % longer. Could apply a fixed `road_factor = 1.3` to Haversine distance as a cheap approximation before a routing API integration. |
-| **Zone version history** | Log zone changes so historical orders can reference the zone config that was active at order time. |
+| Improvement                    | Description                                                                                                                                                                                  |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PostGIS `ST_DWithin`**       | Use `geography` type for polygon-based zones (irregular shapes — e.g. avoid water bodies). Requires PostGIS extension.                                                                       |
+| **Zone caching (Redis)**       | Cache active zones per restaurant to avoid repeated DB reads on the hot `delivery-estimate` path.                                                                                            |
+| **Dynamic surge pricing**      | Add a `surge_multiplier NUMERIC` column on `delivery_zones` (default `1.0`). `fee = (base_fee + distance × per_km_rate) × surge_multiplier`. Triggered by an admin API or a time-based rule. |
+| **Traffic-aware ETA**          | Replace `avg_speed_kmh` with a call to a routing API (Google Maps Distance Matrix, OSRM). Store routing provider config in `app_settings`.                                                   |
+| **Road distance vs Haversine** | Road distance is typically 20–40 % longer. Could apply a fixed `road_factor = 1.3` to Haversine distance as a cheap approximation before a routing API integration.                          |
+| **Zone version history**       | Log zone changes so historical orders can reference the zone config that was active at order time.                                                                                           |
 
 ---
 
@@ -631,11 +648,11 @@ The current Euclidean approximation in `search.repository.ts` divides `radiusKm 
 
 import { Injectable } from '@nestjs/common';
 
-const EARTH_RADIUS_KM    = 6371;
+const EARTH_RADIUS_KM = 6371;
 const DEGREES_TO_RADIANS = Math.PI / 180;
 
 export interface Coordinates {
-  latitude:  number;
+  latitude: number;
   longitude: number;
 }
 
@@ -653,9 +670,9 @@ export class GeoService {
    * @returns Non-negative distance in kilometres.
    */
   calculateDistanceKm(from: Coordinates, to: Coordinates): number {
-    const fromLatRad  = from.latitude  * DEGREES_TO_RADIANS;
-    const toLatRad    = to.latitude    * DEGREES_TO_RADIANS;
-    const deltaLatRad = (to.latitude  - from.latitude)  * DEGREES_TO_RADIANS;
+    const fromLatRad = from.latitude * DEGREES_TO_RADIANS;
+    const toLatRad = to.latitude * DEGREES_TO_RADIANS;
+    const deltaLatRad = (to.latitude - from.latitude) * DEGREES_TO_RADIANS;
     const deltaLonRad = (to.longitude - from.longitude) * DEGREES_TO_RADIANS;
 
     const sinHalfDeltaLat = Math.sin(deltaLatRad / 2);
@@ -663,8 +680,10 @@ export class GeoService {
 
     const haversineAngle =
       sinHalfDeltaLat * sinHalfDeltaLat +
-      Math.cos(fromLatRad) * Math.cos(toLatRad) *
-      sinHalfDeltaLon * sinHalfDeltaLon;
+      Math.cos(fromLatRad) *
+        Math.cos(toLatRad) *
+        sinHalfDeltaLon *
+        sinHalfDeltaLon;
 
     return EARTH_RADIUS_KM * 2 * Math.asin(Math.sqrt(haversineAngle));
   }
@@ -673,9 +692,9 @@ export class GeoService {
    * Convenience wrapper that answers a yes/no reachability question.
    */
   isWithinRadius(
-    origin:      Coordinates,
+    origin: Coordinates,
     destination: Coordinates,
-    radiusKm:    number,
+    radiusKm: number,
   ): boolean {
     return this.calculateDistanceKm(origin, destination) <= radiusKm;
   }
@@ -693,7 +712,7 @@ import { GeoService } from './geo.service';
 @Global()
 @Module({
   providers: [GeoService],
-  exports:   [GeoService],
+  exports: [GeoService],
 })
 export class GeoModule {}
 ```
@@ -739,7 +758,8 @@ export class CreateDeliveryZoneDto {
   radiusKm!: number;
 
   @ApiProperty({
-    description: 'Fixed fee component regardless of distance (VND or local currency)',
+    description:
+      'Fixed fee component regardless of distance (VND or local currency)',
     minimum: 0,
     example: 10000,
   })
@@ -779,7 +799,8 @@ export class CreateDeliveryZoneDto {
   prepTimeMinutes?: number;
 
   @ApiPropertyOptional({
-    description: 'Safety buffer added to every ETA (traffic, finding address, etc.)',
+    description:
+      'Safety buffer added to every ETA (traffic, finding address, etc.)',
     minimum: 0,
     example: 5,
   })
@@ -869,13 +890,22 @@ export class DeliveryFeeBreakdownDto {
   @ApiProperty({ description: 'Fixed base fee component', example: 10000 })
   baseFee!: number;
 
-  @ApiProperty({ description: 'Fee from distance × per_km_rate', example: 16000 })
+  @ApiProperty({
+    description: 'Fee from distance × per_km_rate',
+    example: 16000,
+  })
   distanceFee!: number;
 
-  @ApiProperty({ description: 'Kitchen prep time component (minutes)', example: 15 })
+  @ApiProperty({
+    description: 'Kitchen prep time component (minutes)',
+    example: 15,
+  })
   prepTimeMinutes!: number;
 
-  @ApiProperty({ description: 'Driver travel time component (minutes)', example: 8 })
+  @ApiProperty({
+    description: 'Driver travel time component (minutes)',
+    example: 8,
+  })
   travelTimeMinutes!: number;
 
   @ApiProperty({ description: 'Safety buffer component (minutes)', example: 5 })
@@ -886,7 +916,10 @@ export class DeliveryEstimateResponseDto {
   @ApiProperty({ format: 'uuid' })
   restaurantId!: string;
 
-  @ApiProperty({ description: 'Straight-line Haversine distance in km', example: 3.24 })
+  @ApiProperty({
+    description: 'Straight-line Haversine distance in km',
+    example: 3.24,
+  })
   distanceKm!: number;
 
   @ApiProperty({ type: DeliveryZoneResponseDto })
@@ -895,7 +928,10 @@ export class DeliveryEstimateResponseDto {
   @ApiProperty({ description: 'Total delivery fee', example: 26000 })
   deliveryFee!: number;
 
-  @ApiProperty({ description: 'Estimated minutes from order placement to delivery', example: 28 })
+  @ApiProperty({
+    description: 'Estimated minutes from order placement to delivery',
+    example: 28,
+  })
   estimatedMinutes!: number;
 
   @ApiProperty({ type: DeliveryFeeBreakdownDto })
@@ -974,13 +1010,13 @@ export class ZonesRepository {
       .insert(deliveryZones)
       .values({
         restaurantId,
-        name:             dto.name,
-        radiusKm:         dto.radiusKm,
-        baseFee:          dto.baseFee,         // zoneFeeColumn.toDriver() handles number → string for DB
-        perKmRate:        dto.perKmRate,        // zoneFeeColumn.toDriver() handles number → string for DB
-        avgSpeedKmh:      dto.avgSpeedKmh      ?? 30,
-        prepTimeMinutes:  dto.prepTimeMinutes  ?? 15,
-        bufferMinutes:    dto.bufferMinutes     ?? 5,
+        name: dto.name,
+        radiusKm: dto.radiusKm,
+        baseFee: dto.baseFee, // zoneFeeColumn.toDriver() handles number → string for DB
+        perKmRate: dto.perKmRate, // zoneFeeColumn.toDriver() handles number → string for DB
+        avgSpeedKmh: dto.avgSpeedKmh ?? 30,
+        prepTimeMinutes: dto.prepTimeMinutes ?? 15,
+        bufferMinutes: dto.bufferMinutes ?? 5,
       })
       .returning();
     return row;
@@ -988,14 +1024,18 @@ export class ZonesRepository {
 
   async update(id: string, dto: UpdateDeliveryZoneDto): Promise<DeliveryZone> {
     const patch: Partial<typeof deliveryZones.$inferInsert> = {
-      ...(dto.name             !== undefined && { name:            dto.name }),
-      ...(dto.radiusKm         !== undefined && { radiusKm:        dto.radiusKm }),
-      ...(dto.baseFee          !== undefined && { baseFee:         dto.baseFee }),         // toDriver() handles conversion
-      ...(dto.perKmRate        !== undefined && { perKmRate:       dto.perKmRate }),        // toDriver() handles conversion
-      ...(dto.avgSpeedKmh      !== undefined && { avgSpeedKmh:     dto.avgSpeedKmh }),
-      ...(dto.prepTimeMinutes  !== undefined && { prepTimeMinutes: dto.prepTimeMinutes }),
-      ...(dto.bufferMinutes    !== undefined && { bufferMinutes:   dto.bufferMinutes }),
-      ...(dto.isActive         !== undefined && { isActive:        dto.isActive }),
+      ...(dto.name !== undefined && { name: dto.name }),
+      ...(dto.radiusKm !== undefined && { radiusKm: dto.radiusKm }),
+      ...(dto.baseFee !== undefined && { baseFee: dto.baseFee }), // toDriver() handles conversion
+      ...(dto.perKmRate !== undefined && { perKmRate: dto.perKmRate }), // toDriver() handles conversion
+      ...(dto.avgSpeedKmh !== undefined && { avgSpeedKmh: dto.avgSpeedKmh }),
+      ...(dto.prepTimeMinutes !== undefined && {
+        prepTimeMinutes: dto.prepTimeMinutes,
+      }),
+      ...(dto.bufferMinutes !== undefined && {
+        bufferMinutes: dto.bufferMinutes,
+      }),
+      ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       updatedAt: new Date(),
     };
 
@@ -1039,9 +1079,9 @@ import type { DeliveryZone } from '@/module/restaurant-catalog/restaurant/restau
 @Injectable()
 export class ZonesService {
   constructor(
-    private readonly repo:              ZonesRepository,
+    private readonly repo: ZonesRepository,
     private readonly restaurantService: RestaurantService,
-    private readonly geo:               GeoService,
+    private readonly geo: GeoService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -1063,9 +1103,9 @@ export class ZonesService {
 
   async create(
     restaurantId: string,
-    requesterId:  string,
-    isAdmin:      boolean,
-    dto:          CreateDeliveryZoneDto,
+    requesterId: string,
+    isAdmin: boolean,
+    dto: CreateDeliveryZoneDto,
   ): Promise<DeliveryZone> {
     const restaurant = await this.restaurantService.findOne(restaurantId);
     if (!isAdmin && restaurant.ownerId !== requesterId) {
@@ -1075,11 +1115,11 @@ export class ZonesService {
   }
 
   async update(
-    id:           string,
+    id: string,
     restaurantId: string,
-    requesterId:  string,
-    isAdmin:      boolean,
-    dto:          UpdateDeliveryZoneDto,
+    requesterId: string,
+    isAdmin: boolean,
+    dto: UpdateDeliveryZoneDto,
   ): Promise<DeliveryZone> {
     await this.findOne(id, restaurantId);
     const restaurant = await this.restaurantService.findOne(restaurantId);
@@ -1090,10 +1130,10 @@ export class ZonesService {
   }
 
   async remove(
-    id:           string,
+    id: string,
     restaurantId: string,
-    requesterId:  string,
-    isAdmin:      boolean,
+    requesterId: string,
+    isAdmin: boolean,
   ): Promise<void> {
     await this.findOne(id, restaurantId);
     const restaurant = await this.restaurantService.findOne(restaurantId);
@@ -1118,25 +1158,30 @@ export class ZonesService {
    *  5. Calculate fee and ETA from the matched zone.
    */
   async estimateDelivery(
-    restaurantId:    string,
-    customerCoords:  Coordinates,
+    restaurantId: string,
+    customerCoords: Coordinates,
   ): Promise<DeliveryEstimateResponseDto> {
     const restaurant = await this.restaurantService.findOne(restaurantId);
 
     // Guard: restaurant must have its location set before we can compute distance.
-    if (restaurant.latitude === null || restaurant.longitude === null ||
-        restaurant.latitude === undefined || restaurant.longitude === undefined) {
+    if (
+      restaurant.latitude === null ||
+      restaurant.longitude === null ||
+      restaurant.latitude === undefined ||
+      restaurant.longitude === undefined
+    ) {
       throw new UnprocessableEntityException(
         'This restaurant has not configured its location yet. Delivery estimates are unavailable.',
       );
     }
 
     const restaurantCoords: Coordinates = {
-      latitude:  restaurant.latitude,
+      latitude: restaurant.latitude,
       longitude: restaurant.longitude,
     };
 
-    const activeZones = await this.repo.findActiveByRestaurantOrderedByRadius(restaurantId);
+    const activeZones =
+      await this.repo.findActiveByRestaurantOrderedByRadius(restaurantId);
 
     if (activeZones.length === 0) {
       throw new UnprocessableEntityException(
@@ -1144,7 +1189,10 @@ export class ZonesService {
       );
     }
 
-    const distanceKm = this.geo.calculateDistanceKm(restaurantCoords, customerCoords);
+    const distanceKm = this.geo.calculateDistanceKm(
+      restaurantCoords,
+      customerCoords,
+    );
 
     const matchedZone = this.findEligibleZone(activeZones, distanceKm);
 
@@ -1171,7 +1219,9 @@ export class ZonesService {
     zonesSortedByRadiusAsc: DeliveryZone[],
     distanceKm: number,
   ): DeliveryZone | null {
-    return zonesSortedByRadiusAsc.find((zone) => zone.radiusKm >= distanceKm) ?? null;
+    return (
+      zonesSortedByRadiusAsc.find((zone) => zone.radiusKm >= distanceKm) ?? null
+    );
   }
 
   /** Calculates the total delivery fee for a known distance within a zone. */
@@ -1187,7 +1237,10 @@ export class ZonesService {
    * Travel time is rounded up (ceil) because we never want to promise an ETA
    * that the driver physically cannot meet.
    */
-  private calculateEstimatedMinutes(zone: DeliveryZone, distanceKm: number): number {
+  private calculateEstimatedMinutes(
+    zone: DeliveryZone,
+    distanceKm: number,
+  ): number {
     const travelTimeMinutes = Math.ceil((distanceKm / zone.avgSpeedKmh) * 60);
     return zone.prepTimeMinutes + travelTimeMinutes + zone.bufferMinutes;
   }
@@ -1201,30 +1254,30 @@ export class ZonesService {
    */
   private buildEstimateResponse(
     restaurantId: string,
-    distanceKm:   number,
-    zone:         DeliveryZone,
+    distanceKm: number,
+    zone: DeliveryZone,
   ): DeliveryEstimateResponseDto {
     const travelTimeMinutes = Math.ceil((distanceKm / zone.avgSpeedKmh) * 60);
-    const deliveryFee       = this.calculateDeliveryFee(zone, distanceKm);
-    const estimatedMinutes  = this.calculateEstimatedMinutes(zone, distanceKm);
-    const distanceFee       = distanceKm * zone.perKmRate;
+    const deliveryFee = this.calculateDeliveryFee(zone, distanceKm);
+    const estimatedMinutes = this.calculateEstimatedMinutes(zone, distanceKm);
+    const distanceFee = distanceKm * zone.perKmRate;
 
     return {
       restaurantId,
-      distanceKm:       Math.round(distanceKm * 100) / 100, // round to 2 dp for display
+      distanceKm: Math.round(distanceKm * 100) / 100, // round to 2 dp for display
       zone: {
-        id:       zone.id,
-        name:     zone.name,
+        id: zone.id,
+        name: zone.name,
         radiusKm: zone.radiusKm,
       },
-      deliveryFee:      Math.round(deliveryFee),
+      deliveryFee: Math.round(deliveryFee),
       estimatedMinutes: Math.round(estimatedMinutes),
       breakdown: {
-        baseFee:           zone.baseFee,
-        distanceFee:       Math.round(distanceFee),
-        prepTimeMinutes:   zone.prepTimeMinutes,
+        baseFee: zone.baseFee,
+        distanceFee: Math.round(distanceFee),
+        prepTimeMinutes: zone.prepTimeMinutes,
         travelTimeMinutes,
-        bufferMinutes:     zone.bufferMinutes,
+        bufferMinutes: zone.bufferMinutes,
       },
     };
   }
@@ -1385,6 +1438,7 @@ private async assertDeliveryZoneIfApplicable(
 ```
 
 > **Note on `activeZones` source at checkout:** The `PlaceOrderHandler` currently does not query `delivery_zones`. To implement this guard fully, it must either:
+>
 > - Query `delivery_zones` directly (acceptable — same DB, ordering BC owns its own data pipeline), or
 > - Add zone data to the restaurant ACL snapshot (preferred for strict bounded-context separation).
 >
@@ -1399,16 +1453,16 @@ private async assertDeliveryZoneIfApplicable(
 
 import { Module } from '@nestjs/common';
 import { ZonesController } from './zones.controller';
-import { ZonesService }    from './zones.service';
+import { ZonesService } from './zones.service';
 import { ZonesRepository } from './zones.repository';
-import { DatabaseModule }   from '@/drizzle/drizzle.module';
+import { DatabaseModule } from '@/drizzle/drizzle.module';
 import { RestaurantModule } from '../restaurant.module';
 // GeoModule is @Global() so no explicit import needed once registered in AppModule.
 
 @Module({
-  imports:     [DatabaseModule, RestaurantModule],
+  imports: [DatabaseModule, RestaurantModule],
   controllers: [ZonesController],
-  providers:   [ZonesService, ZonesRepository],
+  providers: [ZonesService, ZonesRepository],
 })
 export class ZonesModule {}
 ```
@@ -1488,4 +1542,4 @@ Use this checklist to ensure every part of the system is updated before the feat
 
 ---
 
-*End of proposal. All sections above constitute a complete, self-contained implementation guide.*
+_End of proposal. All sections above constitute a complete, self-contained implementation guide._

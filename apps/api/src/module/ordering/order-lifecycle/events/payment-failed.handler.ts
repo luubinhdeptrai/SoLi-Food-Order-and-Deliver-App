@@ -19,9 +19,7 @@ import { TransitionOrderCommand } from '../commands/transition-order.command';
  */
 @Injectable()
 @EventsHandler(PaymentFailedEvent)
-export class PaymentFailedEventHandler
-  implements IEventHandler<PaymentFailedEvent>
-{
+export class PaymentFailedEventHandler implements IEventHandler<PaymentFailedEvent> {
   private readonly logger = new Logger(PaymentFailedEventHandler.name);
 
   constructor(private readonly commandBus: CommandBus) {}
@@ -38,7 +36,7 @@ export class PaymentFailedEventHandler
         new TransitionOrderCommand(
           orderId,
           'cancelled',
-          null,       // system actor — no user ID
+          null, // system actor — no user ID
           'system',
           reason,
         ),
