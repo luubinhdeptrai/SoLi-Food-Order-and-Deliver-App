@@ -11,6 +11,7 @@ import {
   IsLongitude,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsVNDFee } from '@/shared/validators/vnd-amount.validator';
 
 export class CreateDeliveryZoneDto {
   @ApiProperty({
@@ -32,21 +33,19 @@ export class CreateDeliveryZoneDto {
   radiusKm!: number;
 
   @ApiProperty({
-    description: 'Base delivery fee (flat rate, VND)',
+    description: 'Base delivery fee in VND (integer, multiple of 1000; 0 = free)',
     minimum: 0,
     example: 15000,
   })
-  @IsNumber()
-  @Min(0)
+  @IsVNDFee()
   baseFee!: number;
 
   @ApiProperty({
-    description: 'Additional fee per kilometre (VND/km)',
+    description: 'Additional fee per kilometre in VND (integer, multiple of 1000; 0 = flat-rate only)',
     minimum: 0,
     example: 3000,
   })
-  @IsNumber()
-  @Min(0)
+  @IsVNDFee()
   perKmRate!: number;
 
   @ApiPropertyOptional({

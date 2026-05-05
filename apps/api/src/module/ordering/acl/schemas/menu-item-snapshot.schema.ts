@@ -3,26 +3,10 @@ import {
   pgEnum,
   uuid,
   text,
+  integer,
   timestamp,
-  customType,
   jsonb,
 } from 'drizzle-orm/pg-core';
-
-// ---------------------------------------------------------------------------
-// Monetary column helper (M-1 fix — mirrors order.schema.ts)
-// PostgreSQL NUMERIC(12, 2) → TypeScript number via fromDriver.
-// ---------------------------------------------------------------------------
-const moneyColumn = customType<{ data: number; driverData: string }>({
-  dataType() {
-    return 'numeric(12, 2)';
-  },
-  fromDriver(value) {
-    return parseFloat(value as string);
-  },
-  toDriver(value) {
-    return String(value);
-  },
-});
 
 // ---------------------------------------------------------------------------
 // Enum
@@ -71,7 +55,8 @@ export const orderingMenuItemSnapshots = pgTable(
     menuItemId: uuid('menu_item_id').primaryKey(), // upstream ID, not a FK
     restaurantId: uuid('restaurant_id').notNull(),
     name: text('name').notNull(),
-    price: moneyColumn('price').notNull(),
+    // Price stored as integer VND (no fractional currency in Vietnam).
+    price: integer('price').notNull(),
     status: orderingMenuItemStatusEnum('status').notNull().default('available'),
     /** Full modifier group+option tree. Empty array when item has no modifiers. */
     modifiers: jsonb('modifiers')

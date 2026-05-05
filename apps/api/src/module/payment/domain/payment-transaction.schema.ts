@@ -8,27 +8,7 @@ import {
   timestamp,
   index,
   unique,
-  customType,
 } from 'drizzle-orm/pg-core';
-
-// ---------------------------------------------------------------------------
-// Monetary column (mirrors the moneyColumn pattern from order.schema.ts).
-//
-// PostgreSQL NUMERIC(12, 2) gives exact decimal storage.
-// fromDriver converts the driver string representation to a JS number.
-// toDriver converts a JS number back to a string for the driver.
-// ---------------------------------------------------------------------------
-const moneyColumn = customType<{ data: number; driverData: string }>({
-  dataType() {
-    return 'numeric(12, 2)';
-  },
-  fromDriver(value) {
-    return parseFloat(value);
-  },
-  toDriver(value) {
-    return String(value);
-  },
-});
 
 // ---------------------------------------------------------------------------
 // payment_status enum
@@ -71,8 +51,9 @@ export const paymentTransactions = pgTable(
     orderId: uuid('order_id').notNull(),
     customerId: uuid('customer_id').notNull(),
 
-    // Order total at checkout time (source of truth for amount validation)
-    amount: moneyColumn('amount').notNull(),
+    // Order total at checkout time (source of truth for amount validation).
+    // Stored as integer VND — no fractional currency units in Vietnam.
+    amount: integer('amount').notNull(),
 
     status: paymentStatusEnum('status').notNull().default('pending'),
 

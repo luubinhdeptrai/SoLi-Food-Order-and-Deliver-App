@@ -64,7 +64,7 @@ export class ItemSearchRowDto {
   description?: string | null;
 
   @ApiProperty({
-    description: 'Price in local currency unit (numeric)',
+    description: 'Price in integer VND (minimum 1000, multiple of 1000)',
     example: 35000,
   })
   price!: number;

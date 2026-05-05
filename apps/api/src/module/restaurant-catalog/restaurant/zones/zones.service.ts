@@ -203,7 +203,8 @@ export class ZonesService {
   }
 
   private calculateDeliveryFee(zone: DeliveryZone, distanceKm: number): number {
-    return zone.baseFee + distanceKm * zone.perKmRate;
+    // baseFee and perKmRate are integer VND; product of float×int is rounded.
+    return Math.round(zone.baseFee + distanceKm * zone.perKmRate);
   }
 
   private calculateEstimatedMinutes(
@@ -227,7 +228,7 @@ export class ZonesService {
     zone: DeliveryZone,
   ): DeliveryEstimateResponseDto {
     const deliveryFee = this.calculateDeliveryFee(zone, distanceKm);
-    const distanceFee = distanceKm * zone.perKmRate;
+    const distanceFee = Math.round(distanceKm * zone.perKmRate);
     // Use the same safeSpeed guard as calculateEstimatedMinutes.
     const safeSpeed = Math.max(zone.avgSpeedKmh, 1);
     const travelTimeMinutes = Math.ceil((distanceKm / safeSpeed) * 60);

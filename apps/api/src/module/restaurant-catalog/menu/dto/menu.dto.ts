@@ -8,7 +8,6 @@ import {
   IsArray,
   IsEnum,
   IsInt,
-  IsNumber,
   IsOptional,
   IsString,
   IsUrl,
@@ -17,6 +16,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsVNDAmount } from '@/shared/validators/vnd-amount.validator';
 
 export const MENU_ITEM_STATUSES = [
   'available',
@@ -98,12 +98,11 @@ export class CreateMenuItemDto {
   name!: string;
 
   @ApiProperty({
-    description: 'Price of the item in store currency',
-    example: 12.5,
-    minimum: 0.01,
+    description: 'Price of the item in VND (integer, multiple of 1000)',
+    example: 35000,
+    minimum: 1000,
   })
-  @IsNumber()
-  @Min(0.01)
+  @IsVNDAmount()
   price!: number;
 
   @ApiPropertyOptional({

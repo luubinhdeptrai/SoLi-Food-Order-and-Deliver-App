@@ -27,13 +27,6 @@ const IPN_RSP_AMOUNT_MISMATCH = '04';
 /** Generic unknown error (should never happen in normal operation). */
 const IPN_RSP_UNKNOWN_ERROR = '99';
 
-/**
- * Epsilon for floating-point amount comparison.
- * Since amounts are stored as NUMERIC(12,2), maximum precision drift is 0.005 VND.
- * We use 0.01 to match the Ordering BC convention (see PaymentConfirmedEventHandler).
- */
-const AMOUNT_EPSILON = 0.01;
-
 /** IPN response shape — MUST NOT be wrapped in a result envelope. */
 export interface IpnResponse {
   RspCode: string;
@@ -156,14 +149,10 @@ export class ProcessIpnHandler implements ICommandHandler<ProcessIpnCommand> {
     // -------------------------------------------------------------------------
     // Step 4: Amount validation (BR-P4).
     //
-    // vnp_Amount from IPN = what VNPay actually charged the customer.
-    // txn.amount = what we asked VNPay to charge (stored at URL-generation time).
-    // A mismatch indicates either a VNPay bug or a tampering attempt.
-    //
-    // We mark the transaction as failed and fire PaymentFailedEvent so Ordering
-    // can cancel the order. The customer should contact support.
+    // Both ipnAmount and txn.amount are integer VND — exact equality is correct.
+    // Any mismatch indicates a VNPay bug or a tampering attempt.
     // -------------------------------------------------------------------------
-    if (Math.abs(ipnAmount - txn.amount) > AMOUNT_EPSILON) {
+    if (ipnAmount !== txn.amount) {
       this.logger.error(
         `IPN amount mismatch for txnRef=${txnRef}: ` +
           `expected=${txn.amount} received=${ipnAmount} (delta=${Math.abs(ipnAmount - txn.amount)})`,
@@ -234,7 +223,10 @@ export class ProcessIpnHandler implements ICommandHandler<ProcessIpnCommand> {
         // cases. Storing '' would trigger the UNIQUE constraint on the second retry.
         providerTxnId: providerTxnId || null,
         vnpResponseCode: rawQuery['vnp_ResponseCode'] ?? null,
-        rawIpnPayload: rawQuery,
+        // Spread rawQuery to create a plain Object.prototype object.
+        // Express/qs parses query strings with Object.create(null) (null-prototype)
+        // which causes Drizzle's is() helper to crash on Object.getPrototypeOf().
+        rawIpnPayload: { ...rawQuery },
         ipnReceivedAt: now,
         paidAt: now,
       },
@@ -341,7 +333,7 @@ export class ProcessIpnHandler implements ICommandHandler<ProcessIpnCommand> {
       {
         providerTxnId: providerTxnId || null,
         vnpResponseCode: rawQuery['vnp_ResponseCode'] ?? null,
-        rawIpnPayload: rawQuery,
+        rawIpnPayload: { ...rawQuery },
         ipnReceivedAt: now,
       },
     );

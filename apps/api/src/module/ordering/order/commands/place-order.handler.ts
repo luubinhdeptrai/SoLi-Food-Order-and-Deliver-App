@@ -290,14 +290,15 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     // Step 8 — Compute final totals
     // Shipping fee defaults to 0 when delivery pricing could not be resolved
     // (missing coordinates or no active zones configured for the restaurant).
-    // parseFloat(toFixed(2)) eliminates floating-point accumulation before write.
+    // All amounts are integer VND — no floating-point accumulation possible.
     // -------------------------------------------------------------------------
     const shippingFee = deliveryPricing?.shippingFee ?? 0;
     const estimatedDeliveryMinutes =
       deliveryPricing?.estimatedDeliveryMinutes ?? null;
     const distanceKm = deliveryPricing?.distanceKm;
     const itemsTotal = this.calculateItemsTotal(snapshotedItems);
-    const totalAmount = parseFloat((itemsTotal + shippingFee).toFixed(2));
+    // Both itemsTotal and shippingFee are multiples of 1000 VND — sum is safe.
+    const totalAmount = itemsTotal + shippingFee;
     if (itemsTotal <= MINIMUM_ORDER_TOTAL) {
       throw new UnprocessableEntityException(
         'Order total must be greater than zero.',
@@ -658,16 +659,18 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
   }
 
   /**
-   * Shipping fee formula: baseFee + (distanceKm × perKmRate)
-   * Both values come from the innermost eligible delivery zone snapshot.
-   * Rounded to 2 decimal places to match NUMERIC(12, 2) DB column precision.
+   * Shipping fee formula: round(baseFee + distanceKm × perKmRate, 1000)
+   * Both baseFee and perKmRate are integer VND (multiples of 1000).
+   * The raw product contains a float component from distanceKm, so the result
+   * is normalised to the nearest 1000 VND to keep all monetary values
+   * consistent (no irregular amounts like 19992 or 104993).
    */
   private calculateShippingFee(
     distanceKm: number,
     zone: DeliveryZoneInfo,
   ): number {
-    const fee = zone.baseFee + distanceKm * zone.perKmRate;
-    return parseFloat(fee.toFixed(2));
+    const raw = zone.baseFee + distanceKm * zone.perKmRate;
+    return Math.round(raw / 1000) * 1000;
   }
 
   /**
@@ -749,9 +752,8 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
         }),
       );
 
-      const subtotal = parseFloat(
-        ((unitPrice + modifiersPrice) * cartItem.quantity).toFixed(2),
-      );
+      // All prices are integer VND — multiplication and addition stay integer.
+      const subtotal = (unitPrice + modifiersPrice) * cartItem.quantity;
 
       return {
         menuItemId: cartItem.menuItemId,

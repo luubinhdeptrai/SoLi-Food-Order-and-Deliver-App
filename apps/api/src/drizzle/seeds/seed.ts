@@ -454,11 +454,11 @@ async function seedRestaurants() {
   console.log('✅ restaurants seeded (5 rows)');
 }
 
-// Delivery fee constants — all values represent VND / 1000 (e.g. 15 = 15,000 VND)
-const BASE_FEE_STANDARD = 15.0; // 15,000 VND base fee
-const BASE_FEE_WIDE = 20.0; // 20,000 VND base fee for wide zones
-const PER_KM_STANDARD = 5.0; // 5,000 VND / km
-const PER_KM_WIDE = 7.0; // 7,000 VND / km (wider zones cost more)
+// Delivery fee constants — integer VND
+const BASE_FEE_STANDARD = 15000; // 15,000 VND base fee
+const BASE_FEE_WIDE = 20000; // 20,000 VND base fee for wide zones
+const PER_KM_STANDARD = 5000; // 5,000 VND / km
+const PER_KM_WIDE = 7000; // 7,000 VND / km (wider zones cost more)
 const AVG_SPEED_CITY = 25; // km/h — slow city traffic
 const AVG_SPEED_HIGHWAY = 35; // km/h — mixed roads
 const PREP_TIME_NOODLE = 10; // minutes — noodle dishes are fast
@@ -662,7 +662,7 @@ async function seedMenuItems() {
       name: 'Phở Bò Tái Nạm',
       description:
         'Phở bò truyền thống — nước dùng hầm xương bò 12 tiếng, tái + nạm.',
-      price: 8.5,
+      price: 85000,
       tags: ['beef', 'soup', 'noodle'],
       status: 'available' as const,
     },
@@ -672,7 +672,7 @@ async function seedMenuItems() {
       categoryId: IDS.catR1Noodles,
       name: 'Phở Gà',
       description: 'Phở gà ta — nước dùng thanh ngọt tự nhiên từ xương gà.',
-      price: 7.5,
+      price: 75000,
       tags: ['chicken', 'soup', 'noodle'],
       status: 'available' as const,
     },
@@ -682,7 +682,7 @@ async function seedMenuItems() {
       categoryId: IDS.catR1Noodles,
       name: 'Bún Bò Huế',
       description: 'Bún bò Huế cay đặc trưng — mắm ruốc, sả, ớt.',
-      price: 8.0,
+      price: 80000,
       tags: ['spicy', 'beef', 'soup', 'noodle'],
       status: 'available' as const,
     },
@@ -693,7 +693,7 @@ async function seedMenuItems() {
       name: 'Bánh Cuốn',
       description:
         'Bánh cuốn nhân thịt bằm, mộc nhĩ — ăn kèm chả lụa và nước mắm.',
-      price: 5.5,
+      price: 55000,
       tags: ['pork', 'steamed'],
       status: 'available' as const,
     },
@@ -703,7 +703,7 @@ async function seedMenuItems() {
       categoryId: IDS.catR1Drinks,
       name: 'Trà Đá',
       description: 'Trà đá miễn phí khi dùng tại bàn.',
-      price: 0.5,
+      price: 5000,
       tags: ['cold', 'tea'],
       status: 'available' as const,
     },
@@ -715,7 +715,7 @@ async function seedMenuItems() {
       categoryId: IDS.catR2Mains,
       name: 'Classic Burger',
       description: 'Beef patty, lettuce, tomato, cheese.',
-      price: 11.0,
+      price: 110000,
       tags: ['beef', 'fastfood'],
       status: 'available' as const,
     },
@@ -727,7 +727,7 @@ async function seedMenuItems() {
       categoryId: IDS.catR3Rice,
       name: 'Cơm Tấm Sườn Nướng',
       description: 'Cơm tấm kèm sườn nướng than hoa, trứng chiên, đồ chua.',
-      price: 9.0,
+      price: 90000,
       tags: ['pork', 'grilled', 'rice'],
       status: 'available' as const,
     },
@@ -737,7 +737,7 @@ async function seedMenuItems() {
       categoryId: IDS.catR3Rice,
       name: 'Cơm Tấm Bì Chả',
       description: 'Cơm tấm kèm bì lợn và chả trứng hấp.',
-      price: 8.5,
+      price: 85000,
       tags: ['pork', 'rice'],
       status: 'available' as const,
     },
@@ -749,7 +749,7 @@ async function seedMenuItems() {
       name: 'Bánh Mì Thịt Nướng',
       description:
         'Bánh mì giòn nhân thịt heo nướng, đồ chua, rau thơm, tương ớt.',
-      price: 3.5,
+      price: 35000,
       tags: ['pork', 'grilled', 'sandwich'],
       status: 'available' as const,
     },
@@ -759,7 +759,7 @@ async function seedMenuItems() {
       categoryId: IDS.catR3Rice,
       name: 'Cơm Chay',
       description: 'Cơm trắng kèm đậu phụ, rau củ xào và canh chay.',
-      price: 7.0,
+      price: 70000,
       tags: ['vegetarian', 'vegan', 'rice'],
       status: 'available' as const,
     },
@@ -769,7 +769,7 @@ async function seedMenuItems() {
       categoryId: IDS.catR3Drinks,
       name: 'Nước Ngọt',
       description: 'Coca-Cola, Sprite, 7Up — lon 330ml.',
-      price: 1.5,
+      price: 15000,
       tags: ['cold', 'soft-drink'],
       status: 'available' as const,
     },
@@ -782,7 +782,7 @@ async function seedMenuItems() {
       name: 'Thịt Nướng Hàn Quốc',
       description:
         'Bộ thịt nướng ba chỉ và ba rọi — ướp sốt gochujang, ăn kèm rau cuốn.',
-      price: 18.0,
+      price: 180000,
       tags: ['pork', 'grilled', 'korean'],
       status: 'available' as const,
     },
@@ -792,7 +792,7 @@ async function seedMenuItems() {
       categoryId: IDS.catR4Stews,
       name: 'Kimchi Jjigae',
       description: 'Canh kimchi hầm thịt heo và đậu phụ — cay đậm đà.',
-      price: 12.0,
+      price: 120000,
       tags: ['spicy', 'pork', 'soup', 'korean'],
       status: 'available' as const,
     },
@@ -803,7 +803,7 @@ async function seedMenuItems() {
       name: 'Bibimbap',
       description:
         'Cơm trộn Hàn Quốc — rau namul, thịt bò, trứng lòng đào, tương gochujang.',
-      price: 13.5,
+      price: 135000,
       tags: ['beef', 'rice', 'korean'],
       status: 'available' as const,
     },
@@ -814,7 +814,7 @@ async function seedMenuItems() {
       name: 'Trà Sữa Trân Châu',
       description:
         'Trà sữa Hàn Quốc — trân châu đen, có thể chọn mức đường và đá.',
-      price: 4.5,
+      price: 45000,
       tags: ['cold', 'tea', 'korean'],
       status: 'available' as const,
     },
@@ -826,7 +826,7 @@ async function seedMenuItems() {
       categoryId: IDS.catR5Sushi,
       name: 'Sushi Cá Hồi',
       description: 'Sushi cá hồi Na Uy nhập khẩu — 8 miếng.',
-      price: 15.0,
+      price: 150000,
       tags: ['seafood', 'japanese', 'raw'],
       status: 'available' as const,
     },
@@ -836,7 +836,7 @@ async function seedMenuItems() {
       categoryId: IDS.catR5Sashimi,
       name: 'Sashimi Cá Ngừ',
       description: 'Sashimi cá ngừ đại dương thái lát mỏng — 10 lát.',
-      price: 18.0,
+      price: 180000,
       tags: ['seafood', 'japanese', 'raw'],
       status: 'available' as const,
     },
@@ -847,7 +847,7 @@ async function seedMenuItems() {
       categoryId: IDS.catR5Sushi,
       name: 'Bánh Mì Cá Hồi',
       description: 'Bánh mì Nhật Bản nhân cá hồi sốt teriyaki và rau mầm.',
-      price: 6.5,
+      price: 65000,
       tags: ['seafood', 'sandwich', 'japanese'],
       status: 'available' as const,
     },
@@ -857,7 +857,7 @@ async function seedMenuItems() {
       categoryId: IDS.catR5Drinks,
       name: 'Trà Xanh Nhật Bản',
       description: 'Matcha latte nóng / lạnh — matcha Uji Kyoto grade A.',
-      price: 5.0,
+      price: 50000,
       tags: ['hot', 'cold', 'tea', 'japanese'],
       status: 'available' as const,
     },
@@ -866,24 +866,24 @@ async function seedMenuItems() {
   console.log('✅ menu_items seeded (19 rows)');
 }
 
-// Modifier price constants — values in the same unit as menu item prices (USD-equivalent)
+// Modifier price constants — integer VND
 const PRICE_FREE = 0; // no extra charge
-const PRICE_TOPPING_SMALL = 0.5; // small add-on (egg, pickle)
-const PRICE_TOPPING_MED = 1.0; // medium add-on (chả lụa, extra protein)
-const PRICE_TOPPING_LG = 1.5; // large add-on (chả cua)
-const PRICE_TOPPING_PREMIUM = 2.0; // premium add-on (chả cua on bánh cuốn)
-const PRICE_SIZE_UP = 0.5; // upsize surcharge (medium → large)
-const PRICE_SIZE_UP2 = 1.0; // double upsize (small → large)
-const PRICE_BBQ_BEEF = 2.0; // premium beef upgrade for BBQ
-const PRICE_BBQ_2PAX = 15.0; // 2-person BBQ set surcharge
-const PRICE_BBQ_3PAX = 25.0; // 3-person BBQ set surcharge
-const PRICE_SUSHI_12 = 5.0; // 12-piece sushi upgrade
-const PRICE_SUSHI_16 = 9.0; // 16-piece sushi upgrade
-const PRICE_SASHIMI_15 = 7.0; // 15-slice sashimi upgrade
-const PRICE_SASHIMI_20 = 12.0; // 20-slice sashimi upgrade
-const PRICE_JELLY = 0.5; // thạch topping
-const PRICE_CREAM = 1.0; // kem trứng topping
-const PRICE_MUSHROOM = 0.5; // nấm xào upgrade for vegetarian rice
+const PRICE_TOPPING_SMALL = 5000; // small add-on (egg, pickle)
+const PRICE_TOPPING_MED = 10000; // medium add-on (chả lụa, extra protein)
+const PRICE_TOPPING_LG = 15000; // large add-on (chả cua)
+const PRICE_TOPPING_PREMIUM = 20000; // premium add-on (chả cua on bánh cuốn)
+const PRICE_SIZE_UP = 5000; // upsize surcharge (medium → large)
+const PRICE_SIZE_UP2 = 10000; // double upsize (small → large)
+const PRICE_BBQ_BEEF = 20000; // premium beef upgrade for BBQ
+const PRICE_BBQ_2PAX = 150000; // 2-person BBQ set surcharge
+const PRICE_BBQ_3PAX = 250000; // 3-person BBQ set surcharge
+const PRICE_SUSHI_12 = 50000; // 12-piece sushi upgrade
+const PRICE_SUSHI_16 = 90000; // 16-piece sushi upgrade
+const PRICE_SASHIMI_15 = 70000; // 15-slice sashimi upgrade
+const PRICE_SASHIMI_20 = 120000; // 20-slice sashimi upgrade
+const PRICE_JELLY = 5000; // thạch topping
+const PRICE_CREAM = 10000; // kem trứng topping
+const PRICE_MUSHROOM = 5000; // nấm xào upgrade for vegetarian rice
 
 async function seedModifierGroups() {
   const rows = [
@@ -1933,164 +1933,478 @@ async function seedOrderingRestaurantSnapshots() {
 }
 
 async function seedOrderingMenuItemSnapshots() {
-  // modifiers = [] — no modifiers configured in seed data; can be extended per item later
   const rows = [
-    // R1
+    // ── R1 Phở Bắc ────────────────────────────────────────────────────────────
     {
       menuItemId: IDS.r1Pho1,
       restaurantId: IDS.restaurant1,
       name: 'Phở Bò Tái Nạm',
-      price: 8.5,
+      price: 85000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR1Pho1Size,
+          groupName: 'Kích cỡ',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR1Pho1SizeS, name: 'Tô nhỏ',  price: PRICE_FREE,     isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR1Pho1SizeM, name: 'Tô vừa',  price: PRICE_SIZE_UP,  isDefault: false, isAvailable: true },
+            { optionId: IDS.optR1Pho1SizeL, name: 'Tô lớn',  price: PRICE_SIZE_UP2, isDefault: false, isAvailable: true },
+          ],
+        },
+        {
+          groupId: IDS.grpR1Pho1Topping,
+          groupName: 'Topping thêm',
+          minSelections: 0,
+          maxSelections: 3,
+          options: [
+            { optionId: IDS.optR1Pho1TopTai,  name: 'Thêm tái',  price: PRICE_TOPPING_MED, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR1Pho1TopNam,  name: 'Thêm nạm',  price: PRICE_TOPPING_MED, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR1Pho1TopGan,  name: 'Thêm gân',  price: PRICE_TOPPING_LG,  isDefault: false, isAvailable: true },
+            { optionId: IDS.optR1Pho1TopSach, name: 'Thêm sách', price: PRICE_TOPPING_LG,  isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r1Pho2,
       restaurantId: IDS.restaurant1,
       name: 'Phở Gà',
-      price: 7.5,
+      price: 75000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR1Pho2Size,
+          groupName: 'Kích cỡ',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR1Pho2SizeS, name: 'Tô nhỏ', price: PRICE_FREE,     isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR1Pho2SizeM, name: 'Tô vừa', price: PRICE_SIZE_UP,  isDefault: false, isAvailable: true },
+            { optionId: IDS.optR1Pho2SizeL, name: 'Tô lớn', price: PRICE_SIZE_UP2, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r1BunBo,
       restaurantId: IDS.restaurant1,
       name: 'Bún Bò Huế',
-      price: 8.0,
+      price: 80000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR1BunBoSpicy,
+          groupName: 'Độ cay',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR1BunBoSpicy0, name: 'Không cay', price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR1BunBoSpicyM, name: 'Cay vừa',   price: PRICE_FREE, isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR1BunBoSpicyH, name: 'Cay nhiều', price: PRICE_FREE, isDefault: false, isAvailable: true },
+          ],
+        },
+        {
+          groupId: IDS.grpR1BunBoTopping,
+          groupName: 'Topping thêm',
+          minSelections: 0,
+          maxSelections: 2,
+          options: [
+            { optionId: IDS.optR1BunBoTopCua, name: 'Thêm chả cua', price: PRICE_TOPPING_LG,  isDefault: false, isAvailable: true },
+            { optionId: IDS.optR1BunBoTopHeo, name: 'Thêm chả heo', price: PRICE_TOPPING_MED, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r1BanhCuon,
       restaurantId: IDS.restaurant1,
       name: 'Bánh Cuốn',
-      price: 5.5,
+      price: 55000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR1BanhCuonExtra,
+          groupName: 'Phần thêm',
+          minSelections: 0,
+          maxSelections: 2,
+          options: [
+            { optionId: IDS.optR1BanhCuonExtraLua, name: 'Thêm chả lụa', price: PRICE_TOPPING_MED,     isDefault: false, isAvailable: true },
+            { optionId: IDS.optR1BanhCuonExtraEgg, name: 'Trứng ốp la',  price: PRICE_TOPPING_SMALL,   isDefault: false, isAvailable: true },
+            { optionId: IDS.optR1BanhCuonExtraCua, name: 'Chả cua',      price: PRICE_TOPPING_PREMIUM, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r1TraDa,
       restaurantId: IDS.restaurant1,
       name: 'Trà Đá',
-      price: 0.5,
+      price: 5000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR1TraDaSugar,
+          groupName: 'Đường',
+          minSelections: 0,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR1TraDaSugar0,    name: 'Không đường', price: PRICE_FREE, isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR1TraDaSugarLow,  name: 'Ít đường',    price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR1TraDaSugarNorm, name: 'Bình thường', price: PRICE_FREE, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
-    // R2
+    // ── R2 Bếp Đóng Cửa ───────────────────────────────────────────────────────
     {
       menuItemId: IDS.r2Burger,
       restaurantId: IDS.restaurant2,
       name: 'Classic Burger',
-      price: 11.0,
+      price: 110000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR2BurgerSauce,
+          groupName: 'Sốt',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR2BurgerSauceOrig, name: 'Bình thường', price: PRICE_FREE, isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR2BurgerSauceBbq,  name: 'BBQ',         price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR2BurgerSauceMayo, name: 'Mayo',        price: PRICE_FREE, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
-    // R3
+    // ── R3 Cơm Tấm Sài Gòn ────────────────────────────────────────────────────
     {
       menuItemId: IDS.r3ComTam1,
       restaurantId: IDS.restaurant3,
       name: 'Cơm Tấm Sườn Nướng',
-      price: 9.0,
+      price: 90000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR3ComTam1Rice,
+          groupName: 'Cỡ cơm',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR3ComTam1RiceS, name: 'Ít cơm',      price: PRICE_FREE,    isDefault: false, isAvailable: true },
+            { optionId: IDS.optR3ComTam1RiceN, name: 'Bình thường', price: PRICE_FREE,    isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR3ComTam1RiceL, name: 'Nhiều cơm',   price: PRICE_SIZE_UP, isDefault: false, isAvailable: true },
+          ],
+        },
+        {
+          groupId: IDS.grpR3ComTam1Side,
+          groupName: 'Phần thêm',
+          minSelections: 0,
+          maxSelections: 3,
+          options: [
+            { optionId: IDS.optR3ComTam1SidePickle, name: 'Đồ chua',    price: PRICE_FREE,         isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR3ComTam1SideEgg,    name: 'Trứng ốp la', price: PRICE_TOPPING_SMALL, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR3ComTam1SideBi,     name: 'Thêm bì',    price: PRICE_TOPPING_MED,  isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r3ComTam2,
       restaurantId: IDS.restaurant3,
       name: 'Cơm Tấm Bì Chả',
-      price: 8.5,
+      price: 85000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR3ComTam2Side,
+          groupName: 'Phần thêm',
+          minSelections: 0,
+          maxSelections: 2,
+          options: [
+            { optionId: IDS.optR3ComTam2SidePickle, name: 'Đồ chua',    price: PRICE_FREE,          isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR3ComTam2SideEgg,    name: 'Trứng ốp la', price: PRICE_TOPPING_SMALL, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR3ComTam2SideBi,     name: 'Thêm bì',    price: PRICE_TOPPING_MED,   isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r3BanhMi,
       restaurantId: IDS.restaurant3,
       name: 'Bánh Mì Thịt Nướng',
-      price: 3.5,
+      price: 35000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR3BanhMiSauce,
+          groupName: 'Sốt',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR3BanhMiSauceChili, name: 'Tương ớt', price: PRICE_FREE, isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR3BanhMiSauceBlack, name: 'Tương đen', price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR3BanhMiSauceNone,  name: 'Không sốt', price: PRICE_FREE, isDefault: false, isAvailable: true },
+          ],
+        },
+        {
+          groupId: IDS.grpR3BanhMiVeg,
+          groupName: 'Rau',
+          minSelections: 0,
+          maxSelections: 4,
+          options: [
+            { optionId: IDS.optR3BanhMiVegCuke,   name: 'Dưa leo',  price: PRICE_FREE, isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR3BanhMiVegPickle, name: 'Đồ chua',  price: PRICE_FREE, isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR3BanhMiVegHerb,   name: 'Rau mùi',  price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR3BanhMiVegNone,   name: 'Không rau', price: PRICE_FREE, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r3ComChay,
       restaurantId: IDS.restaurant3,
       name: 'Cơm Chay',
-      price: 7.0,
+      price: 70000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR3ComChayProtein,
+          groupName: 'Protein',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR3ComChayTofu,     name: 'Đậu phụ', price: PRICE_FREE,    isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR3ComChayMushroom, name: 'Nấm xào', price: PRICE_MUSHROOM, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r3NuocNgot,
       restaurantId: IDS.restaurant3,
       name: 'Nước Ngọt',
-      price: 1.5,
+      price: 15000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR3NuocNgotType,
+          groupName: 'Loại nước ngọt',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR3NuocNgotCola,   name: 'Coca-Cola', price: PRICE_FREE, isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR3NuocNgotSprite, name: 'Sprite',    price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR3NuocNgot7up,    name: '7Up',       price: PRICE_FREE, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
-    // R4
+    // ── R4 Seoul BBQ & More ────────────────────────────────────────────────────
     {
       menuItemId: IDS.r4Bbq,
       restaurantId: IDS.restaurant4,
       name: 'Thịt Nướng Hàn Quốc',
-      price: 18.0,
+      price: 180000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR4BbqMeat,
+          groupName: 'Loại thịt',
+          minSelections: 1,
+          maxSelections: 2,
+          options: [
+            { optionId: IDS.optR4BbqMeatBaChi,   name: 'Ba chỉ heo', price: PRICE_FREE,    isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR4BbqMeatCoHeo,   name: 'Cổ heo',     price: PRICE_FREE,    isDefault: false, isAvailable: true },
+            { optionId: IDS.optR4BbqMeatBoBaroi, name: 'Bò ba rọi',  price: PRICE_BBQ_BEEF, isDefault: false, isAvailable: true },
+          ],
+        },
+        {
+          groupId: IDS.grpR4BbqPortion,
+          groupName: 'Phần ăn',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR4BbqPortion1, name: '1 người', price: PRICE_FREE,    isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR4BbqPortion2, name: '2 người', price: PRICE_BBQ_2PAX, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR4BbqPortion3, name: '3 người', price: PRICE_BBQ_3PAX, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r4Kimchi,
       restaurantId: IDS.restaurant4,
       name: 'Kimchi Jjigae',
-      price: 12.0,
+      price: 120000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR4KimchiSpicy,
+          groupName: 'Độ cay',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR4KimchiSpicy0, name: 'Không cay', price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR4KimchiSpicyM, name: 'Cay vừa',   price: PRICE_FREE, isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR4KimchiSpicyH, name: 'Cay nhiều', price: PRICE_FREE, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r4Bibimbap,
       restaurantId: IDS.restaurant4,
       name: 'Bibimbap',
-      price: 13.5,
+      price: 135000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR4BibimbapProtein,
+          groupName: 'Loại protein',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR4BibimbapBeef, name: 'Thịt bò',   price: PRICE_FREE, isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR4BibimbapTofu, name: 'Đậu phụ',   price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR4BibimbapEgg,  name: 'Trứng sống', price: PRICE_FREE, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r4TraSua,
       restaurantId: IDS.restaurant4,
       name: 'Trà Sữa Trân Châu',
-      price: 4.5,
+      price: 45000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR4TraSuaSugar,
+          groupName: 'Mức đường',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR4TraSuaSugar0,   name: '0% đường',   price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR4TraSuaSugar30,  name: '30% đường',  price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR4TraSuaSugar50,  name: '50% đường',  price: PRICE_FREE, isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR4TraSuaSugar100, name: '100% đường', price: PRICE_FREE, isDefault: false, isAvailable: true },
+          ],
+        },
+        {
+          groupId: IDS.grpR4TraSuaIce,
+          groupName: 'Lượng đá',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR4TraSuaIce0,    name: 'Không đá',   price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR4TraSuaIceLow,  name: 'Ít đá',      price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR4TraSuaIceNorm, name: 'Bình thường', price: PRICE_FREE, isDefault: true,  isAvailable: true },
+          ],
+        },
+        {
+          groupId: IDS.grpR4TraSuaTopping,
+          groupName: 'Topping',
+          minSelections: 0,
+          maxSelections: 2,
+          options: [
+            { optionId: IDS.optR4TraSuaToppingPearl, name: 'Trân châu đen', price: PRICE_FREE,  isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR4TraSuaToppingJelly, name: 'Thạch',         price: PRICE_JELLY, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR4TraSuaToppingCream, name: 'Kem trứng',     price: PRICE_CREAM, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
-    // R5
+    // ── R5 Sushi Hana ──────────────────────────────────────────────────────────
     {
       menuItemId: IDS.r5Sushi,
       restaurantId: IDS.restaurant5,
       name: 'Sushi Cá Hồi',
-      price: 15.0,
+      price: 150000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR5SushiPortion,
+          groupName: 'Số lượng miếng',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR5SushiPortion8,  name: '8 miếng',  price: PRICE_FREE,    isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR5SushiPortion12, name: '12 miếng', price: PRICE_SUSHI_12, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR5SushiPortion16, name: '16 miếng', price: PRICE_SUSHI_16, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r5Sashimi,
       restaurantId: IDS.restaurant5,
       name: 'Sashimi Cá Ngừ',
-      price: 18.0,
+      price: 180000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR5SashimiPortion,
+          groupName: 'Số lượng lát',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR5SashimiPortion10, name: '10 lát', price: PRICE_FREE,       isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR5SashimiPortion15, name: '15 lát', price: PRICE_SASHIMI_15, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR5SashimiPortion20, name: '20 lát', price: PRICE_SASHIMI_20, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r5BanhMi,
       restaurantId: IDS.restaurant5,
       name: 'Bánh Mì Cá Hồi',
-      price: 6.5,
+      price: 65000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR5BanhMiTemp,
+          groupName: 'Nhiệt độ',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR5BanhMiTempHot,  name: 'Nóng', price: PRICE_FREE, isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR5BanhMiTempCold, name: 'Lạnh', price: PRICE_FREE, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
     {
       menuItemId: IDS.r5TraXanh,
       restaurantId: IDS.restaurant5,
       name: 'Trà Xanh Nhật Bản',
-      price: 5.0,
+      price: 50000,
       status: 'available' as const,
-      modifiers: [],
+      modifiers: [
+        {
+          groupId: IDS.grpR5TraXanhTemp,
+          groupName: 'Nhiệt độ',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR5TraXanhTempHot,  name: 'Nóng', price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR5TraXanhTempCold, name: 'Lạnh', price: PRICE_FREE, isDefault: true,  isAvailable: true },
+          ],
+        },
+        {
+          groupId: IDS.grpR5TraXanhStrength,
+          groupName: 'Nồng độ matcha',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            { optionId: IDS.optR5TraXanhStrengthLight,  name: 'Nhạt',        price: PRICE_FREE, isDefault: false, isAvailable: true },
+            { optionId: IDS.optR5TraXanhStrengthNorm,   name: 'Bình thường', price: PRICE_FREE, isDefault: true,  isAvailable: true },
+            { optionId: IDS.optR5TraXanhStrengthStrong, name: 'Đậm',         price: PRICE_FREE, isDefault: false, isAvailable: true },
+          ],
+        },
+      ],
     },
   ];
   await db.insert(orderingMenuItemSnapshots).values(rows);

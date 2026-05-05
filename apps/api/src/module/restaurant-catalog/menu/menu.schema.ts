@@ -8,24 +8,8 @@ import {
   index,
   uniqueIndex,
   timestamp,
-  customType,
 } from 'drizzle-orm/pg-core';
 import { restaurants } from '../restaurant/restaurant.schema';
-
-// ---------------------------------------------------------------------------
-// Monetary column helper (M-1/M-2 fix — numeric(12,2) instead of float)
-// ---------------------------------------------------------------------------
-const moneyColumn = customType<{ data: number; driverData: string }>({
-  dataType() {
-    return 'numeric(12, 2)';
-  },
-  fromDriver(value) {
-    return parseFloat(value);
-  },
-  toDriver(value) {
-    return String(value);
-  },
-});
 
 // ---------------------------------------------------------------------------
 // Status enum (kept — canonical availability field)
@@ -65,7 +49,7 @@ export type MenuCategory = typeof menuCategories.$inferSelect;
 export type NewMenuCategory = typeof menuCategories.$inferInsert;
 
 // ---------------------------------------------------------------------------
-// menu_items — isAvailable removed (D-3/S-2 fix); price is numeric(12,2)
+// menu_items — isAvailable removed (D-3/S-2 fix); price is integer VND
 // ---------------------------------------------------------------------------
 export const menuItems = pgTable(
   'menu_items',
@@ -76,7 +60,8 @@ export const menuItems = pgTable(
       .references(() => restaurants.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description'),
-    price: moneyColumn('price').notNull(),
+    // Price stored as integer VND (no fractional currency in Vietnam).
+    price: integer('price').notNull(),
     sku: text('sku'),
     /** FK to menu_categories — nullable; items without a category are allowed */
     categoryId: uuid('category_id').references(() => menuCategories.id, {
@@ -128,7 +113,8 @@ export const modifierOptions = pgTable('modifier_options', {
     .notNull()
     .references(() => modifierGroups.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
-  price: moneyColumn('price').notNull().default(0),
+  // Price stored as integer VND. 0 = free modifier option.
+  price: integer('price').notNull().default(0),
   isDefault: boolean('is_default').notNull().default(false),
   displayOrder: integer('display_order').notNull().default(0),
   isAvailable: boolean('is_available').notNull().default(true),

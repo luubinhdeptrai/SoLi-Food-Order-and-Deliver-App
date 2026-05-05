@@ -336,9 +336,7 @@ export class CartController {
         itemName: item.itemName,
         unitPrice: item.unitPrice,
         quantity: item.quantity,
-        subtotal: parseFloat(
-          ((item.unitPrice + modifiersTotal) * item.quantity).toFixed(2),
-        ),
+        subtotal: (item.unitPrice + modifiersTotal) * item.quantity,
         selectedModifiers: item.selectedModifiers.map((m) => ({
           groupId: m.groupId,
           groupName: m.groupName,
@@ -348,9 +346,7 @@ export class CartController {
         })),
       };
     });
-    const totalAmount = parseFloat(
-      items.reduce((sum, it) => sum + it.subtotal, 0).toFixed(2),
-    );
+    const totalAmount = items.reduce((sum, it) => sum + it.subtotal, 0);
     return {
       cartId: cart.cartId,
       customerId: cart.customerId,

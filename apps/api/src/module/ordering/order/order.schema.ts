@@ -8,29 +8,7 @@ import {
   jsonb,
   timestamp,
   unique,
-  customType,
 } from 'drizzle-orm/pg-core';
-
-// ---------------------------------------------------------------------------
-// Monetary column helper (M-1 fix)
-//
-// PostgreSQL NUMERIC(12, 2) stores exact decimal values.
-// IEEE-754 doublePrecision (float8) causes rounding errors like
-// 1.10 + 2.20 = 3.3000000000000003 which is unacceptable for financial data.
-//
-// customType maps NUMERIC → TypeScript number automatically via fromDriver.
-// ---------------------------------------------------------------------------
-const moneyColumn = customType<{ data: number; driverData: string }>({
-  dataType() {
-    return 'numeric(12, 2)';
-  },
-  fromDriver(value) {
-    return parseFloat(value as string);
-  },
-  toDriver(value) {
-    return String(value);
-  },
-});
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -133,15 +111,14 @@ export const orders = pgTable(
     cartId: uuid('cart_id').notNull(),
 
     status: orderStatusEnum('status').notNull().default('pending'),
-    totalAmount: moneyColumn('total_amount').notNull(),
+    // All monetary amounts are stored as integer VND (no fractional units in Vietnam).
+    totalAmount: integer('total_amount').notNull(),
     /**
      * Shipping fee computed at checkout time from the innermost eligible delivery
-     * zone snapshot: baseFee + (distanceKm × perKmRate).
-     * Stored separately from totalAmount so receipts and payout logic can
-     * distinguish item cost from delivery cost.
-     * Defaults to 0 when restaurant coordinates or delivery zones are absent.
+     * zone snapshot: baseFee + Math.round(distanceKm × perKmRate).
+     * Stored as integer VND.
      */
-    shippingFee: moneyColumn('shipping_fee').notNull().default(0),
+    shippingFee: integer('shipping_fee').notNull().default(0),
     /**
      * Estimated delivery time in minutes, computed at checkout.
      * Formula: prepTimeMinutes + (distanceKm / avgSpeedKmh × 60) + bufferMinutes.
@@ -206,15 +183,14 @@ export const orderItems = pgTable('order_items', {
   // Cross-context reference — snapshot, NOT a FK to restaurant-catalog
   menuItemId: uuid('menu_item_id').notNull(),
   itemName: text('item_name').notNull(), // snapshot
-  unitPrice: moneyColumn('unit_price').notNull(), // base price snapshot (modifiers excluded)
+  // Base price in integer VND, snapshotted from ACL at checkout time.
+  unitPrice: integer('unit_price').notNull(),
   /**
-   * Sum of all selected modifier option prices, re-resolved from ACL snapshot at checkout.
-   * Stored separately so receipts, refunds, and payout splits can distinguish base vs modifier cost.
-   * subtotal = (unitPrice + modifiersPrice) × quantity
+   * Sum of all selected modifier option prices (integer VND).
    */
-  modifiersPrice: moneyColumn('modifiers_price').notNull().default(0),
+  modifiersPrice: integer('modifiers_price').notNull().default(0),
   quantity: integer('quantity').notNull(),
-  subtotal: moneyColumn('subtotal').notNull(),
+  subtotal: integer('subtotal').notNull(),
   /**
    * Modifier selections snapshotted at checkout time.
    * Re-resolved from the ACL snapshot — NOT copied from the cart's add-time data.

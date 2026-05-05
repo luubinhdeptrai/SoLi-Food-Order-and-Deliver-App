@@ -67,7 +67,7 @@ export interface IpnVerificationResult {
 export interface VNPayUrlParams {
   /** PaymentTransaction.id — used as vnp_TxnRef (echoed back in IPN). */
   txnRef: string;
-  /** Order total in VND (NUMERIC 12,2). Multiplied by 100 before sending. */
+  /** Order total in integer VND. Multiplied by 100 before sending to VNPay. */
   amount: number;
   /** Client IP address. IPv4-mapped IPv6 prefixes are stripped. */
   ipAddr: string;
@@ -161,9 +161,10 @@ export class VNPayService implements OnModuleInit {
       vnp_Version: VNPAY_VERSION,
       vnp_Command: VNPAY_COMMAND_PAY,
       vnp_TmnCode: this.tmnCode,
-      // Amount in VND × 100 (no decimal point, integer only).
-      // Math.round guards against floating-point artifacts like 99.99 * 100 = 9998.9999...
-      vnp_Amount: String(Math.round(params.amount * 100)),
+      // Amount in VND × 100. amount is already an integer VND value
+      // (enforced by the schema and validation layer), so amount * 100
+      // is always an exact integer with no floating-point rounding error.
+      vnp_Amount: String(params.amount * 100),
       vnp_CreateDate: this.formatVNPayDate(now),
       vnp_CurrCode: VNPAY_CURRENCY_VND,
       vnp_IpAddr: this.sanitizeIpAddr(params.ipAddr),
@@ -255,7 +256,9 @@ export class VNPayService implements OnModuleInit {
       query.vnp_ResponseCode === '00' && query.vnp_TransactionStatus === '00';
 
     const rawAmount = parseInt(query.vnp_Amount ?? '0', 10);
-    const amount = rawAmount / 100; // Convert VND × 100 back to VND
+    // VNPay sends vnp_Amount = integer_VND × 100.
+    // Dividing by 100 always yields an exact integer since our amounts are whole VND.
+    const amount = rawAmount / 100;
 
     return {
       valid: true,

@@ -1,31 +1,14 @@
 import {
   boolean,
-  customType,
   doublePrecision,
   index,
+  integer,
   pgTable,
   real,
   text,
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
-
-// ---------------------------------------------------------------------------
-// Fee column helper — NUMERIC(10, 2) stored as TypeScript `number`.
-// Mirrors the zoneFeeColumn in restaurant.schema.ts and moneyColumn in
-// order.schema.ts for consistent decimal handling.
-// ---------------------------------------------------------------------------
-const zoneFeeColumn = customType<{ data: number; driverData: string }>({
-  dataType() {
-    return 'numeric(10, 2)';
-  },
-  fromDriver(value) {
-    return parseFloat(value as string);
-  },
-  toDriver(value) {
-    return String(value);
-  },
-});
 
 // ---------------------------------------------------------------------------
 // ordering_delivery_zone_snapshots
@@ -55,8 +38,9 @@ export const orderingDeliveryZoneSnapshots = pgTable(
     restaurantId: uuid('restaurant_id').notNull(),
     name: text('name').notNull(),
     radiusKm: doublePrecision('radius_km').notNull(),
-    baseFee: zoneFeeColumn('base_fee').notNull(),
-    perKmRate: zoneFeeColumn('per_km_rate').notNull(),
+    // Fees stored as integer VND.
+    baseFee: integer('base_fee').notNull(),
+    perKmRate: integer('per_km_rate').notNull(),
     avgSpeedKmh: real('avg_speed_kmh').notNull(),
     prepTimeMinutes: real('prep_time_minutes').notNull(),
     bufferMinutes: real('buffer_minutes').notNull(),

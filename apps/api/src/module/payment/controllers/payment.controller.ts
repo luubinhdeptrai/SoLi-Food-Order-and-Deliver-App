@@ -13,6 +13,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CommandBus } from '@nestjs/cqrs';
+import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 import { ProcessIpnCommand } from '../commands/process-ipn.command';
 import { VNPayService } from '../services/vnpay.service';
 import { PaymentTransactionRepository } from '../repositories/payment-transaction.repository';
@@ -67,6 +68,7 @@ export class PaymentController {
    */
   @Get('vnpay/ipn')
   @HttpCode(HttpStatus.OK)
+  @AllowAnonymous()
   @ApiExcludeEndpoint()
   async handleIpn(
     @Query() query: Record<string, string>,
@@ -105,6 +107,7 @@ export class PaymentController {
    */
   @Get('vnpay/return')
   @HttpCode(HttpStatus.OK)
+  @AllowAnonymous()
   @ApiOperation({
     summary: 'VNPay return URL — UI display only',
     description:
