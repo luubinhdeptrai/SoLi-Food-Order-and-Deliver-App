@@ -29,5 +29,11 @@ export class PlaceOrderCommand {
      * and stored after successful order creation.
      */
     public readonly idempotencyKey?: string,
+    /**
+     * Customer IP address — extracted by CartController from x-forwarded-for
+     * or socket.remoteAddress. Passed to VNPay as vnp_IpAddr.
+     * Defaults to '127.0.0.1' when absent (e.g. integration test context).
+     */
+    public readonly ipAddr?: string,
   ) {}
 }

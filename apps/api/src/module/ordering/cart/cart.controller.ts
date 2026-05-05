@@ -11,8 +11,10 @@ import {
   ParseUUIDPipe,
   Res,
   Headers,
+  Req,
   BadRequestException,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import type { Response } from 'express';
 import {
   ApiTags,
@@ -264,8 +266,17 @@ export class CartController {
   async checkout(
     @Session() session: UserSession,
     @Body() dto: CheckoutDto,
+    @Req() req: Request,
     @Headers('x-idempotency-key') rawIdempotencyKey?: string,
   ): Promise<CheckoutResponseDto> {
+    // Extract client IP — prefer x-forwarded-for (behind reverse proxy)
+    const ipAddr =
+      (req.headers['x-forwarded-for'] as string | undefined)
+        ?.split(',')
+        .at(0)
+        ?.trim() ||
+      req.socket?.remoteAddress ||
+      '127.0.0.1';
     // M-2 FIX: validate the idempotency key before using it as a Redis key.
     // Reject keys that are not UUID-like (8–64 hex chars + hyphens) to prevent
     // oversized keys and log-injection via the key value.
@@ -287,6 +298,7 @@ export class CartController {
       dto.paymentMethod,
       dto.note,
       idempotencyKey,
+      ipAddr,
     );
 
     const order: Order = await this.commandBus.execute(command);

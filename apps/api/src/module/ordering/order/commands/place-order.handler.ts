@@ -42,8 +42,11 @@ import {
   CART_LOCK_TTL_SECONDS,
 } from '../../common/ordering.constants';
 import { APP_SETTING_KEYS } from '../../common/app-settings.schema';
-import { randomUUID } from 'crypto';
 import { GeoService } from '@/lib/geo/geo.service';
+import {
+  PAYMENT_INITIATION_PORT,
+  type IPaymentInitiationPort,
+} from '@/shared/ports/payment-initiation.port';
 
 /**
  * Local projection of a delivery zone — contains only the fields needed for
@@ -128,11 +131,19 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     private readonly redis: RedisService,
     private readonly eventBus: EventBus,
     private readonly geo: GeoService,
+    @Inject(PAYMENT_INITIATION_PORT)
+    private readonly paymentPort: IPaymentInitiationPort,
   ) {}
 
   async execute(command: PlaceOrderCommand): Promise<Order> {
-    const { customerId, deliveryAddress, paymentMethod, note, idempotencyKey } =
-      command;
+    const {
+      customerId,
+      deliveryAddress,
+      paymentMethod,
+      note,
+      idempotencyKey,
+      ipAddr,
+    } = command;
 
     // -------------------------------------------------------------------------
     // Step 1 — D5-A: Check Redis idempotency key
@@ -178,6 +189,7 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
         paymentMethod,
         note,
         idempotencyKey,
+        ipAddr,
       );
     } finally {
       // Release lock — swallow errors so they never mask the original exception.
@@ -200,6 +212,7 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     paymentMethod: 'cod' | 'vnpay',
     note: string | undefined,
     idempotencyKey: string | undefined,
+    ipAddr: string | undefined,
   ): Promise<Order> {
     // -------------------------------------------------------------------------
     // Step 3 — Load cart from Redis
@@ -326,6 +339,49 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     });
 
     // -------------------------------------------------------------------------
+    // Step 10b — Two-phase VNPay write (Phase 8 integration).
+    //
+    // For VNPay orders only:
+    //   a) PaymentService creates a PaymentTransaction + builds the redirect URL.
+    //   b) We update orders.payment_url so the client receives it in the response.
+    //
+    // Design rationale (D-P5 / DIP):
+    //   PlaceOrderHandler depends on PAYMENT_INITIATION_PORT (interface), NOT on
+    //   PaymentService directly. PaymentModule is @Global() — no OrderModule import.
+    //
+    // Failure handling:
+    //   If VNPay URL generation fails, we log and continue WITHOUT a paymentUrl.
+    //   The order was already persisted (step 10) and must not be rolled back.
+    //   PaymentTimeoutTask (Phase 8.5) will expire the 'pending' PaymentTransaction
+    //   and publish PaymentFailedEvent → Ordering BC cancels the order (T-03).
+    //   This gives the customer a clean error UX via push notification without
+    //   leaving an uncancelled order in the system.
+    // -------------------------------------------------------------------------
+    let finalOrder = order;
+    if (paymentMethod === 'vnpay') {
+      try {
+        const { paymentUrl } = await this.paymentPort.initiateVNPayPayment(
+          order.id,
+          customerId,
+          order.totalAmount,
+          ipAddr ?? '127.0.0.1',
+        );
+        // Update the order row so the client response includes the redirect URL.
+        await this.db
+          .update(orders)
+          .set({ paymentUrl })
+          .where(eq(orders.id, order.id));
+        finalOrder = { ...order, paymentUrl };
+        this.logger.log(`VNPay payment URL attached to order ${order.id}`);
+      } catch (err) {
+        // Log and continue — order stands, timeout task handles cleanup.
+        this.logger.error(
+          `VNPay URL generation failed for order ${order.id}: ${(err as Error).message}`,
+          (err as Error).stack,
+        );
+      }
+    }
+
     // -------------------------------------------------------------------------
     // Step 11 — C-1 FIX: Save idempotency result BEFORE any cleanup.
     //
@@ -335,14 +391,14 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     //    The order was created but the client gets a confusing Conflict response.
     // -------------------------------------------------------------------------
     if (idempotencyKey) {
-      await this.saveIdempotencyResult(idempotencyKey, order.id);
+      await this.saveIdempotencyResult(idempotencyKey, finalOrder.id);
     }
 
     // -------------------------------------------------------------------------
     // Step 12 — Publish OrderPlacedEvent (Payment + Notification contexts consume it)
     // -------------------------------------------------------------------------
     this.publishOrderPlacedEvent(
-      order,
+      finalOrder,
       snapshotedItems,
       deliveryAddress,
       distanceKm,
@@ -362,12 +418,13 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
     this.logger.log(`Cart cleared for customerId=${customerId}`);
 
     this.logger.log(
-      `Order placed: orderId=${order.id}, customerId=${customerId}, ` +
+      `Order placed: orderId=${finalOrder.id}, customerId=${customerId}, ` +
         `itemsTotal=${itemsTotal}, shippingFee=${shippingFee}, total=${totalAmount}` +
-        (distanceKm != null ? `, distanceKm=${distanceKm.toFixed(2)}` : ''),
+        (distanceKm != null ? `, distanceKm=${distanceKm.toFixed(2)}` : '') +
+        (finalOrder.paymentUrl ? ', paymentUrl=<set>' : ''),
     );
 
-    return order;
+    return finalOrder;
   }
 
   // ---------------------------------------------------------------------------
@@ -846,7 +903,7 @@ export class PlaceOrderHandler implements ICommandHandler<PlaceOrderCommand> {
       order.restaurantName,
       order.totalAmount,
       order.shippingFee,
-      order.paymentMethod as 'cod' | 'vnpay',
+      order.paymentMethod,
       items.map((i) => ({
         menuItemId: i.menuItemId,
         name: i.itemName,

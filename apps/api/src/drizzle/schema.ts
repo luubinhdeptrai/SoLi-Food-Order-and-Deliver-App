@@ -8,3 +8,6 @@ export * from '../module/ordering/acl/schemas/menu-item-snapshot.schema';
 export * from '../module/ordering/acl/schemas/restaurant-snapshot.schema';
 export * from '../module/ordering/acl/schemas/delivery-zone-snapshot.schema';
 export * from '../module/ordering/common/app-settings.schema';
+
+// Payment bounded context — Phase 8 schemas
+export * from '../module/payment/domain/payment-transaction.schema';

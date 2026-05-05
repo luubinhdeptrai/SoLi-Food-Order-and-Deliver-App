@@ -11,16 +11,24 @@ import { OrderingModule } from './module/ordering/ordering.module';
 import { DevTestUserMiddleware } from './lib/dev-test-user.middleware';
 import { GeoModule } from './lib/geo/geo.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { PaymentModule } from './module/payment/payment.module';
+import { validate } from './config/env.schema';
+import { vnpayConfig } from './config/vnpay.config';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [vnpayConfig],
+      validate,
+    }),
     DatabaseModule,
     RedisModule,
     GeoModule,
     ScheduleModule.forRoot(),
     RestaurantCatalogModule,
     OrderingModule,
+    PaymentModule,
 
     AuthModule.forRoot({
       auth,
