@@ -1,9 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
-import {
-  IPaymentInitiationPort,
-} from '@/shared/ports/payment-initiation.port';
+import { IPaymentInitiationPort } from '@/shared/ports/payment-initiation.port';
 import { VNPayService } from './vnpay.service';
 import { PaymentTransactionRepository } from '../repositories/payment-transaction.repository';
 
@@ -47,7 +45,9 @@ export class PaymentService implements IPaymentInitiationPort {
       this.config.get<string>('PAYMENT_SESSION_TIMEOUT_SECONDS', '1800'),
       10,
     );
-    this.sessionTimeoutMs = Number.isFinite(timeoutSec) ? timeoutSec * 1_000 : 1_800_000;
+    this.sessionTimeoutMs = Number.isFinite(timeoutSec)
+      ? timeoutSec * 1_000
+      : 1_800_000;
   }
 
   /**
@@ -104,7 +104,11 @@ export class PaymentService implements IPaymentInitiationPort {
     // If this write fails, the record stays in 'pending'. PaymentTimeoutTask
     // handles recovery automatically (fail-safe, not fail-secure).
     // -------------------------------------------------------------------------
-    const updated = await this.txnRepo.updateToAwaitingIpn(txnId, paymentUrl, 0);
+    const updated = await this.txnRepo.updateToAwaitingIpn(
+      txnId,
+      paymentUrl,
+      0,
+    );
 
     if (!updated) {
       // Log but don't throw: VNPay URL was already generated.

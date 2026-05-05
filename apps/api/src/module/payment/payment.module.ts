@@ -3,12 +3,12 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from '@/drizzle/drizzle.module';
 import { vnpayConfig } from '@/config/vnpay.config';
-import {
-  PAYMENT_INITIATION_PORT,
-} from '@/shared/ports/payment-initiation.port';
+import { PAYMENT_INITIATION_PORT } from '@/shared/ports/payment-initiation.port';
 import { VNPayService } from './services/vnpay.service';
 import { PaymentService } from './services/payment.service';
 import { PaymentTransactionRepository } from './repositories/payment-transaction.repository';
+import { PaymentController } from './controllers/payment.controller';
+import { ProcessIpnHandler } from './commands/process-ipn.handler';
 
 /**
  * PaymentModule — Phase 8 implementation.
@@ -27,7 +27,11 @@ import { PaymentTransactionRepository } from './repositories/payment-transaction
  *   VNPayService               — pure VNPay adapter (URL build + IPN verify)
  *   PaymentService             — orchestrates payment initiation; implements IPaymentInitiationPort
  *   PaymentTransactionRepository — Drizzle queries for payment_transactions
+ *   ProcessIpnHandler          — CQRS command handler for VNPay IPN (Phase 8.3)
  *   PAYMENT_INITIATION_PORT    — DI token bound to PaymentService via useExisting
+ *
+ * Controllers:
+ *   PaymentController          — GET /payments/vnpay/ipn + GET /payments/vnpay/return
  *
  * Exports:
  *   PaymentService             — available globally (e.g. for future PaymentController)
@@ -36,10 +40,12 @@ import { PaymentTransactionRepository } from './repositories/payment-transaction
 @Global()
 @Module({
   imports: [CqrsModule, DatabaseModule, ConfigModule.forFeature(vnpayConfig)],
+  controllers: [PaymentController],
   providers: [
     VNPayService,
     PaymentService,
     PaymentTransactionRepository,
+    ProcessIpnHandler,
     {
       provide: PAYMENT_INITIATION_PORT,
       useExisting: PaymentService,

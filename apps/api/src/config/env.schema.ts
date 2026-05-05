@@ -21,7 +21,10 @@ export const envSchema = z.object({
   // ---------------------------------------------------------------------------
   DATABASE_URL: z
     .string()
-    .min(1, 'DATABASE_URL is required — format: postgresql://user:pass@host:port/db'),
+    .min(
+      1,
+      'DATABASE_URL is required — format: postgresql://user:pass@host:port/db',
+    ),
 
   // ---------------------------------------------------------------------------
   // Better Auth
@@ -38,27 +41,32 @@ export const envSchema = z.object({
   // Redis
   // ---------------------------------------------------------------------------
   REDIS_HOST: z.string().min(1).default('localhost'),
-  REDIS_PORT: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(6379),
+  REDIS_PORT: z.coerce.number().int().positive().default(6379),
 
   // ---------------------------------------------------------------------------
   // VNPay — all four are required; no defaults (production payment credentials)
   // ---------------------------------------------------------------------------
   VNPAY_TMN_CODE: z
     .string()
+    .trim()
     .min(1, 'VNPAY_TMN_CODE is required — obtain from VNPay merchant portal'),
   VNPAY_HASH_SECRET: z
     .string()
-    .min(1, 'VNPAY_HASH_SECRET is required — HMAC signing key from VNPay portal'),
+    .trim()
+    .min(
+      1,
+      'VNPAY_HASH_SECRET is required — HMAC signing key from VNPay portal',
+    ),
   VNPAY_URL: z
     .string()
-    .url('VNPAY_URL must be a valid URL (e.g. https://sandbox.vnpayment.vn/paymentv2/vpcpay.html)'),
+    .url(
+      'VNPAY_URL must be a valid URL (e.g. https://sandbox.vnpayment.vn/paymentv2/vpcpay.html)',
+    ),
   VNPAY_RETURN_URL: z
     .string()
-    .url('VNPAY_RETURN_URL must be a valid URL (e.g. https://yourdomain.com/payment/result)'),
+    .url(
+      'VNPAY_RETURN_URL must be a valid URL (e.g. http://localhost:3000/api/payments/vnpay/return)',
+    ),
 
   // ---------------------------------------------------------------------------
   // Payment session window — optional with a safe default

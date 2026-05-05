@@ -131,6 +131,11 @@ export class VNPayService implements OnModuleInit {
       `VNPayService initialized — tmnCode=${this.tmnCode} url=${this.vnpUrl} ` +
         `sessionTimeout=${this.config.sessionTimeoutSeconds}s`,
     );
+
+    this.logger.log(
+      'VNPay IPN URL must be configured in the merchant portal. ' +
+        'Contact VNPay support to set the IPN callback URL for your account.',
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -163,21 +168,32 @@ export class VNPayService implements OnModuleInit {
       vnp_CurrCode: VNPAY_CURRENCY_VND,
       vnp_IpAddr: this.sanitizeIpAddr(params.ipAddr),
       vnp_Locale: VNPAY_LOCALE_VN,
-      vnp_OrderInfo: `SoLi Order ${params.txnRef}`,
+      vnp_OrderInfo: `SoLi_Order_${params.txnRef}`,
       vnp_OrderType: VNPAY_ORDER_TYPE_FOOD,
       vnp_ReturnUrl: this.returnUrl,
       vnp_TxnRef: params.txnRef,
       vnp_ExpireDate: this.formatVNPayDate(expiresAt),
     };
 
-    // Build the sign data string (encode → sort → join).
-    // This string is what VNPay will re-derive when verifying the URL.
-    const signData = this.sortAndBuildSignData(vnpParams);
-    const signature = this.hmacSha512(signData);
+    // Step 1: Strip hidden control chars (\r \n \t) and surrounding whitespace
+    // from every param value before signing. A stray newline in vnp_OrderInfo
+    // or anywhere else causes the hashData line to break, producing a different
+    // string than the single-line format VNPay expects.
+    const sanitized = this.sanitizeParams(vnpParams);
 
-    // Append vnp_SecureHash AFTER signing — it must not be part of signData.
-    // The final URL is: baseParams + &vnp_SecureHash=<signature>
-    return `${this.vnpUrl}?${signData}&vnp_SecureHash=${signature}`;
+    // Step 2: Build hashData with RAW sanitized values — no URL encoding.
+    const hashData = this.buildHashData(sanitized);
+    const signature = this.hmacSha512(hashData);
+
+    // Log raw strings (not JSON.stringify) to see the actual HMAC input.
+    this.logger.debug(`buildPaymentUrl — ipAddr=${sanitized['vnp_IpAddr']}`);
+    this.logger.debug(`hashData=${hashData}`);
+    this.logger.debug(`secureHash=${signature}`);
+
+    // Step 3: Build URL-encoded query string from the same sanitized params.
+    // vnp_SecureHash is appended AFTER signing — must NOT be part of hashData.
+    const queryString = this.buildQueryString(sanitized);
+    return `${this.vnpUrl}?${queryString}&vnp_SecureHash=${signature}`;
   }
 
   /**
@@ -193,35 +209,50 @@ export class VNPayService implements OnModuleInit {
    * @returns IpnVerificationResult
    */
   verifyIpn(query: Record<string, string>): IpnVerificationResult {
+    this.logger.debug(
+      `IPN received — txnRef=${query['vnp_TxnRef'] ?? '(none)'} ` +
+        `responseCode=${query['vnp_ResponseCode'] ?? '(none)'} ` +
+        `transactionStatus=${query['vnp_TransactionStatus'] ?? '(none)'}`,
+    );
+
     const {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       vnp_SecureHash: receivedHash,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      vnp_SecureHashType: _hashType,
+      vnp_SecureHashType: _hashType, // eslint-disable-line @typescript-eslint/no-unused-vars -- must exclude from signData
       ...paramsWithoutHash
     } = query;
 
     if (!receivedHash) {
       this.logger.warn('IPN missing vnp_SecureHash — rejected');
-      return { valid: false, responsePaid: false, amount: 0, txnRef: '', providerTxnId: '' };
+      return {
+        valid: false,
+        responsePaid: false,
+        amount: 0,
+        txnRef: '',
+        providerTxnId: '',
+      };
     }
 
-    const signData = this.sortAndBuildSignData(paramsWithoutHash);
+    const signData = this.buildHashData(paramsWithoutHash);
     const expectedHash = this.hmacSha512(signData);
 
     const valid = this.timingSafeCompare(receivedHash, expectedHash);
 
     if (!valid) {
       this.logger.warn('IPN signature mismatch — potential spoofed request');
-      return { valid: false, responsePaid: false, amount: 0, txnRef: '', providerTxnId: '' };
+      return {
+        valid: false,
+        responsePaid: false,
+        amount: 0,
+        txnRef: '',
+        providerTxnId: '',
+      };
     }
 
     // Both vnp_ResponseCode and vnp_TransactionStatus must be '00' for a
     // successful payment. vnp_ResponseCode alone being '00' is not sufficient
     // in some edge cases (bank success but system error).
     const responsePaid =
-      query.vnp_ResponseCode === '00' &&
-      query.vnp_TransactionStatus === '00';
+      query.vnp_ResponseCode === '00' && query.vnp_TransactionStatus === '00';
 
     const rawAmount = parseInt(query.vnp_Amount ?? '0', 10);
     const amount = rawAmount / 100; // Convert VND × 100 back to VND
@@ -248,12 +279,13 @@ export class VNPayService implements OnModuleInit {
    * @param query Raw query params from the return GET request
    * @returns { valid: boolean; code: string } — code is vnp_ResponseCode
    */
-  verifyReturn(query: Record<string, string>): { valid: boolean; code: string } {
+  verifyReturn(query: Record<string, string>): {
+    valid: boolean;
+    code: string;
+  } {
     const {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       vnp_SecureHash: receivedHash,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      vnp_SecureHashType: _hashType,
+      vnp_SecureHashType: _hashType, // eslint-disable-line @typescript-eslint/no-unused-vars -- must exclude from signData
       ...paramsWithoutHash
     } = query;
 
@@ -261,7 +293,7 @@ export class VNPayService implements OnModuleInit {
       return { valid: false, code: query.vnp_ResponseCode ?? 'unknown' };
     }
 
-    const signData = this.sortAndBuildSignData(paramsWithoutHash);
+    const signData = this.buildHashData(paramsWithoutHash);
     const expectedHash = this.hmacSha512(signData);
 
     const valid = this.timingSafeCompare(receivedHash, expectedHash);
@@ -277,38 +309,75 @@ export class VNPayService implements OnModuleInit {
   // ---------------------------------------------------------------------------
 
   /**
-   * Builds the sign data string used for HMAC computation.
-   *
-   * VNPay requires:
-   *   1. URL-encode each key (encodeURIComponent)
-   *   2. URL-encode each value (encodeURIComponent, then %20 → '+')
-   *   3. Sort by URL-encoded key (lexicographic / localeCompare)
-   *   4. Join as `encodedKey=encodedValue` pairs separated by '&'
-   *
-   * Why encode-first, sort-second: VNPay's own verification algorithm
-   * sorts on the URL-encoded representation. Sorting raw keys produces
-   * a different order for keys containing special characters, causing
-   * signature mismatch even with the correct secret key.
-   *
-   * Why %20 → '+': Traditional form URL encoding uses '+' for spaces.
-   * VNPay's reference implementation uses this convention.
+   * Removes \r, \n, \t and surrounding whitespace from every param value.
+   * A hidden newline in any value (e.g. vnp_OrderInfo) breaks hashData into
+   * multiple lines, producing a hash that never matches VNPay's single-line
+   * re-derivation.
    */
-  private sortAndBuildSignData(params: Record<string, string>): string {
-    const entries: Array<[string, string]> = Object.entries(params).map(
-      ([key, value]) => [
-        encodeURIComponent(key),
-        encodeURIComponent(value).replace(/%20/g, '+'),
-      ],
-    );
+  private sanitizeParams(
+    params: Record<string, string>,
+  ): Record<string, string> {
+    const result: Record<string, string> = {};
+    for (const [key, value] of Object.entries(params)) {
+      result[key] = value.replace(/[\r\n\t]/g, '').trim();
+    }
+    return result;
+  }
 
-    // Deterministic ASCII sort on URL-encoded keys (same algorithm as VNPay server).
-    // Using explicit comparison operators instead of localeCompare() to guarantee
-    // byte-order sorting regardless of the Node.js process locale setting.
-    // All VNPay param keys are ASCII (vnp_*), so locale-aware collation would
-    // never differ in practice — but defensive determinism matters here.
-    entries.sort(([keyA], [keyB]) => (keyA < keyB ? -1 : keyA > keyB ? 1 : 0));
+  /**
+   * Builds the hashData string used as HMAC input.
+   *
+   * Mirrors VNPay's official PHP reference implementation exactly:
+   *
+   *   ksort($params);
+   *   foreach ($params as $key => $value) {
+   *     $hashdata .= urlencode($key) . "=" . urlencode($value) . "&";
+   *   }
+   *   hash_hmac('sha512', rtrim($hashdata, '&'), $secret);
+   *
+   * PHP's urlencode() encodes spaces as '+' (not '%20') and encodes special
+   * characters like ':', '/', '.' with percent-encoding. We replicate this
+   * with: encodeURIComponent(v).replace(/%20/g, '+').
+   *
+   * WHY encoding is required:
+   *   VNPay's server receives the URL, PHP's $_GET URL-decodes all params
+   *   (giving raw values like "http://localhost:3000/..."), then re-applies
+   *   urlencode() on each value before computing HMAC. Our hash input must
+   *   therefore also use encoded values — otherwise:
+   *     Our input:  vnp_ReturnUrl=http://localhost:3000/...
+   *     VNPay's:    vnp_ReturnUrl=http%3A%2F%2Flocalhost%3A3000%2F...
+   *     → MISMATCH → "Sai chữ ký"
+   *
+   * NOTE: This encoding is NOT applied to buildQueryString — that method uses
+   * standard encodeURIComponent (no '+' substitution) for the browser URL.
+   */
+  private buildHashData(params: Record<string, string>): string {
+    return Object.keys(params)
+      .sort()
+      .map(
+        (key) =>
+          `${encodeURIComponent(key)}=${encodeURIComponent(params[key]).replace(/%20/g, '+')}`,
+      )
+      .join('&');
+  }
 
-    return entries.map(([key, value]) => `${key}=${value}`).join('&');
+  /**
+   * Builds the URL query string for the payment redirect URL.
+   *
+   * Separate from buildHashData: values are URL-encoded here so the browser
+   * and VNPay's server can correctly parse all characters (including ':' and
+   * '/' in vnp_ReturnUrl).
+   *
+   * Note: vnp_SecureHash is appended AFTER this string, outside this method.
+   */
+  private buildQueryString(params: Record<string, string>): string {
+    return Object.entries(params)
+      .sort(([keyA], [keyB]) => (keyA < keyB ? -1 : keyA > keyB ? 1 : 0))
+      .map(
+        ([key, value]) =>
+          `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+      )
+      .join('&');
   }
 
   /**
@@ -375,14 +444,25 @@ export class VNPayService implements OnModuleInit {
   }
 
   /**
-   * Strips the `::ffff:` IPv4-mapped IPv6 prefix that Node.js/Express appends
-   * to IPv4 addresses when the server is bound to `::` (dual-stack).
+   * Sanitizes the client IP address for VNPay submission.
    *
-   * VNPay validates ipAddr format. Sending `::ffff:127.0.0.1` fails validation.
-   * Falls back to '127.0.0.1' when ipAddr is empty (e.g. during integration tests).
+   * VNPay does NOT accept localhost IPs (127.* or ::1). For local development,
+   * we use a dummy public IP (1.1.1.1). In production, use a real client IP
+   * extracted from x-forwarded-for or req.socket.remoteAddress.
+   *
+   * Steps:
+   *   1. Strip the `::ffff:` IPv4-mapped IPv6 prefix (Node.js/Express dual-stack).
+   *   2. Detect localhost patterns (127.*, ::1, ::ffff:127.*).
+   *   3. Return a dummy public IP for localhost, or the cleaned IP otherwise.
    */
   private sanitizeIpAddr(ipAddr: string): string {
     const cleaned = (ipAddr ?? '').replace(/^::ffff:/i, '').trim();
-    return cleaned || '127.0.0.1';
+
+    // Empty, IPv6 loopback, or IPv4 loopback → use dummy public IP.
+    if (!cleaned || cleaned === '::1' || cleaned.startsWith('127.')) {
+      return '1.1.1.1';
+    }
+
+    return cleaned;
   }
 }

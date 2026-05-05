@@ -23,7 +23,7 @@ const moneyColumn = customType<{ data: number; driverData: string }>({
     return 'numeric(12, 2)';
   },
   fromDriver(value) {
-    return parseFloat(value as string);
+    return parseFloat(value);
   },
   toDriver(value) {
     return String(value);
