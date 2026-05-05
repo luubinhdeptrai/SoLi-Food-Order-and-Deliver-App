@@ -7,17 +7,25 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiExcludeEndpoint,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
+  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { CommandBus } from '@nestjs/cqrs';
-import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
+import {
+  AllowAnonymous,
+  Session,
+  type UserSession,
+} from '@thallesp/nestjs-better-auth';
 import { ProcessIpnCommand } from '../commands/process-ipn.command';
 import { VNPayService } from '../services/vnpay.service';
 import { PaymentTransactionRepository } from '../repositories/payment-transaction.repository';
+import { PaymentService } from '../services/payment.service';
 import type { IpnResponse } from '../commands/process-ipn.handler';
+import type { PaymentStatus } from '../domain/payment-transaction.schema';
 
 /**
  * PaymentController
@@ -47,6 +55,7 @@ export class PaymentController {
     private readonly commandBus: CommandBus,
     private readonly vnpayService: VNPayService,
     private readonly txnRepo: PaymentTransactionRepository,
+    private readonly paymentService: PaymentService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -221,6 +230,78 @@ export class PaymentController {
       vnpResponseCode: txn.vnpResponseCode ?? query['vnp_ResponseCode'] ?? null,
     };
   }
+
+  // ---------------------------------------------------------------------------
+  // Phase 8.7 — Customer payment history
+  // ---------------------------------------------------------------------------
+
+  /**
+   * GET /payments/my — the authenticated customer's payment transactions.
+   *
+   * Returns transactions ordered newest-first.
+   * Sensitive fields (rawIpnPayload, paymentUrl) are excluded from the response.
+   *
+   * Auth: required (global BetterAuth guard applies — no @AllowAnonymous here).
+   */
+  @Get('my')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Get the current customer's payment transactions",
+    description:
+      'Returns all payment transactions for the authenticated customer, ' +
+      'ordered newest-first. Does not include raw IPN payloads or payment URLs.',
+  })
+  @ApiOkResponse({
+    description: 'List of payment transactions',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          orderId: { type: 'string', format: 'uuid' },
+          amount: { type: 'integer', description: 'Integer VND' },
+          status: {
+            type: 'string',
+            enum: [
+              'pending',
+              'awaiting_ipn',
+              'completed',
+              'failed',
+              'refund_pending',
+              'refunded',
+            ],
+          },
+          paidAt: {
+            type: 'string',
+            format: 'date-time',
+            nullable: true,
+          },
+          providerTxnId: { type: 'string', nullable: true },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Not authenticated' })
+  async getMyPayments(
+    @Session() session: UserSession,
+  ): Promise<MyPaymentTransactionDto[]> {
+    const transactions = await this.paymentService.getMyPayments(
+      session.user.id,
+    );
+
+    return transactions.map((txn) => ({
+      id: txn.id,
+      orderId: txn.orderId,
+      amount: txn.amount,
+      status: txn.status,
+      paidAt: txn.paidAt ?? null,
+      providerTxnId: txn.providerTxnId ?? null,
+      createdAt: txn.createdAt,
+    }));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -247,4 +328,25 @@ export interface ReturnUrlResponse {
    * Frontend should use this for display only, not for state decisions.
    */
   vnpResponseCode: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Response types — GET /payments/my
+// ---------------------------------------------------------------------------
+
+/**
+ * Single item returned in the GET /payments/my response list.
+ * Intentionally omits rawIpnPayload and paymentUrl (sensitive / large).
+ */
+export interface MyPaymentTransactionDto {
+  id: string;
+  orderId: string;
+  /** Order total at checkout time, integer VND. */
+  amount: number;
+  status: PaymentStatus;
+  /** Timestamp when VNPay confirmed the charge. Null until payment completes. */
+  paidAt: Date | null;
+  /** VNPay-assigned transaction number. Null until IPN arrives. */
+  providerTxnId: string | null;
+  createdAt: Date;
 }

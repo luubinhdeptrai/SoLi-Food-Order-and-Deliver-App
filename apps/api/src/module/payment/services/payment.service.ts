@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { IPaymentInitiationPort } from '@/shared/ports/payment-initiation.port';
 import { VNPayService } from './vnpay.service';
 import { PaymentTransactionRepository } from '../repositories/payment-transaction.repository';
+import type { PaymentTransaction } from '../domain/payment-transaction.schema';
 
 /**
  * PaymentService
@@ -124,5 +125,18 @@ export class PaymentService implements IPaymentInitiationPort {
     }
 
     return { txnId, paymentUrl };
+  }
+
+  /**
+   * Returns the caller's payment transactions ordered newest-first.
+   * Used by GET /payments/my (Phase 8.7).
+   *
+   * Fields with sensitive details (rawIpnPayload, paymentUrl) are stripped
+   * from the returned objects — callers receive only the subset needed for
+   * display. The raw objects are typed as PaymentTransaction; the controller
+   * applies the response DTO mapping.
+   */
+  async getMyPayments(customerId: string): Promise<PaymentTransaction[]> {
+    return this.txnRepo.findByCustomerId(customerId);
   }
 }

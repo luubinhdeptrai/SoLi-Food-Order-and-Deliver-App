@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { eq, and, lte, inArray, desc } from 'drizzle-orm';
+import { eq, and, lte, inArray, asc, desc } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DB_CONNECTION } from '@/drizzle/drizzle.constants';
 import * as schema from '@/drizzle/schema';
@@ -100,8 +100,54 @@ export class PaymentTransactionRepository {
   }
 
   /**
-   * Returns all transactions in 'pending' or 'awaiting_ipn' status that have
-   * exceeded their expiresAt timestamp. Used by PaymentTimeoutTask (Phase 8.5).
+   * Returns all transactions for a given customer, ordered newest-first.
+   * Used by GET /payments/my (Phase 8.7).
+   */
+  async findByCustomerId(customerId: string): Promise<PaymentTransaction[]> {
+    return this.db
+      .select()
+      .from(paymentTransactions)
+      .where(eq(paymentTransactions.customerId, customerId))
+      .orderBy(desc(paymentTransactions.createdAt));
+  }
+
+  /**
+   * Returns the most recently completed transaction for an order, or null.
+   *
+   * Used by OrderCancelledAfterPaymentHandler (Phase 8.6) to find the
+   * authoritative completed transaction for refund processing, regardless of
+   * whether newer `failed` transactions also exist for the same orderId.
+   *
+   * Querying explicitly by `status = 'completed'` is safer than relying on
+   * `findByOrderId` (which returns only the most-recently-created row) in
+   * scenarios where multiple payment attempts occurred for the same order.
+   */
+  async findCompletedByOrderId(
+    orderId: string,
+  ): Promise<PaymentTransaction | null> {
+    const [row] = await this.db
+      .select()
+      .from(paymentTransactions)
+      .where(
+        and(
+          eq(paymentTransactions.orderId, orderId),
+          eq(paymentTransactions.status, 'completed'),
+        ),
+      )
+      .orderBy(desc(paymentTransactions.createdAt))
+      .limit(1);
+
+    return row ?? null;
+  }
+
+  /**
+   * Returns expired transactions in 'pending' or 'awaiting_ipn' status.
+   * Used by PaymentTimeoutTask (Phase 8.5).
+   *
+   * Processes oldest-first (createdAt ASC) to prioritise long-overdue
+   * transactions. Limited to 500 rows per run to prevent unbounded DB reads
+   * if many transactions expire simultaneously (e.g. after a system outage).
+   * Any remaining will be caught on the next cron tick.
    */
   async findExpired(): Promise<PaymentTransaction[]> {
     return this.db
@@ -112,7 +158,9 @@ export class PaymentTransactionRepository {
           inArray(paymentTransactions.status, ['pending', 'awaiting_ipn']),
           lte(paymentTransactions.expiresAt, new Date()),
         ),
-      );
+      )
+      .orderBy(asc(paymentTransactions.createdAt))
+      .limit(500);
   }
 
   // ---------------------------------------------------------------------------
