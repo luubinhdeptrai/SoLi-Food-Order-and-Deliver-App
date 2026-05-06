@@ -1,13 +1,12 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import {
   restaurants,
   type Restaurant,
-  type NewRestaurant,
 } from '@/module/restaurant-catalog/restaurant/restaurant.schema';
 import { CreateRestaurantDto, UpdateRestaurantDto } from './dto/restaurant.dto';
 import { DB_CONNECTION } from '@/drizzle/drizzle.constants';
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@/drizzle/schema';
 
 @Injectable()
@@ -29,10 +28,7 @@ export class RestaurantRepository {
     return result[0] ?? null;
   }
 
-  async create(
-    ownerId: string,
-    dto: CreateRestaurantDto,
-  ): Promise<NewRestaurant> {
+  async create(ownerId: string, dto: CreateRestaurantDto): Promise<Restaurant> {
     const [row] = await this.db
       .insert(restaurants)
       .values({ ...dto, ownerId })
@@ -40,7 +36,7 @@ export class RestaurantRepository {
     return row;
   }
 
-  async update(id: string, dto: UpdateRestaurantDto): Promise<NewRestaurant> {
+  async update(id: string, dto: UpdateRestaurantDto): Promise<Restaurant> {
     const [row] = await this.db
       .update(restaurants)
       .set({ ...dto, updatedAt: new Date() })

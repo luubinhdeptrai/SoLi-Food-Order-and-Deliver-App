@@ -15,6 +15,13 @@
       "when": 1776083727978,
       "tag": "0001_slim_mongu",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777217861203,
+      "tag": "0002_overconfident_silver_centurion",
+      "breakpoints": true
     }
   ]
 }

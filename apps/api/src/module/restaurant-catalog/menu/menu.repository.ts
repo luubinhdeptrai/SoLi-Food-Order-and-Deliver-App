@@ -11,7 +11,7 @@ import type {
 } from './dto/menu.dto';
 import { DB_CONNECTION } from '@/drizzle/drizzle.constants';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from '../../../drizzle/schema';
+import * as schema from '@/drizzle/schema';
 
 @Injectable()
 export class MenuRepository {
