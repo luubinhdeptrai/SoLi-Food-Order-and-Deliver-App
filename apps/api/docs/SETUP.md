@@ -4,11 +4,11 @@
 
 This is a **monorepo** food delivery platform with three main applications:
 
-| App | Stack | Purpose |
-|-----|-------|---------|
-| **API** | NestJS, PostgreSQL, Drizzle ORM | Backend server |
-| **Web** | React 19, Vite, Tailwind CSS | Admin/Store dashboard |
-| **Mobile** | React Native, Expo | Customer app |
+| App        | Stack                           | Purpose               |
+| ---------- | ------------------------------- | --------------------- |
+| **API**    | NestJS, PostgreSQL, Drizzle ORM | Backend server        |
+| **Web**    | React 19, Vite, Tailwind CSS    | Admin/Store dashboard |
+| **Mobile** | React Native, Expo              | Customer app          |
 
 Tools: **pnpm** (package manager), **Turbo** (monorepo orchestration), **Docker** (database)
 
@@ -66,12 +66,15 @@ This migrates the Drizzle ORM schema to the database.
 ## 🚀 Development Commands
 
 ### Run Everything in Watch Mode
+
 ```bash
 pnpm dev
 ```
+
 Starts API, Web, and Mobile dev servers.
 
 ### Run Individual Apps
+
 ```bash
 pnpm dev:api      # Backend: http://localhost:3000
 pnpm dev:web      # Web dashboard: http://localhost:5173
@@ -79,11 +82,13 @@ pnpm dev:mobile   # Expo dev server
 ```
 
 ### Build All Apps
+
 ```bash
 pnpm build
 ```
 
 ### Lint Code
+
 ```bash
 pnpm lint
 ```
@@ -186,15 +191,17 @@ pnpm --filter api test:cov
 ## 🆘 Troubleshooting
 
 **Port conflicts?**
+
 - API runs on port 3000
 - Web runs on port 5173
 - Make sure these ports are available
 
 **Database connection errors?**
+
 - Verify `.env` credentials match your PostgreSQL setup
 - Check that PostgreSQL is running if using Docker: `docker ps`
 
 **Module not found errors?**
+
 - Run `pnpm install` again to ensure all dependencies are installed
 - Check that you're in the correct directory
-

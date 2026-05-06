@@ -22,6 +22,27 @@
       "when": 1777217861203,
       "tag": "0002_overconfident_silver_centurion",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777258797860,
+      "tag": "0003_chief_strong_guy",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777500962750,
+      "tag": "0004_damp_maestro",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777957458311,
+      "tag": "0005_luxuriant_strong_guy",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,55 @@
+@startuml user-access
+title Use Case Diagram - User & Access Management (Release 1 / MVP)
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Customer" as A_Customer
+actor "Restaurant Partner" as A_Restaurant
+actor "Shipper" as A_Shipper
+actor "System Administrator" as A_Admin
+actor "OAuth Provider\n(Google/Apple)" as A_OAuth
+
+rectangle "Food Delivery System (MVP)" as SYS {
+  usecase "UC-01 Customer Register/Login" as UC01
+  usecase "UC-02 Submit Partner Application\n(Restaurant/Shipper)" as UC02
+
+  usecase "UC-03 Admin Sign-in + RBAC" as UC03
+  usecase "UC-04 Approve/Reject Partners" as UC04
+  usecase "UC-05 Suspend/Reactivate Partners" as UC05
+  usecase "UC-06 Search User Accounts" as UC06
+
+  usecase "UC-07 Write Immutable Audit Log" as UC07
+}
+
+A_Customer -- UC01
+A_Restaurant -- UC02
+A_Shipper -- UC02
+A_Admin -- UC03
+A_Admin -- UC04
+A_Admin -- UC05
+A_Admin -- UC06
+A_OAuth -- UC01
+
+UC04 .> UC07 : <<include>>
+UC05 .> UC07 : <<include>>
+
+
+usecase "UC-08 Manage Profile (View/Edit)" as UC08
+usecase "UC-09 Reset Password" as UC09
+usecase "UC-10 Logout" as UC10
+usecase "UC-11 View Application Status" as UC11
+
+A_Customer -- UC08
+A_Customer -- UC09
+A_Customer -- UC10
+A_Restaurant -- UC11
+A_Shipper -- UC11
+
+UC01 .> UC08 : <<extend>>\n[after register/login]
+UC02 .> UC07 : <<include>>
+UC01 .> UC07 : <<extend>>\n[account created|failed login|privilege change]
+
+
+@enduml

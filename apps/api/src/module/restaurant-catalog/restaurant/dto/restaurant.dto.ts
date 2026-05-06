@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsBoolean,
   IsNumber,
+  IsUrl,
   MinLength,
 } from 'class-validator';
 
@@ -54,6 +55,30 @@ export class CreateRestaurantDto {
   @IsOptional()
   @IsNumber()
   longitude?: number;
+
+  @ApiPropertyOptional({
+    description: 'Cuisine type label used for search filtering',
+    example: 'Vietnamese',
+  })
+  @IsOptional()
+  @IsString()
+  cuisineType?: string;
+
+  @ApiPropertyOptional({
+    description: 'URL of the restaurant logo image',
+    example: 'https://cdn.example.com/restaurants/sunset-bistro-logo.jpg',
+  })
+  @IsOptional()
+  @IsUrl()
+  logoUrl?: string;
+
+  @ApiPropertyOptional({
+    description: 'URL of the restaurant cover/banner image',
+    example: 'https://cdn.example.com/restaurants/sunset-bistro-cover.jpg',
+  })
+  @IsOptional()
+  @IsUrl()
+  coverImageUrl?: string;
 }
 
 export class UpdateRestaurantDto extends PartialType(CreateRestaurantDto) {
@@ -64,6 +89,14 @@ export class UpdateRestaurantDto extends PartialType(CreateRestaurantDto) {
   @IsOptional()
   @IsBoolean()
   isOpen?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Approval status (admin only)',
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  isApproved?: boolean;
 }
 
 export class RestaurantResponseDto {
@@ -129,6 +162,24 @@ export class RestaurantResponseDto {
   })
   longitude?: number | null;
 
+  @ApiPropertyOptional({
+    description: 'Cuisine type (e.g. Vietnamese, Italian)',
+    example: 'Vietnamese',
+  })
+  cuisineType?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Logo image URL',
+    example: 'https://cdn.example.com/logo.jpg',
+  })
+  logoUrl?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Cover/banner image URL',
+    example: 'https://cdn.example.com/cover.jpg',
+  })
+  coverImageUrl?: string | null;
+
   @ApiProperty({
     description: 'Record creation timestamp',
     type: String,
@@ -144,4 +195,88 @@ export class RestaurantResponseDto {
     example: '2026-04-15T08:45:00.000Z',
   })
   updatedAt!: Date;
+}
+
+/**
+ * Paginated wrapper for restaurant listing endpoints.
+ * `total` is the full count matching the query (ignoring offset/limit),
+ * which clients use to render pagination controls or stop infinite scroll.
+ */
+export class RestaurantListResponseDto {
+  @ApiProperty({ type: [RestaurantResponseDto] })
+  data!: RestaurantResponseDto[];
+
+  @ApiProperty({
+    description: 'Total number of restaurants matching the query',
+    example: 42,
+  })
+  total!: number;
+}
+
+/**
+ * Public search result — excludes sensitive internal fields (ownerId, isApproved).
+ * Includes `distanceKm` when the request included lat/lon coordinates.
+ */
+export class RestaurantSearchResultDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ example: 'Sunset Bistro' })
+  name!: string;
+
+  @ApiPropertyOptional({ example: 'Cozy local spot.' })
+  description?: string | null;
+
+  @ApiProperty({ example: '123 Main St' })
+  address!: string;
+
+  @ApiProperty({ example: '+1-555-123-4567' })
+  phone!: string;
+
+  @ApiProperty({ example: true })
+  isOpen!: boolean;
+
+  @ApiPropertyOptional({ example: 10.762622 })
+  latitude?: number | null;
+
+  @ApiPropertyOptional({ example: 106.660172 })
+  longitude?: number | null;
+
+  @ApiPropertyOptional({ example: 'Vietnamese' })
+  cuisineType?: string | null;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/logo.jpg' })
+  logoUrl?: string | null;
+
+  @ApiPropertyOptional({ example: 'https://cdn.example.com/cover.jpg' })
+  coverImageUrl?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Straight-line distance from the search coordinates in km',
+    example: 1.45,
+  })
+  distanceKm?: number | null;
+
+  @ApiPropertyOptional({
+    description:
+      'Relevance score computed by the ranking engine (higher = better match). ' +
+      'Present only when a `q` search term is provided; omitted or 0 otherwise.',
+    example: 9,
+  })
+  score?: number;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt!: Date;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  updatedAt!: Date;
+}
+
+/** Paginated wrapper for search results. */
+export class RestaurantSearchResponseDto {
+  @ApiProperty({ type: [RestaurantSearchResultDto] })
+  data!: RestaurantSearchResultDto[];
+
+  @ApiProperty({ example: 10 })
+  total!: number;
 }

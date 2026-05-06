@@ -1,6 +1,9 @@
 import { apiClient } from '@/lib/api-client';
 import type { Restaurant } from './restaurant.types';
-import type { RestaurantFormValues, UpdateRestaurantFormValues } from '../schemas/restaurant.schema';
+import type {
+  RestaurantFormValues,
+  UpdateRestaurantFormValues,
+} from '../schemas/restaurant.schema';
 
 export const restaurantApi = {
   getAll: () => apiClient.get<Restaurant[]>('/restaurants'),

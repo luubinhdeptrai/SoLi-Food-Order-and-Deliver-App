@@ -1,0 +1,123 @@
+@startuml
+' Activity Diagram - Delivery Management (Shipper) (Release 1 / MVP)
+skinparam swimlaneOrientation vertical
+
+title Activity - Delivery Management (UC-D5)
+
+|Shipper|
+start
+:Sign in to shipper app;
+
+|System|
+:Authenticate shipper;
+if (Authenticated + Approved/Active?) then (Yes)
+else (No)
+  |Shipper|
+  :Show access blocked
+  (Pending/Rejected/Suspended);
+  stop
+endif
+
+|Shipper|
+:Toggle availability
+(Available/Unavailable);
+
+|System|
+:Authorize "toggle own availability";
+if (Connectivity OK?) then (Yes)
+  :Update availability state;
+  :Propagate eligibility (p95 <= 10s);
+  |Shipper|
+  :See synced state;
+else (No)
+  |Shipper|
+  :Queue change locally;
+  :Show "queued, will sync";
+endif
+
+|External Systems (Push Provider)|
+:Deliver dispatch request;
+
+|Shipper|
+:Open dispatch request;
+:View job details;
+:Accept OR Decline;
+
+|System|
+if (Accept?) then (Yes)
+  :Atomically assign order
+  (<= 1 shipper);
+  if (Assignment succeeded?) then (Yes)
+    :Authorize access
+    (assigned shipper only);
+    |Shipper|
+    :Navigate to pickup/dropoff;
+
+    |External Systems (Maps / Navigation SDK)|
+    :Provide route guidance;
+
+    |Shipper|
+    :Confirm pickup;
+
+    |System|
+    :Authorize transition (assigned shipper);
+    :Validate transition [BR-7];
+    if (Server reachable?) then (Yes)
+      :Update order -> Picked Up;
+      :Publish status update (<= 5s);
+    else (No)
+      |Shipper|
+      :Show retryable pickup error;
+      if (Retry?) then (Yes)
+        -[#gray]-> :Confirm pickup;
+      else (No)
+        stop
+      endif
+    endif
+
+    |Shipper|
+    :Deliver order;
+    :Confirm delivery;
+
+    |System|
+    :Authorize transition (assigned shipper);
+    :Validate transition [BR-7];
+    if (Order state = Picked Up?) then (Yes)
+      if (Server reachable?) then (Yes)
+        :Update order -> Delivered;
+        :Record actor + timestamp;
+        :Publish status update (<= 5s);
+
+        if (Payment = COD?) then (Yes)
+          :Record COD cash collected;
+        endif
+
+        |Shipper|
+        :See completion;
+        stop
+      else (No)
+        |Shipper|
+        :Show retryable delivery error;
+        stop
+      endif
+    else (No)
+      |Shipper|
+      :Show out-of-sequence error;
+      stop
+    endif
+
+  else (No)
+    |Shipper|
+    :Show "job already taken";
+    stop
+  endif
+
+else (Decline)
+  |System|
+  :Release offer / re-dispatch;
+  |Shipper|
+  :Return to idle state;
+  stop
+endif
+
+@enduml

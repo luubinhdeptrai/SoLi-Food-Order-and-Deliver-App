@@ -1,14 +1,34 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
+  "preset": "ts-jest/presets/default-esm",
+  "extensionsToTreatAsEsm": [".ts"],
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
+  "moduleNameMapper": {
+    "^@/(.*)$": "<rootDir>/../src/$1",
+    "^(\\.{1,2}/.*)\\.js$": "$1"
+  },
   "transform": {
-    "^.+\\.(t|j)s$": [
+    "^.+\\.tsx?$": [
       "ts-jest",
       {
-        "tsconfig": "tsconfig.test.json"
+        "useESM": true,
+        "tsconfig": {
+          "rootDir": "../",
+          "module": "esnext",
+          "target": "ES2020",
+          "moduleResolution": "node",
+          "resolvePackageJsonExports": false,
+          "esModuleInterop": true,
+          "allowSyntheticDefaultImports": true,
+          "skipLibCheck": true,
+          "forceConsistentCasingInFileNames": true,
+          "resolveJsonModule": true
+        }
       }
     ]
-  }
+  },
+  "setupFiles": ["<rootDir>/setup/env-setup.ts"],
+  "testTimeout": 30000,
+  "maxWorkers": 1
 }

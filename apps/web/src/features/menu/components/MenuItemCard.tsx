@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { MenuItem } from "@/features/menu/types";
-import { Edit2, Trash2 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState } from 'react';
+import { MenuItem } from '@/features/menu/types';
+import { Edit2, Trash2 } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface MenuItemCardProps {
   item: MenuItem;
@@ -12,19 +12,19 @@ interface MenuItemCardProps {
 export function MenuItemCard({ item, onEdit, onDelete }: MenuItemCardProps) {
   const [isAvailable, setIsAvailable] = useState(item.isAvailable);
 
-  const isSoldOut = item.status === "out_of_stock" || !isAvailable;
+  const isSoldOut = item.status === 'out_of_stock' || !isAvailable;
 
   return (
     <Card
       className={`bg-surface-container-lowest rounded-3xl py-0 gap-0 ring-0 group transition-all duration-300 ${
-        isSoldOut ? "bg-opacity-60" : "hover:shadow-xl hover:shadow-primary/5"
+        isSoldOut ? 'bg-opacity-60' : 'hover:shadow-xl hover:shadow-primary/5'
       }`}
     >
       <CardContent className="p-4 flex flex-col md:flex-row md:items-center gap-6">
         {/* Image Block */}
         <div
           className={`relative h-24 w-24 md:h-32 md:w-32 rounded-2xl overflow-hidden flex-shrink-0 ${
-            isSoldOut ? "grayscale" : ""
+            isSoldOut ? 'grayscale' : ''
           }`}
         >
           {item.imageUrl ? (
@@ -52,7 +52,7 @@ export function MenuItemCard({ item, onEdit, onDelete }: MenuItemCardProps) {
         </div>
 
         {/* Content Block */}
-        <div className={`flex-1 ${isSoldOut ? "opacity-60" : ""}`}>
+        <div className={`flex-1 ${isSoldOut ? 'opacity-60' : ''}`}>
           <div className="flex justify-between items-start">
             <div>
               <h3 className="font-headline text-xl font-bold text-on-surface">
@@ -79,15 +79,15 @@ export function MenuItemCard({ item, onEdit, onDelete }: MenuItemCardProps) {
               </span>
               <div
                 className={`h-2 w-2 rounded-full ${
-                  isSoldOut ? "bg-error" : "bg-primary"
+                  isSoldOut ? 'bg-error' : 'bg-primary'
                 }`}
               />
               <span
                 className={`text-xs font-bold uppercase ${
-                  isSoldOut ? "text-error" : "text-primary"
+                  isSoldOut ? 'text-error' : 'text-primary'
                 }`}
               >
-                {isSoldOut ? "Unavailable" : "Available"}
+                {isSoldOut ? 'Unavailable' : 'Available'}
               </span>
             </div>
 

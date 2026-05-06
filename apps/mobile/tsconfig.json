@@ -3,11 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
-    "jsxImportSource": "nativewind"
+      "@/*": ["./*"]
+    }
   },
   "include": [
     "**/*.ts",

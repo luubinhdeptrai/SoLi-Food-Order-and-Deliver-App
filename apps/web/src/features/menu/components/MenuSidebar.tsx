@@ -1,6 +1,6 @@
-import { MenuOverview } from "@/features/menu/types";
-import { AddMenuItemCard } from "./AddMenuItemCard";
-import { Card, CardContent } from "@/components/ui/card";
+import { MenuOverview } from '@/features/menu/types';
+import { AddMenuItemCard } from './AddMenuItemCard';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface MenuSidebarProps {
   overview: MenuOverview;
@@ -10,9 +10,9 @@ interface MenuSidebarProps {
 export function MenuSidebar({ overview, onAddItem }: MenuSidebarProps) {
   // Mock data for categories in HTML
   const categories = [
-    { name: "Artisan Bakery", icon: "bakery_dining", color: "orange" },
-    { name: "Farm Fresh", icon: "nutrition", color: "green" },
-    { name: "Fresh Dairy", icon: "water_drop", color: "blue" },
+    { name: 'Artisan Bakery', icon: 'bakery_dining', color: 'orange' },
+    { name: 'Farm Fresh', icon: 'nutrition', color: 'green' },
+    { name: 'Fresh Dairy', icon: 'water_drop', color: 'blue' },
   ];
 
   return (

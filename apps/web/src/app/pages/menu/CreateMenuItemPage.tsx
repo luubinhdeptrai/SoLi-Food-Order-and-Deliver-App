@@ -1,9 +1,9 @@
-import { CreateMenuItemHeader } from "@/features/menu/components/create/CreateMenuItemHeader";
-import { ProductEssenceCard } from "@/features/menu/components/create/ProductEssenceCard";
-import { DietaryTagsCard } from "@/features/menu/components/create/DietaryTagsCard";
-import { MediaUploadCard } from "@/features/menu/components/create/MediaUploadCard";
-import { MarketVisibilityCard } from "@/features/menu/components/create/MarketVisibilityCard";
-import { CreateMenuItemFooter } from "@/features/menu/components/create/CreateMenuItemFooter";
+import { CreateMenuItemHeader } from '@/features/menu/components/create/CreateMenuItemHeader';
+import { ProductEssenceCard } from '@/features/menu/components/create/ProductEssenceCard';
+import { DietaryTagsCard } from '@/features/menu/components/create/DietaryTagsCard';
+import { MediaUploadCard } from '@/features/menu/components/create/MediaUploadCard';
+import { MarketVisibilityCard } from '@/features/menu/components/create/MarketVisibilityCard';
+import { CreateMenuItemFooter } from '@/features/menu/components/create/CreateMenuItemFooter';
 
 export default function CreateMenuItemPage() {
   const handleCancel = () => {
@@ -11,7 +11,7 @@ export default function CreateMenuItemPage() {
   };
 
   const handleSave = () => {
-    console.log("Saving menu item...");
+    console.log('Saving menu item...');
   };
 
   const handleDiscard = () => {
@@ -19,7 +19,7 @@ export default function CreateMenuItemPage() {
   };
 
   const handlePublish = () => {
-    console.log("Publishing menu item...");
+    console.log('Publishing menu item...');
   };
 
   return (
@@ -40,7 +40,10 @@ export default function CreateMenuItemPage() {
         </div>
       </div>
 
-      <CreateMenuItemFooter onDiscard={handleDiscard} onPublish={handlePublish} />
+      <CreateMenuItemFooter
+        onDiscard={handleDiscard}
+        onPublish={handlePublish}
+      />
     </div>
   );
 }

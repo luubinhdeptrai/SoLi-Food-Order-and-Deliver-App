@@ -1,11 +1,11 @@
-import { Fragment } from "react";
-import { Link, Outlet, useMatches } from "react-router-dom";
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { Fragment } from 'react';
+import { Link, Outlet, useMatches } from 'react-router-dom';
+import { AppSidebar } from '@/components/layout/AppSidebar';
 import {
   SidebarProvider,
   SidebarInset,
   SidebarTrigger,
-} from "@/components/ui/sidebar";
+} from '@/components/ui/sidebar';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -13,7 +13,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+} from '@/components/ui/breadcrumb';
 
 type BreadcrumbHandle = {
   breadcrumb?: string;

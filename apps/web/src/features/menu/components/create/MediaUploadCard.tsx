@@ -1,4 +1,4 @@
-import { Image, CloudUpload, Camera } from "lucide-react";
+import { Image, CloudUpload, Camera } from 'lucide-react';
 
 export function MediaUploadCard() {
   return (

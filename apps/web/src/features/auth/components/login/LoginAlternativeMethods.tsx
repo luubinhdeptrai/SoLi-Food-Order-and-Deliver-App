@@ -1,5 +1,5 @@
-import { Fingerprint, KeyRound } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Fingerprint, KeyRound } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export function LoginAlternativeMethods() {
   return (

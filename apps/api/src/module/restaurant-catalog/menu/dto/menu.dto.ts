@@ -6,9 +6,8 @@ import {
 } from '@nestjs/swagger';
 import {
   IsArray,
-  IsBoolean,
   IsEnum,
-  IsNumber,
+  IsInt,
   IsOptional,
   IsString,
   IsUrl,
@@ -16,15 +15,8 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-
-export const MENU_ITEM_CATEGORIES = [
-  'salads',
-  'desserts',
-  'breads',
-  'mains',
-  'drinks',
-  'sides',
-] as const;
+import { Type } from 'class-transformer';
+import { IsVNDAmount } from '@/shared/validators/vnd-amount.validator';
 
 export const MENU_ITEM_STATUSES = [
   'available',
@@ -32,8 +24,60 @@ export const MENU_ITEM_STATUSES = [
   'out_of_stock',
 ] as const;
 
-export type MenuItemCategory = (typeof MENU_ITEM_CATEGORIES)[number];
 export type MenuItemStatus = (typeof MENU_ITEM_STATUSES)[number];
+
+// ---------------------------------------------------------------------------
+// MenuCategory DTOs (per-restaurant categories replacing global enum)
+// ---------------------------------------------------------------------------
+
+export class CreateMenuCategoryDto {
+  @ApiProperty({
+    format: 'uuid',
+    description: 'Restaurant that owns this category',
+    example: '11111111-1111-1111-1111-111111111111',
+  })
+  @IsUUID()
+  restaurantId!: string;
+
+  @ApiProperty({ description: 'Category display name', example: 'Burgers' })
+  @IsString()
+  @MinLength(1)
+  name!: string;
+
+  @ApiPropertyOptional({ description: 'Sort order', example: 0 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  displayOrder?: number;
+}
+
+export class UpdateMenuCategoryDto extends PartialType(
+  OmitType(CreateMenuCategoryDto, ['restaurantId'] as const),
+) {}
+
+export class MenuCategoryResponseDto {
+  @ApiProperty({ format: 'uuid' })
+  id!: string;
+
+  @ApiProperty({ format: 'uuid' })
+  restaurantId!: string;
+
+  @ApiProperty({ example: 'Burgers' })
+  name!: string;
+
+  @ApiProperty({ example: 0 })
+  displayOrder!: number;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  createdAt!: Date;
+
+  @ApiProperty({ type: String, format: 'date-time' })
+  updatedAt!: Date;
+}
+
+// ---------------------------------------------------------------------------
+// MenuItem DTOs
+// ---------------------------------------------------------------------------
 
 export class CreateMenuItemDto {
   @ApiProperty({
@@ -54,22 +98,21 @@ export class CreateMenuItemDto {
   name!: string;
 
   @ApiProperty({
-    description: 'Price of the item in store currency',
-    example: 12.5,
-    minimum: 0,
+    description: 'Price of the item in VND (integer, multiple of 1000)',
+    example: 35000,
+    minimum: 1000,
   })
-  @IsNumber()
-  @Min(0)
+  @IsVNDAmount()
   price!: number;
 
-  @ApiProperty({
-    description: 'Category used for menu grouping',
-    enum: MENU_ITEM_CATEGORIES,
-    enumName: 'MenuItemCategory',
-    example: 'mains',
+  @ApiPropertyOptional({
+    description: 'UUID of the per-restaurant category this item belongs to',
+    format: 'uuid',
+    example: '44444444-4444-4444-4444-444444444444',
   })
-  @IsEnum(MENU_ITEM_CATEGORIES)
-  category!: MenuItemCategory;
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
 
   @ApiPropertyOptional({
     description: 'Short item description shown to customers',
@@ -118,15 +161,16 @@ export class UpdateMenuItemDto extends PartialType(
   @IsOptional()
   @IsEnum(MENU_ITEM_STATUSES)
   status?: MenuItemStatus;
-
-  @ApiPropertyOptional({
-    description: 'Whether customers can currently order this item',
-    example: true,
-  })
-  @IsOptional()
-  @IsBoolean()
-  isAvailable?: boolean;
 }
+
+// Valid values callers can pass for the status filter.
+// 'all' bypasses filtering — useful for restaurant owners viewing their full menu.
+export const MENU_ITEM_STATUS_FILTER_VALUES = [
+  ...MENU_ITEM_STATUSES,
+  'all',
+] as const;
+export type MenuItemStatusFilter =
+  (typeof MENU_ITEM_STATUS_FILTER_VALUES)[number];
 
 export class QueryMenuItemDto {
   @ApiProperty({
@@ -138,14 +182,46 @@ export class QueryMenuItemDto {
   restaurantId!: string;
 
   @ApiPropertyOptional({
-    description: 'Optional category filter',
-    enum: MENU_ITEM_CATEGORIES,
-    enumName: 'MenuItemCategory',
-    example: 'drinks',
+    description: 'Optional category filter by category UUID',
+    format: 'uuid',
+    example: '44444444-4444-4444-4444-444444444444',
   })
   @IsOptional()
-  @IsEnum(MENU_ITEM_CATEGORIES)
-  category?: MenuItemCategory;
+  @IsUUID()
+  categoryId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Filter by availability status. Defaults to 'available' for public requests. " +
+      "Pass 'all' to include unavailable and out-of-stock items (e.g. for owners).",
+    enum: MENU_ITEM_STATUS_FILTER_VALUES,
+    example: 'available',
+  })
+  @IsOptional()
+  @IsEnum(MENU_ITEM_STATUS_FILTER_VALUES)
+  status?: MenuItemStatusFilter;
+
+  @ApiPropertyOptional({
+    description: 'Pagination offset (number of items to skip)',
+    example: 0,
+    minimum: 0,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  offset?: number;
+
+  @ApiPropertyOptional({
+    description: 'Pagination limit (max items to return, capped at 100)',
+    example: 20,
+    minimum: 1,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
+  limit?: number;
 }
 
 export class MenuItemResponseDto {
@@ -173,12 +249,11 @@ export class MenuItemResponseDto {
   @ApiPropertyOptional({ example: 'PIZZA-MARG-01' })
   sku?: string | null;
 
-  @ApiProperty({
-    enum: MENU_ITEM_CATEGORIES,
-    enumName: 'MenuItemCategory',
-    example: 'mains',
+  @ApiPropertyOptional({
+    format: 'uuid',
+    example: '44444444-4444-4444-4444-444444444444',
   })
-  category!: MenuItemCategory;
+  categoryId?: string | null;
 
   @ApiProperty({
     enum: MENU_ITEM_STATUSES,
@@ -192,26 +267,31 @@ export class MenuItemResponseDto {
   })
   imageUrl?: string | null;
 
-  @ApiProperty({ example: true })
-  isAvailable!: boolean;
-
   @ApiPropertyOptional({
     type: [String],
     example: ['vegetarian', 'popular'],
   })
   tags?: string[] | null;
 
-  @ApiProperty({
-    type: String,
-    format: 'date-time',
-    example: '2026-04-15T08:00:00.000Z',
-  })
+  @ApiProperty({ type: String, format: 'date-time' })
   createdAt!: Date;
 
-  @ApiProperty({
-    type: String,
-    format: 'date-time',
-    example: '2026-04-15T08:00:00.000Z',
-  })
+  @ApiProperty({ type: String, format: 'date-time' })
   updatedAt!: Date;
+}
+
+/**
+ * Paginated wrapper for menu item listing.
+ * `total` reflects the full count matching the filters (ignoring offset/limit),
+ * which clients use to implement pagination controls or infinite scroll.
+ */
+export class MenuItemListResponseDto {
+  @ApiProperty({ type: [MenuItemResponseDto] })
+  data!: MenuItemResponseDto[];
+
+  @ApiProperty({
+    description: 'Total number of menu items matching the query',
+    example: 35,
+  })
+  total!: number;
 }

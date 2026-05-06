@@ -1,4 +1,4 @@
-import { TrendingUp, BadgeCheck } from "lucide-react";
+import { TrendingUp, BadgeCheck } from 'lucide-react';
 
 export function RegisterEditorial() {
   return (
@@ -6,12 +6,11 @@ export function RegisterEditorial() {
       <div className="relative group">
         <div className="absolute -inset-4 bg-primary/5 rounded-3xl -z-10 transition-transform group-hover:scale-105" />
         <h1 className="font-headline font-extrabold text-5xl text-on-surface leading-tight tracking-tight">
-          Elevate your <span className="text-primary">culinary</span>{" "}
-          reach.
+          Elevate your <span className="text-primary">culinary</span> reach.
         </h1>
         <p className="mt-6 text-xl text-on-surface-variant leading-relaxed max-w-md">
-          Join thousands of elite restaurant partners using UITfood to
-          scale their delivery experience.
+          Join thousands of elite restaurant partners using UITfood to scale
+          their delivery experience.
         </p>
       </div>
 

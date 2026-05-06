@@ -1,0 +1,52 @@
+@startuml admin-ops-reporting
+title Use Case Diagram - Admin Operations & Reporting (Release 1 / MVP)
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "System Administrator" as A_Admin
+actor "Scheduler / Batch Job" as A_Scheduler
+
+rectangle "Food Delivery System (MVP)" as SYS {
+  usecase "UC-60 Monitor Platform Health" as UC60
+  usecase "UC-61 Monitor Orders & View Details" as UC61
+  usecase "UC-62 Cancel Order with Reason" as UC62
+
+  usecase "UC-63 Configure Commission %\n(+ Change History)" as UC63
+  usecase "UC-64 View Reports" as UC64
+  usecase "UC-65 Export Reports (CSV)" as UC65
+
+  usecase "UC-66 Calculate GMV & Commission" as UC66
+}
+
+A_Admin -- UC60
+A_Admin -- UC61
+A_Admin -- UC62
+A_Admin -- UC63
+A_Admin -- UC64
+
+usecase "UC-67 Approve/Reject Partner Applications" as UC67
+usecase "UC-68 Suspend/Reactivate Partner" as UC68
+usecase "UC-69 Audit Log (Immutable)" as UC69
+usecase "UC-70 Search Users & Accounts" as UC70
+
+A_Admin -- UC67
+A_Admin -- UC68
+A_Admin -- UC69
+A_Admin -- UC70
+
+UC64 .> UC65 : <<include>>
+
+note right of UC66
+  [precomputed by Scheduler]
+end note
+
+UC62 .> UC69 : <<include>>
+UC63 .> UC69 : <<include>>
+UC67 .> UC69 : <<include>>
+UC68 .> UC69 : <<include>>
+
+A_Scheduler -- UC66
+
+@enduml

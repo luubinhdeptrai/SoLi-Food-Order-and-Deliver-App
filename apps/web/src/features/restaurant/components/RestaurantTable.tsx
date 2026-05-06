@@ -20,11 +20,21 @@ export function RestaurantTable({
         <thead>
           <tr className="bg-gray-100">
             <th className="border border-gray-200 px-4 py-2 text-left">Name</th>
-            <th className="border border-gray-200 px-4 py-2 text-left">Address</th>
-            <th className="border border-gray-200 px-4 py-2 text-left">Phone</th>
-            <th className="border border-gray-200 px-4 py-2 text-left">Status</th>
-            <th className="border border-gray-200 px-4 py-2 text-left">Approved</th>
-            <th className="border border-gray-200 px-4 py-2 text-left">Actions</th>
+            <th className="border border-gray-200 px-4 py-2 text-left">
+              Address
+            </th>
+            <th className="border border-gray-200 px-4 py-2 text-left">
+              Phone
+            </th>
+            <th className="border border-gray-200 px-4 py-2 text-left">
+              Status
+            </th>
+            <th className="border border-gray-200 px-4 py-2 text-left">
+              Approved
+            </th>
+            <th className="border border-gray-200 px-4 py-2 text-left">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -41,11 +51,7 @@ export function RestaurantTable({
               </td>
               <td className="border border-gray-200 px-4 py-2">
                 <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onEdit(r)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => onEdit(r)}>
                     Edit
                   </Button>
                   <Button

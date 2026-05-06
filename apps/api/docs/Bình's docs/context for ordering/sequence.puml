@@ -1,0 +1,128 @@
+@startuml CQRS_Event_Flow
+!theme plain
+skinparam backgroundColor transparent
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+skinparam maxMessageSize 140
+skinparam sequence {
+  ArrowColor #378ADD
+  ActorBorderColor #888780
+  LifeLineBorderColor #B4B2A9
+  ParticipantBorderColor #B4B2A9
+  ParticipantBackgroundColor #F1EFE8
+  ParticipantFontColor #2C2C2A
+  BoxBorderColor #B4B2A9
+  BoxBackgroundColor #F1EFE8
+  DividerBackgroundColor #E6F1FB
+  GroupBackgroundColor #EEEDFE
+  GroupBorderColor #AFA9EC
+}
+
+actor Client
+
+box "Restaurant BC" #FFF5F2
+  participant "MenuController" as MC
+  participant "CreateMenuItem\nHandler" as CMH
+end box
+
+box "Shared" #F5F5FF
+  participant "EventBus\n(@nestjs/cqrs)" as EB
+end box
+
+box "Ordering BC" #F0F7FF
+  participant "MenuItem\nProjector" as MIP
+  participant "CartController" as CC
+  participant "CheckoutCart\nHandler" as CCH
+  participant "OrderController" as OC
+  participant "PlaceOrder\nHandler" as POH
+end box
+
+box "Analytics BC" #F0FFF5
+  participant "OrderStats\nProjector" as OSP
+end box
+
+== 1. Seed menu items (Restaurant write side) ==
+
+Client -> MC: POST /menu\n{ name, priceCents }
+activate MC
+MC -> EB: commandBus.execute(\nCreateMenuItemCommand)
+activate EB
+EB -> CMH: execute(command)
+activate CMH
+CMH -> CMH: persist MenuItem\nto store
+CMH -> EB: eventBus.publish(\nMenuItemUpdatedEvent)
+EB --> MIP: handle(MenuItemUpdatedEvent)
+activate MIP
+MIP -> MIP: update local\nread model snapshot
+deactivate MIP
+CMH --> EB: MenuItem
+deactivate CMH
+EB --> MC: MenuItem
+deactivate EB
+MC --> Client: 201 { id, name, priceCents }
+deactivate MC
+
+note over MIP: Ordering BC now holds a local copy\nof the price. No Restaurant call needed\nat query time.
+
+== 2. Add items to cart and checkout ==
+
+Client -> CC: POST /carts/:id/items\n{ menuItemId, quantity }
+activate CC
+CC -> CC: cart.addItem(...)
+CC --> Client: { lines }
+deactivate CC
+
+Client -> CC: POST /carts/:id/checkout
+activate CC
+CC -> EB: commandBus.execute(\nCheckoutCartCommand)
+activate EB
+EB -> CCH: execute(command)
+activate CCH
+CCH -> CCH: load cart,\nvalidate not empty
+CCH -> EB: commandBus.execute(\nPlaceOrderCommand)
+
+== 3. Place order — price resolved from local projection ==
+
+EB -> POH: execute(command)
+activate POH
+POH -> MIP: findManyByIds([menuItemId,...])
+activate MIP
+MIP --> POH: Map<id, MenuItemSnapshot>\n{ name, priceCents, isAvailable }
+deactivate MIP
+
+note over POH: Zero cross-module calls.\nPrices come from the local\nread model, not the Restaurant.
+
+POH -> POH: validate availability
+POH -> POH: snapshot prices into OrderItems
+POH -> POH: calculate totalCents
+POH -> POH: persist Order
+
+POH -> EB: eventBus.publish(\nOrderPlacedEvent)
+
+EB --> MIP: (no handler for OrderPlacedEvent)
+
+EB --> OSP: handle(OrderPlacedEvent)
+activate OSP
+OSP -> OSP: totalOrders++\ntotalRevenue += order.totalCents\nupdate topItems
+deactivate OSP
+
+POH --> EB: Order
+deactivate POH
+EB --> CCH: Order
+deactivate EB
+CCH -> CCH: cart.clear()
+CCH --> EB: Order
+deactivate CCH
+EB --> CC: Order
+deactivate EB
+CC --> Client: 201 Order { id, totalCents, items }
+deactivate CC
+
+== 4. Query analytics (read side) ==
+
+Client -> OSP: GET /analytics/stats
+activate OSP
+OSP --> Client: { totalOrders, totalRevenueCents, topItems }
+deactivate OSP
+
+@enduml

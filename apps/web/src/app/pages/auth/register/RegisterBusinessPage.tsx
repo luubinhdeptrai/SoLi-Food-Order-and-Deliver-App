@@ -1,8 +1,8 @@
-import { RegisterBusinessForm } from "@/features/auth/components/register/RegisterBusinessForm";
-import { RegisterBusinessMap } from "@/features/auth/components/register/RegisterBusinessMap";
-import { RegisterBusinessFooter } from "@/features/auth/components/register/RegisterBusinessFooter";
-import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { RegisterBusinessForm } from '@/features/auth/components/register/RegisterBusinessForm';
+import { RegisterBusinessMap } from '@/features/auth/components/register/RegisterBusinessMap';
+import { RegisterBusinessFooter } from '@/features/auth/components/register/RegisterBusinessFooter';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 
 export function RegisterLocationPage() {
   const navigate = useNavigate();
@@ -10,13 +10,13 @@ export function RegisterLocationPage() {
 
   useEffect(() => {
     if (!location.state?.step1Completed) {
-      navigate("/auth/register", { replace: true });
+      navigate('/auth/register', { replace: true });
     }
   }, [navigate, location]);
 
   const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
-    navigate("/auth/register/pending", { state: { step2Completed: true } });
+    navigate('/auth/register/pending', { state: { step2Completed: true } });
   };
 
   return (

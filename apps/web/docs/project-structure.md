@@ -130,7 +130,7 @@ Shared code should stay generic. If something belongs to one business domain, mo
 
 Pages live in `src/app/pages/`.
 
-A page should usually be a composition layer that constructs the page layout by combining specific feature components, shared UI elements, and layout primitives directly. 
+A page should usually be a composition layer that constructs the page layout by combining specific feature components, shared UI elements, and layout primitives directly.
 
 ### Avoid "Screen" Wrapper Components
 
@@ -139,7 +139,7 @@ Do not build all components into a single monolithic `Screen` component (e.g., `
 
 ```tsx
 // src/app/pages/auth/login/LoginPage.tsx
-import { LoginScreen } from "@/features/auth/components/LoginScreen";
+import { LoginScreen } from '@/features/auth/components/LoginScreen';
 
 export function LoginPage() {
   return (
@@ -155,9 +155,9 @@ Pages should be built directly from components in `features/[feature]/components
 
 ```tsx
 // src/app/pages/auth/login/LoginPage.tsx
-import { LoginForm } from "@/features/auth/components/LoginForm";
-import { LoginAlternativeMethods } from "@/features/auth/components/LoginAlternativeMethods";
-import { LoginFooter } from "@/features/auth/components/LoginFooter";
+import { LoginForm } from '@/features/auth/components/LoginForm';
+import { LoginAlternativeMethods } from '@/features/auth/components/LoginAlternativeMethods';
+import { LoginFooter } from '@/features/auth/components/LoginFooter';
 
 export function LoginPage() {
   return (

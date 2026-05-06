@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { Eye, EyeOff, ArrowRight } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { useState } from 'react';
+import { Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -11,7 +11,7 @@ export function RegisterForm() {
 
   const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
-    navigate("/auth/register/business", { state: { step1Completed: true } });
+    navigate('/auth/register/business', { state: { step1Completed: true } });
   };
 
   return (
@@ -71,7 +71,7 @@ export function RegisterForm() {
           <div className="relative">
             <Input
               id="passwordInput"
-              type={showPassword ? "text" : "password"}
+              type={showPassword ? 'text' : 'password'}
               placeholder="••••••••"
               className="w-full h-14 px-4 pr-12 bg-surface-container-high border-0 rounded-lg focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:bg-surface-container-lowest transition-all placeholder:text-stone-400"
               required
@@ -80,7 +80,7 @@ export function RegisterForm() {
               type="button"
               variant="ghost"
               size="icon"
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
               onClick={() => setShowPassword((v) => !v)}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-primary hover:bg-transparent transition-colors"
             >
@@ -162,7 +162,7 @@ export function RegisterForm() {
       {/* Sign-in link */}
       <div className="mt-8 text-center">
         <p className="text-sm text-on-surface-variant">
-          Already have an account?{" "}
+          Already have an account?{' '}
           <a href="#" className="text-primary font-bold hover:underline ml-1">
             Sign In
           </a>

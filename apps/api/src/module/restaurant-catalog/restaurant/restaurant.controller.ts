@@ -6,15 +6,23 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   ParseUUIDPipe,
+  ParseIntPipe,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { Roles, Session, type UserSession } from '@thallesp/nestjs-better-auth';
+import {
+  AllowAnonymous,
+  Roles,
+  Session,
+  type UserSession,
+} from '@thallesp/nestjs-better-auth';
 import { RestaurantService } from './restaurant.service';
 import { hasRole } from '@/module/auth/role.util';
 import {
   CreateRestaurantDto,
+  RestaurantListResponseDto,
   RestaurantResponseDto,
   UpdateRestaurantDto,
 } from './dto/restaurant.dto';
@@ -34,25 +42,29 @@ import {
 
 @ApiTags('Restaurants')
 @ApiBearerAuth()
-@ApiUnauthorizedResponse({ description: 'Missing or invalid bearer token' })
 @Controller('restaurants')
 export class RestaurantController {
   constructor(private readonly service: RestaurantService) {}
 
   @Get()
+  @AllowAnonymous()
   @ApiOperation({
     summary: 'List restaurants',
-    description: 'Returns all restaurants ordered by creation date.',
+    description: 'Returns paginated restaurants ordered by creation date.',
   })
   @ApiOkResponse({
     description: 'Restaurants retrieved successfully',
-    type: [RestaurantResponseDto],
+    type: RestaurantListResponseDto,
   })
-  findAll() {
-    return this.service.findAll();
+  findAll(
+    @Query('offset', new ParseIntPipe({ optional: true })) offset?: number,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
+  ) {
+    return this.service.findAll(offset, limit);
   }
 
   @Get(':id')
+  @AllowAnonymous()
   @ApiOperation({
     summary: 'Get restaurant details',
     description: 'Returns one restaurant by its UUID.',
@@ -75,6 +87,7 @@ export class RestaurantController {
 
   @Post()
   @Roles(['admin', 'restaurant'])
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid bearer token' })
   @ApiOperation({
     summary: 'Create restaurant',
     description: 'Creates a new restaurant for the authenticated owner.',
@@ -92,6 +105,7 @@ export class RestaurantController {
 
   @Patch(':id')
   @Roles(['admin', 'restaurant'])
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid bearer token' })
   @ApiOperation({
     summary: 'Update restaurant',
     description:
@@ -127,9 +141,62 @@ export class RestaurantController {
     );
   }
 
+  @Patch(':id/approve')
+  @Roles(['admin'])
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid bearer token' })
+  @ApiOperation({
+    summary: 'Approve restaurant',
+    description: 'Mark a restaurant as approved. Admin only endpoint.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Restaurant UUID',
+    format: 'uuid',
+    example: 'f7d6df40-6c7e-4f44-b0d0-c544d6f9e8f9',
+  })
+  @ApiOkResponse({
+    description: 'Restaurant approved successfully',
+    type: RestaurantResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid UUID format' })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions (admin role required)',
+  })
+  @ApiNotFoundResponse({ description: 'Restaurant not found' })
+  approve(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.setApproved(id, true);
+  }
+
+  @Patch(':id/unapprove')
+  @Roles(['admin'])
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid bearer token' })
+  @ApiOperation({
+    summary: 'Unapprove restaurant',
+    description: 'Mark a restaurant as unapproved. Admin only endpoint.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Restaurant UUID',
+    format: 'uuid',
+    example: 'f7d6df40-6c7e-4f44-b0d0-c544d6f9e8f9',
+  })
+  @ApiOkResponse({
+    description: 'Restaurant unapproved successfully',
+    type: RestaurantResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid UUID format' })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions (admin role required)',
+  })
+  @ApiNotFoundResponse({ description: 'Restaurant not found' })
+  unapprove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.setApproved(id, false);
+  }
+
   @Delete(':id')
   @Roles(['admin'])
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid bearer token' })
   @ApiOperation({
     summary: 'Delete restaurant',
     description: 'Deletes a restaurant by UUID. Admin only endpoint.',

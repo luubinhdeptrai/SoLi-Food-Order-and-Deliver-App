@@ -1,0 +1,46 @@
+@startuml
+title Use Case Diagram - Checkout & Payment (Release 1 / MVP)
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+actor "Customer" as A_Customer
+actor "VNPay" as A_VNPay
+actor "Maps / Geocoding API" as A_Maps
+
+rectangle "Food Delivery System (MVP)" as SYS {
+  usecase "UC-20 Validate Deliverability\n(Service Area + Radius)" as UC20
+  usecase "UC-21 Checkout / Place Order" as UC21
+  usecase "UC-22 Select Payment Method" as UC22
+
+  usecase "UC-23 Place Order with COD" as UC23
+  usecase "UC-24 Pay via VNPay" as UC24
+  usecase "UC-25 Confirm VNPay Payment" as UC25
+  usecase "UC-26 Handle VNPay Failure/Cancel" as UC26
+
+  usecase "UC-27 Ensure Checkout Idempotency" as UC27
+  usecase "UC-28 Finalize & Route Order" as UC28
+}
+
+A_Customer -- UC21
+A_Customer -- UC22
+A_Customer -- UC23
+A_Customer -- UC24
+A_VNPay -- UC25
+A_Maps -- UC20
+
+UC21 .> UC20 : <<include>>
+UC21 .> UC22 : <<include>>
+UC21 .> UC27 : <<include>>
+
+UC23 .> UC22 : <<extend>>\n[payment=COD]
+UC24 .> UC22 : <<extend>>\n[payment=VNPay]
+
+UC24 .> UC25 : <<include>>
+UC26 .> UC25 : <<extend>>\n[fail/cancel]
+
+UC23 .> UC28 : <<include>>
+UC28 .> UC25 : <<extend>>\n[success]
+
+@enduml

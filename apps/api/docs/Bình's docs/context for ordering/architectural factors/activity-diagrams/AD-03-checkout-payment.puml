@@ -1,0 +1,132 @@
+@startuml
+' Activity Diagram - Checkout & Payment (Release 1 / MVP)
+skinparam swimlaneOrientation vertical
+
+title Activity - Checkout & Payment (UC-D3)
+
+|Customer|
+start
+:Open checkout;
+:Confirm cart and delivery address;
+
+|System|
+:Authorize customer session;
+if (Authorized?) then (Yes)
+else (No)
+  |Customer|
+  :Login/Register;
+  |System|
+  :Authenticate;
+  if (Auth success?) then (Yes)
+  else (No)
+    |Customer|
+    :Show authentication error
+    (retryable if service unavailable);
+    stop
+  endif
+endif
+
+|System|
+:Validate cart integrity;
+if (BR-2 Single-restaurant cart?) then (Yes)
+else (No)
+  |Customer|
+  :Show error: cart must be single restaurant;
+  stop
+endif
+
+|System|
+:Validate required checkout fields;
+
+|External Systems (Maps API)|
+:Geocode address / compute distance;
+
+|System|
+if (Maps API available?) then (Yes)
+  :Enforce service area policy [BR-6];
+  if (Inside service area?) then (Yes)
+    if (BR-3 Within restaurant radius?) then (Yes)
+    else (No)
+      |Customer|
+      :Show outside-radius message;
+      stop
+    endif
+  else (No)
+    |Customer|
+    :Show out-of-service-area message;
+    stop
+  endif
+else (No)
+  |Customer|
+  :Show actionable maps error;
+  if (Retry address validation?) then (Yes)
+    -[#gray]-> |External Systems (Maps API)|
+    :Geocode address / compute distance;
+  else (No)
+    stop
+  endif
+endif
+
+|System|
+:Ensure checkout idempotency
+(client idempotency key, TTL);
+if (Existing order for key?) then (Yes)
+  :Return existing order ID;
+  |Customer|
+  :Navigate to order tracking;
+  stop
+else (No)
+endif
+
+|Customer|
+:Select payment method (COD or VNPay);
+
+|System|
+if (Payment = COD?) then (COD)
+  :Create order (state=Pending);
+  :Persist order and return order ID;
+  :Finalize & route order;
+  |Customer|
+  :Navigate to order tracking;
+  stop
+else (VNPay)
+  :Create payment intent (draft);
+  :Generate VNPay payment request;
+
+  |External Systems (VNPay)|
+  :Show payment UI;
+  :Customer confirms OR cancels;
+  :Send gateway callback/return;
+
+  |System|
+  :Verify callback signature
+  + payment status;
+  :Apply timeout + retry on transient
+  network/gateway errors;
+
+  if (Payment confirmed?) then (Yes)
+    :Upsert payment record (idempotent);
+    :Create order (state=Pending);
+    :Finalize & route order;
+    |Customer|
+    :Navigate to order tracking;
+    stop
+  else (Fail/Cancel/Timeout)
+    :Mark payment failed/cancelled;
+    |Customer|
+    :Show failure/cancel state
+    + retry option;
+    if (Retry VNPay?) then (Yes)
+      |System|
+      :Re-initiate VNPay request;
+      -[#gray]-> |External Systems (VNPay)|
+      :Show payment UI;
+    else (No)
+      |Customer|
+      :Cancel checkout;
+      stop
+    endif
+  endif
+endif
+
+@enduml
